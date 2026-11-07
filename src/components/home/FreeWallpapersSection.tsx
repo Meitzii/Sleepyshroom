@@ -1,0 +1,85 @@
+import React from 'react';
+import { Gift, Sparkles, Download, ArrowRight, ShieldCheck, Heart } from 'lucide-react';
+import { useShop } from '../../context/ShopContext.tsx';
+import { ProductCard } from '../common/ProductCard.tsx';
+
+export const FreeWallpapersSection: React.FC = () => {
+  const { products, navigateTo } = useShop();
+
+  const freeProducts = products.filter(p => p.isFree || p.price === 0);
+
+  if (freeProducts.length === 0) return null;
+
+  return (
+    <section className="py-12 sm:py-16 relative overflow-hidden bg-gradient-to-b from-transparent via-[#E8C9C1]/20 to-transparent">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Banner Card */}
+        <div className="bg-[#FAF7F0] border-2 border-[#D6C8F2] rounded-3xl p-6 sm:p-10 shadow-sm relative">
+          
+          {/* Subtle Decorative Mushroom Badges */}
+          <div className="absolute top-4 right-4 sm:top-6 sm:right-8 flex items-center gap-2 bg-[#D6C8F2]/35 text-[#5A4550] px-3 py-1 rounded-full text-xs font-bold">
+            <Gift className="w-3.5 h-3.5 text-[#8B6F7A]" />
+            <span>100% Free Gifts</span>
+          </div>
+
+          <div className="max-w-2xl mb-8">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#8B6F7A] uppercase tracking-wider mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-[#8B6F7A]" />
+              <span>A Sweet Welcome Gift</span>
+            </div>
+            <h2 className="font-heading font-bold text-2xl sm:text-3xl text-[#1E1419] tracking-tight">
+              Complimentary Cozy Freebies
+            </h2>
+            <p className="mt-2 text-sm text-[#33222C] font-medium leading-relaxed">
+              Find a little happiness for your screens right away! Download these two hand-crafted wallpapers completely free — instant download, no credit card, and fully customizable via the admin panel.
+            </p>
+
+            {/* Quick reassurance perks */}
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-semibold text-[#45313D]">
+              <span className="inline-flex items-center gap-1.5 bg-[#F7F3E9] px-2.5 py-1 rounded-lg border border-[#E8C9C1]">
+                <Download className="w-3.5 h-3.5 text-[#8B6F7A]" />
+                <span>Instant 1-Click Download</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 bg-[#F7F3E9] px-2.5 py-1 rounded-lg border border-[#E8C9C1]">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#8B6F7A]" />
+                <span>Zero Cost / No Checkout Needed</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 bg-[#F7F3E9] px-2.5 py-1 rounded-lg border border-[#E8C9C1]">
+                <Heart className="w-3.5 h-3.5 text-[#8B6F7A]" />
+                <span>Personal & Device Enjoyment</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Product Cards Grid for Freebies */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            {freeProducts.map(product => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                orientation={product.deviceTypes.includes('desktop') ? 'landscape' : 'portrait'}
+              />
+            ))}
+          </div>
+
+          {/* Bottom Callout */}
+          <div className="mt-8 pt-6 border-t border-[#E8C9C1]/60 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-[#4A3742] font-medium text-center sm:text-left">
+              Loved your free gifts? Explore the full collection of cozy themes to match all your displays!
+            </p>
+            <button
+              onClick={() => navigateTo('collections')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#8B6F7A] text-[#F7F3E9] font-bold text-xs hover:bg-[#785E69] transition-all shrink-0"
+            >
+              <span>Browse All Wallpaper Themes</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+  );
+};

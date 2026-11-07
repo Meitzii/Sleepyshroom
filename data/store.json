@@ -1,0 +1,657 @@
+{
+  "settings": {
+    "storeName": "sleepyshroom",
+    "tagline": "Little screens, sweeter dreams.",
+    "contactEmail": "shop@sleepyshroom.com",
+    "currency": "USD",
+    "currencySymbol": "$",
+    "heroHeadline": "Cozy wallpapers for your dreamy days.",
+    "heroSupportingText": "Find a little happiness in every screen. Discover cozy, cute, and dreamy digital wallpapers made with love.",
+    "heroPrimaryBtnText": "Explore Themes",
+    "heroSecondaryBtnText": "Browse Wallpapers",
+    "heroImage": "/src/assets/images/hero_mushroom_cottage_1794020164209.jpg",
+    "brandIntroHeading": "A little corner of cozy.",
+    "brandIntroText": "sleepyshroom is a little digital corner for people who love soft colors, dreamy illustrations, and making their devices feel like home.",
+    "showHero": true,
+    "showCarousel": true,
+    "showDesktopSection": true,
+    "showMobileSection": true,
+    "showBrandIntro": true,
+    "paymentProviders": {
+      "stripeEnabled": true,
+      "stripePublishableKey": "pk_test_sample_sleepyshroom",
+      "stripeSecretKeyConfigured": false,
+      "paypalEnabled": true,
+      "paypalClientId": "client_id_sample",
+      "gcashEnabled": true,
+      "mayaEnabled": true,
+      "testMode": true
+    },
+    "socialLinks": {
+      "instagram": "https://instagram.com/sleepyshroom",
+      "twitter": "https://twitter.com/sleepyshroom",
+      "pinterest": "https://pinterest.com/sleepyshroom"
+    },
+    "aboutMe": {
+      "heading": "Hello, welcome to my little corner!",
+      "introduction": "Hi! I'm the person behind sleepyshroom. I created this little shop to share cozy, dreamy, and lovely designs that make everyday screens feel a little more special.",
+      "whyStarted": "In a world that can often feel rushed and noisy, I wanted our phones, tablets, and laptops to be calming sanctuaries. Each illustration starts with quiet pencil sketches of sleeping fungi, gentle forest creatures, and soothing pastel hues that bring peaceful moments throughout your day.",
+      "designInspiration": "Inspired by gentle Japanese stationery, quiet rainy mornings, fairy-tale moss gardens, and the warmth of a hot cup of tea. Every digital download is crafted with care, high pixel density, and subtle grain textures that feel like real paper.",
+      "profileImage": "/src/assets/images/theme_sleepy_garden_1794020165839.jpg"
+    },
+    "returnPolicy": {
+      "title": "Digital Goods Return & Refund Policy",
+      "lastUpdated": "November 2026",
+      "content": "## 1. Digital Download Nature\nAll products available on sleepyshroom are digital downloads (PNG, HEIC, and high-resolution ZIP archives). Because digital files are delivered immediately upon order completion and cannot be returned physically, all sales are generally final.\n\n## 2. Instant Download Access\nOnce payment is completed, you receive instant download links on your confirmation screen, an email receipt with your secure download token, and permanent access inside your customer account.\n\n## 3. Duplicate Purchases\nAccidentally purchase the exact same wallpaper twice? No worries! Contact us within 14 days with your order numbers, and we will happily refund the duplicate transaction.\n\n## 4. Damaged or Corrupted Files\nIn the rare event that a downloaded file is corrupted or fails to unpack, please email us right away. We will immediately reissue fresh, verified download files or provide direct links.\n\n## 5. Device Compatibility Assistance\nIf you need help setting up your wallpaper on a specific iOS, Android, macOS, or Windows device, reach out anytime! We provide step-by-step setup guides for both Lock Screens and Home Screens.\n\n## 6. How to Contact Us\nFor any questions or assistance with your order, email us at shop@sleepyshroom.com or use our Contact Form. We typically respond within 24-48 hours."
+    }
+  },
+  "carouselSlides": [
+    {
+      "id": "slide-1",
+      "themeTitle": "Mushroom Dreams",
+      "description": "Under a starry pastel cap, dream away the busy day in peace and warmth.",
+      "imageUrl": "/src/assets/images/theme_mushroom_dreams_1794020165115.jpg",
+      "linkDestination": "/collections?theme=Mushroom+Dreams",
+      "exploreButtonText": "Explore Theme",
+      "order": 1,
+      "visible": true,
+      "status": "published"
+    },
+    {
+      "id": "slide-2",
+      "themeTitle": "Sleepy Garden",
+      "description": "Gentle snail friends, chamomile blooms, and morning mist in the quiet meadow.",
+      "imageUrl": "/src/assets/images/theme_sleepy_garden_1794020165839.jpg",
+      "linkDestination": "/collections?theme=Sleepy+Garden",
+      "exploreButtonText": "Explore Theme",
+      "order": 2,
+      "visible": true,
+      "status": "published"
+    },
+    {
+      "id": "slide-3",
+      "themeTitle": "Cozy Autumn",
+      "description": "Crisp falling golden leaves, miniature mushroom roofs, and warm acorn tea.",
+      "imageUrl": "/src/assets/images/theme_cozy_autumn_1794020166366.jpg",
+      "linkDestination": "/collections?theme=Cozy+Autumn",
+      "exploreButtonText": "Explore Theme",
+      "order": 3,
+      "visible": true,
+      "status": "published"
+    },
+    {
+      "id": "slide-4",
+      "themeTitle": "Little Forest",
+      "description": "Soft mossy paths guided by glowing lantern fungi and resting woodland friends.",
+      "imageUrl": "/src/assets/images/theme_mobile_forest_1794020166376.jpg",
+      "linkDestination": "/collections?theme=Little+Forest",
+      "exploreButtonText": "Explore Theme",
+      "order": 4,
+      "visible": true,
+      "status": "published"
+    },
+    {
+      "id": "slide-5",
+      "themeTitle": "Dreamy Pastels",
+      "description": "Soothing lavender gradients, hand-drawn sparkles, and soft whimsical clouds.",
+      "imageUrl": "/src/assets/images/hero_mushroom_cottage_1794020164209.jpg",
+      "linkDestination": "/collections?theme=Dreamy+Pastels",
+      "exploreButtonText": "Explore Theme",
+      "order": 5,
+      "visible": true,
+      "status": "published"
+    }
+  ],
+  "products": [
+    {
+      "id": "prod-free-2",
+      "title": "Acorn Lantern Lullaby (Freebie Wallpaper)",
+      "slug": "acorn-lantern-lullaby-freebie",
+      "description": "A darling free mobile and tablet wallpaper. A gentle baby mushroom curled up with a glowing acorn lantern and friendly fireflies in a quiet fairytale forest. Beautiful on iPhone & Android lock screens.",
+      "price": 0,
+      "compareAtPrice": 3.5,
+      "isFree": true,
+      "theme": "Little Forest",
+      "collection": "Free Wallpapers",
+      "deviceTypes": [
+        "mobile",
+        "tablet"
+      ],
+      "resolutions": [
+        "iPhone 12–16 Pro Max",
+        "Samsung Galaxy / Android OLED",
+        "iPad / Tablet Portrait (2048 x 2732)"
+      ],
+      "fileFormat": "Lossless PNG (300 DPI) with Lock Screen depth space",
+      "fileSize": "12.8 MB",
+      "whatsIncluded": [
+        "Mobile Lock Screen Wallpaper",
+        "Mobile Home Screen Wallpaper (Subtle Blur Variant)",
+        "Tablet Portrait Wallpaper",
+        "Personal Use License"
+      ],
+      "images": [
+        "/src/assets/images/free_mobile_sprout_1794024694152.jpg"
+      ],
+      "featured": true,
+      "isNew": true,
+      "popularity": 99,
+      "downloadCount": 2316,
+      "recentDownloadTime": "just now",
+      "status": "published",
+      "createdAt": "2026-11-06T18:30:00.000Z",
+      "downloadFileName": "sleepyshroom_freebie_acorn_lullaby_mobile.jpg"
+    },
+    {
+      "id": "prod-free-1",
+      "title": "Little Clover Nap (Freebie Wallpaper)",
+      "slug": "little-clover-nap-freebie",
+      "description": "A sweet free gift for you! A tiny sleepy red mushroom napping peacefully under a giant clover leaf in a sunlit mossy glade. Completely free to download in crisp 4K UHD.",
+      "price": 0,
+      "compareAtPrice": 5,
+      "isFree": true,
+      "theme": "Mushroom Dreams",
+      "collection": "Free Wallpapers",
+      "deviceTypes": [
+        "desktop"
+      ],
+      "resolutions": [
+        "4K UHD (3840 x 2160)",
+        "5K Retina (5120 x 2880)",
+        "Full HD (1920 x 1080)"
+      ],
+      "fileFormat": "Lossless PNG (300 DPI)",
+      "fileSize": "14.2 MB",
+      "whatsIncluded": [
+        "Full 4K Desktop Wallpaper (16:9)",
+        "MacBook Retina Edition",
+        "Personal Use License",
+        "Cozy Setup Guide"
+      ],
+      "images": [
+        "/src/assets/images/free_desktop_nap_1794024679756.jpg"
+      ],
+      "featured": true,
+      "isNew": true,
+      "popularity": 100,
+      "downloadCount": 2500,
+      "recentDownloadTime": "just now",
+      "status": "published",
+      "createdAt": "2026-11-06T18:00:00.000Z",
+      "downloadFileName": "sleepyshroom_freebie_clover_nap_desktop.jpg"
+    },
+    {
+      "id": "prod-desktop-1",
+      "title": "Sleepy Garden Sanctuary Wallpaper",
+      "slug": "sleepy-garden-sanctuary",
+      "description": "A soothing sanctuary for your computer screen. Features hand-drawn chamomile blooms, sleeping snail companions, gentle morning dew, and soft lavender mushrooms.",
+      "price": 4.5,
+      "compareAtPrice": 6,
+      "theme": "Sleepy Garden",
+      "collection": "Pastel Garden",
+      "deviceTypes": [
+        "desktop"
+      ],
+      "resolutions": [
+        "4K UHD (3840 x 2160)",
+        "5K Retina (5120 x 2880)",
+        "Ultrawide (3440 x 1440)",
+        "MacBook / Laptop (2560 x 1600)"
+      ],
+      "fileFormat": "High-res lossless PNG (300 DPI) + 16-bit color profile",
+      "fileSize": "38.4 MB (ZIP archive with 4 resolution variations)",
+      "whatsIncluded": [
+        "4K Desktop Wallpaper (16:9)",
+        "5K Ultra-Retina Wallpaper",
+        "Ultrawide Desktop Variant (21:9)",
+        "Organized Desktop Organizer Icon Grid Template",
+        "Step-by-step Setup Guide for macOS & Windows"
+      ],
+      "images": [
+        "/src/assets/images/theme_sleepy_garden_1794020165839.jpg",
+        "/src/assets/images/hero_mushroom_cottage_1794020164209.jpg"
+      ],
+      "featured": true,
+      "isNew": true,
+      "popularity": 98,
+      "status": "published",
+      "createdAt": "2026-11-01T10:00:00.000Z",
+      "downloadFileName": "sleepyshroom_sleepy_garden_desktop_bundle.zip",
+      "downloadCount": 948,
+      "recentDownloadTime": "4m ago"
+    },
+    {
+      "id": "prod-desktop-2",
+      "title": "Cozy Autumn Cottage Wallpaper",
+      "slug": "cozy-autumn-cottage",
+      "description": "Warm golden sunlight filters through amber oak leaves onto a cozy thatched mushroom roof, complete with a steaming cup of herbal tea and a favorite open book.",
+      "price": 4.5,
+      "compareAtPrice": 5.5,
+      "theme": "Cozy Autumn",
+      "collection": "Autumn Cottage",
+      "deviceTypes": [
+        "desktop"
+      ],
+      "resolutions": [
+        "4K UHD (3840 x 2160)",
+        "5K Retina (5120 x 2880)",
+        "Ultrawide (3440 x 1440)"
+      ],
+      "fileFormat": "Lossless PNG + HEIC + Minimalist Wallpaper Variant",
+      "fileSize": "42.1 MB",
+      "whatsIncluded": [
+        "Full Autumn Illustration 4K",
+        "Minimalist Low-Detail Variant for Clean Desktops",
+        "Ultrawide 21:9 ratio",
+        "Mac & Windows instructions"
+      ],
+      "images": [
+        "/src/assets/images/theme_cozy_autumn_1794020166366.jpg",
+        "/src/assets/images/hero_mushroom_cottage_1794020164209.jpg"
+      ],
+      "featured": true,
+      "isNew": false,
+      "popularity": 95,
+      "status": "published",
+      "createdAt": "2026-10-24T12:00:00.000Z",
+      "downloadFileName": "sleepyshroom_autumn_cottage_desktop.zip",
+      "downloadCount": 782,
+      "recentDownloadTime": "18m ago"
+    },
+    {
+      "id": "prod-desktop-3",
+      "title": "Mushroom Dreams Slumber Desktop",
+      "slug": "mushroom-dreams-slumber-desktop",
+      "description": "The iconic sleepyshroom character dozing soundly beneath a lavender polka-dot cap, wrapped in a cozy purple knit scarf with fairy light sparkles all around.",
+      "price": 5,
+      "compareAtPrice": 6.5,
+      "theme": "Mushroom Dreams",
+      "collection": "Dreamy Night",
+      "deviceTypes": [
+        "desktop"
+      ],
+      "resolutions": [
+        "4K UHD (3840 x 2160)",
+        "5K Retina (5120 x 2880)",
+        "Ultrawide (3440 x 1440)"
+      ],
+      "fileFormat": "High-res Lossless PNG files",
+      "fileSize": "36.8 MB",
+      "whatsIncluded": [
+        "Main 4K Nighttime Slumber Wallpaper",
+        "Soft Lavender Day Edition",
+        "Ultrawide Dual Monitor Edition",
+        "Desktop Folder Icons pack"
+      ],
+      "images": [
+        "/src/assets/images/theme_mushroom_dreams_1794020165115.jpg",
+        "/src/assets/images/theme_sleepy_garden_1794020165839.jpg"
+      ],
+      "featured": true,
+      "isNew": true,
+      "popularity": 99,
+      "status": "published",
+      "createdAt": "2026-11-03T14:30:00.000Z",
+      "downloadFileName": "sleepyshroom_slumber_desktop_pack.zip",
+      "downloadCount": 1420,
+      "recentDownloadTime": "6m ago"
+    },
+    {
+      "id": "prod-desktop-4",
+      "title": "Little Shroom Cottage Dusk Desktop",
+      "slug": "little-shroom-cottage-dusk",
+      "description": "Our signature mushroom cottage bathed in sweet twilight hues with a glowing lantern and blooming wildflower meadow path.",
+      "price": 4,
+      "theme": "Little Forest",
+      "collection": "Enchanted Woodland",
+      "deviceTypes": [
+        "desktop"
+      ],
+      "resolutions": [
+        "4K UHD (3840 x 2160)",
+        "MacBook Retina"
+      ],
+      "fileFormat": "Lossless PNG",
+      "fileSize": "29.5 MB",
+      "whatsIncluded": [
+        "4K Desktop Wallpaper",
+        "Sunset Twilight Colorway",
+        "Installation Guide"
+      ],
+      "images": [
+        "/src/assets/images/hero_mushroom_cottage_1794020164209.jpg"
+      ],
+      "featured": false,
+      "isNew": false,
+      "popularity": 88,
+      "status": "published",
+      "createdAt": "2026-10-15T09:00:00.000Z",
+      "downloadFileName": "sleepyshroom_cottage_dusk_desktop.zip",
+      "downloadCount": 563,
+      "recentDownloadTime": "35m ago"
+    },
+    {
+      "id": "prod-mobile-1",
+      "title": "Midnight Firefly Forest Mobile & Tablet",
+      "slug": "midnight-firefly-forest-mobile",
+      "description": "A magical vertical phone and tablet wallpaper capturing glowing mushroom lanterns, sparkling stars, and a little fox slumbering warmly in a mossy nook.",
+      "price": 3.5,
+      "compareAtPrice": 4.5,
+      "theme": "Little Forest",
+      "collection": "Dreamy Night",
+      "deviceTypes": [
+        "mobile",
+        "tablet"
+      ],
+      "resolutions": [
+        "iPhone 12–16 Pro Max (1290 x 2796)",
+        "Android OLED (1440 x 3120)",
+        "iPad Pro 11\" & 12.9\" (2048 x 2732)",
+        "Universal Tablet"
+      ],
+      "fileFormat": "PNG + HEIC (Optimized for Apple & Android Lock Screens and Home Screens)",
+      "fileSize": "24.2 MB",
+      "whatsIncluded": [
+        "Lock Screen Wallpaper (with space for clock & widgets)",
+        "Home Screen Wallpaper (gentle blur / low contrast for clean icons)",
+        "iPad / Tablet Portrait & Landscape versions",
+        "Matching App Icon Grids"
+      ],
+      "images": [
+        "/src/assets/images/theme_mobile_forest_1794020166376.jpg"
+      ],
+      "featured": true,
+      "isNew": true,
+      "popularity": 97,
+      "status": "published",
+      "createdAt": "2026-11-04T16:00:00.000Z",
+      "downloadFileName": "sleepyshroom_firefly_forest_mobile_tablet.zip",
+      "downloadCount": 1890,
+      "recentDownloadTime": "1m ago"
+    },
+    {
+      "id": "prod-mobile-2",
+      "title": "Sleepy Mushroom Slumber Phone Wallpaper",
+      "slug": "sleepy-mushroom-slumber-phone",
+      "description": "Keep the cutest sleepy mushroom companion in your pocket wherever you go. Perfectly composed so your time display and widgets sit above the cozy mushroom cap.",
+      "price": 3.5,
+      "compareAtPrice": 4,
+      "theme": "Mushroom Dreams",
+      "collection": "Dreamy Night",
+      "deviceTypes": [
+        "mobile",
+        "tablet"
+      ],
+      "resolutions": [
+        "iPhone HD & Super Retina",
+        "Android OLED",
+        "iPad Pro"
+      ],
+      "fileFormat": "Lossless PNG + Apple HEIC",
+      "fileSize": "21.0 MB",
+      "whatsIncluded": [
+        "Phone Lock Screen edition",
+        "Phone Home Screen low-distraction edition",
+        "Tablet Pro edition (2048 x 2732)",
+        "Step-by-step lockscreen setup tips"
+      ],
+      "images": [
+        "/src/assets/images/theme_mushroom_dreams_1794020165115.jpg"
+      ],
+      "featured": true,
+      "isNew": false,
+      "popularity": 94,
+      "status": "published",
+      "createdAt": "2026-10-28T11:20:00.000Z",
+      "downloadFileName": "sleepyshroom_slumber_phone_tablet.zip",
+      "downloadCount": 1125,
+      "recentDownloadTime": "12m ago"
+    },
+    {
+      "id": "prod-mobile-3",
+      "title": "Chamomile Meadow Snail Mobile Wallpaper",
+      "slug": "chamomile-meadow-snail-mobile",
+      "description": "A flower-crowned snail taking a peaceful afternoon nap amongst wild chamomile blooms and pastel lilac fungi. Calming, delicate, and gentle on the eyes.",
+      "price": 3,
+      "theme": "Sleepy Garden",
+      "collection": "Pastel Garden",
+      "deviceTypes": [
+        "mobile"
+      ],
+      "resolutions": [
+        "High-Res Phone OLED (1290 x 2796)"
+      ],
+      "fileFormat": "PNG format",
+      "fileSize": "18.4 MB",
+      "whatsIncluded": [
+        "Phone Lock Screen (Clean)",
+        "Phone Home Screen (Muted)",
+        "Quick Wallpaper Guide"
+      ],
+      "images": [
+        "/src/assets/images/theme_sleepy_garden_1794020165839.jpg"
+      ],
+      "featured": false,
+      "isNew": true,
+      "popularity": 91,
+      "status": "published",
+      "createdAt": "2026-11-02T13:45:00.000Z",
+      "downloadFileName": "sleepyshroom_chamomile_snail_phone.zip",
+      "downloadCount": 684,
+      "recentDownloadTime": "22m ago"
+    },
+    {
+      "id": "prod-mobile-4",
+      "title": "Autumn Acorn Teatime Mobile & Tablet",
+      "slug": "autumn-acorn-teatime-mobile",
+      "description": "Warm cozy vibes on the go. Golden autumn leaves, steaming teacup, and little storybook mushroom hut adapted for all vertical screens.",
+      "price": 3.5,
+      "theme": "Cozy Autumn",
+      "collection": "Autumn Cottage",
+      "deviceTypes": [
+        "mobile",
+        "tablet"
+      ],
+      "resolutions": [
+        "iPhone All Sizes",
+        "Android All Sizes",
+        "iPad / Android Tablet"
+      ],
+      "fileFormat": "PNG & HEIC formats",
+      "fileSize": "23.8 MB",
+      "whatsIncluded": [
+        "Phone Lock Screen",
+        "Phone Home Screen",
+        "Tablet Edition",
+        "Setup Instructions"
+      ],
+      "images": [
+        "/src/assets/images/theme_cozy_autumn_1794020166366.jpg"
+      ],
+      "featured": false,
+      "isNew": false,
+      "popularity": 89,
+      "status": "published",
+      "createdAt": "2026-10-20T08:15:00.000Z",
+      "downloadFileName": "sleepyshroom_autumn_mobile_tablet.zip",
+      "downloadCount": 479,
+      "recentDownloadTime": "48m ago"
+    }
+  ],
+  "collections": [
+    {
+      "id": "col-freebies",
+      "name": "Free Wallpapers",
+      "slug": "free-wallpapers",
+      "description": "Complimentary hand-drawn wallpapers to bring a little cozy comfort to your screens without spending a dime.",
+      "coverImage": "/src/assets/images/free_desktop_nap_1794024679756.jpg",
+      "featured": true,
+      "order": 0
+    },
+    {
+      "id": "col-1",
+      "name": "Dreamy Night",
+      "slug": "dreamy-night",
+      "description": "Starry twilight skies, glowing fungi lanterns, and quiet dreams for restful evenings.",
+      "coverImage": "/src/assets/images/theme_mushroom_dreams_1794020165115.jpg",
+      "featured": true,
+      "order": 1,
+      "productCount": 3
+    },
+    {
+      "id": "col-2",
+      "name": "Pastel Garden",
+      "slug": "pastel-garden",
+      "description": "Soft lavender petals, chamomile blooms, and gentle sleepy garden snails.",
+      "coverImage": "/src/assets/images/theme_sleepy_garden_1794020165839.jpg",
+      "featured": true,
+      "order": 2,
+      "productCount": 2
+    },
+    {
+      "id": "col-3",
+      "name": "Autumn Cottage",
+      "slug": "autumn-cottage",
+      "description": "Warm golden sunlight, fallen oak leaves, steaming acorn tea, and cozy cabins.",
+      "coverImage": "/src/assets/images/theme_cozy_autumn_1794020166366.jpg",
+      "featured": true,
+      "order": 3,
+      "productCount": 2
+    },
+    {
+      "id": "col-4",
+      "name": "Enchanted Woodland",
+      "slug": "enchanted-woodland",
+      "description": "Little mushroom abodes nestled in misty forests and tranquil woodland glens.",
+      "coverImage": "/src/assets/images/hero_mushroom_cottage_1794020164209.jpg",
+      "featured": true,
+      "order": 4,
+      "productCount": 2
+    }
+  ],
+  "orders": [
+    {
+      "id": "ord-1794020802987",
+      "orderNumber": "SHROOM-1002",
+      "customerEmail": "test@example.com",
+      "customerName": "Test User",
+      "items": [
+        {
+          "productId": "prod-mobile-1",
+          "title": "Midnight Firefly Forest Mobile & Tablet",
+          "price": 3.5,
+          "image": "/src/assets/images/theme_mobile_forest_1794020166376.jpg",
+          "deviceTypes": [
+            "mobile",
+            "tablet"
+          ]
+        }
+      ],
+      "subtotal": 3.5,
+      "discount": 0,
+      "total": 3.5,
+      "paymentMethod": "Stripe",
+      "paymentStatus": "completed",
+      "transactionId": "txn_stripe_1794020802987",
+      "downloadToken": "shroom_dl_abcqayd5y2_1794020802987",
+      "downloadCount": 0,
+      "createdAt": "2026-11-07T03:06:42.987Z"
+    },
+    {
+      "id": "ord-1041",
+      "orderNumber": "SHROOM-1041",
+      "customerEmail": "clara.woodland@example.com",
+      "customerName": "Clara Woodland",
+      "items": [
+        {
+          "productId": "prod-desktop-1",
+          "title": "Sleepy Garden Sanctuary Wallpaper",
+          "price": 4.5,
+          "image": "/src/assets/images/theme_sleepy_garden_1794020165839.jpg",
+          "deviceTypes": [
+            "desktop"
+          ]
+        },
+        {
+          "productId": "prod-mobile-1",
+          "title": "Midnight Firefly Forest Mobile & Tablet",
+          "price": 3.5,
+          "image": "/src/assets/images/theme_mobile_forest_1794020166376.jpg",
+          "deviceTypes": [
+            "mobile",
+            "tablet"
+          ]
+        }
+      ],
+      "subtotal": 8,
+      "discount": 0.8,
+      "discountCode": "COZY10",
+      "total": 7.2,
+      "paymentMethod": "Stripe (Visa •••• 4242)",
+      "paymentStatus": "completed",
+      "transactionId": "txn_str_9831478234",
+      "downloadToken": "tok_shroom_demo_1041",
+      "downloadCount": 3,
+      "createdAt": "2026-11-05T14:22:00.000Z"
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg-1794020810141",
+      "fullName": "Lily Green",
+      "email": "lily@example.com",
+      "subject": "Love the art!",
+      "message": "Just wanted to say these are so adorable!",
+      "consent": true,
+      "status": "new",
+      "createdAt": "2026-11-07T03:06:50.141Z"
+    },
+    {
+      "id": "msg-1",
+      "fullName": "Hannah Baker",
+      "email": "hannah.b@example.com",
+      "subject": "Custom ultrawide resolution request",
+      "message": "I love your Sleepy Garden wallpapers so much! Will you be releasing dual 32:9 super ultrawide editions soon? Keep up the magical work!",
+      "consent": true,
+      "status": "new",
+      "createdAt": "2026-11-06T15:10:00.000Z"
+    }
+  ],
+  "discountCodes": [
+    {
+      "code": "COZY10",
+      "type": "percentage",
+      "value": 10,
+      "minSpend": 0,
+      "active": true
+    },
+    {
+      "code": "SHROOMFAM",
+      "type": "percentage",
+      "value": 20,
+      "minSpend": 10,
+      "active": true
+    },
+    {
+      "code": "SWEETDREAMS",
+      "type": "fixed",
+      "value": 2,
+      "minSpend": 8,
+      "active": true
+    }
+  ],
+  "users": [
+    {
+      "id": "usr-demo",
+      "name": "Cozy Dreamer",
+      "email": "dreamer@sleepyshroom.com",
+      "createdAt": "2026-11-01T08:00:00.000Z"
+    },
+    {
+      "id": "usr-1794020802988",
+      "name": "Test User",
+      "email": "test@example.com",
+      "createdAt": "2026-11-07T03:06:42.988Z"
+    }
+  ]
+}

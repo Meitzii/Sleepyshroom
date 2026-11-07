@@ -1,0 +1,8 @@
+{
+  "name": "sleepyshroom",
+  "description": "Little screens, sweeter dreams. Cozy, dreamy, cottagecore digital wallpapers for desktop, mobile, and tablet.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
