@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
@@ -46,7 +47,7 @@ const defaultStore: AppStore = {
   settings: {
     storeName: 'sleepyshroom',
     tagline: 'Little screens, sweeter dreams.',
-    contactEmail: 'shop@sleepyshroom.com',
+    contactEmail: 'sleepyshroom@gmail.com',
     currency: 'USD',
     currencySymbol: '$',
     heroHeadline: 'Cozy wallpapers for your dreamy days.',
@@ -102,7 +103,7 @@ In the rare event that a downloaded file is corrupted or fails to unpack, please
 If you need help setting up your wallpaper on a specific iOS, Android, macOS, or Windows device, reach out anytime! We provide step-by-step setup guides for both Lock Screens and Home Screens.
 
 ## 6. How to Contact Us
-For any questions or assistance with your order, email us at shop@sleepyshroom.com or use our Contact Form. We typically respond within 24-48 hours.`,
+For any questions or assistance with your order, email us at sleepyshroom@gmail.com or use our Contact Form. We typically respond within 24-48 hours.`,
     },
   },
   carouselSlides: [
@@ -162,6 +163,21 @@ For any questions or assistance with your order, email us at shop@sleepyshroom.c
       status: 'published',
     },
   ],
+
+  /* =========================================================================================
+   * 🎨 [WALLPAPER DISPLAY CONFIGURATION] - CHANGE YOUR WALLPAPER PRODUCTS & IMAGES HERE!
+   * =========================================================================================
+   * File locations:
+   * 1. Active live store data: /data/store.json (search for "products")
+   * 2. Default code backup: /server.ts (below)
+   * 3. Wallpaper image files folder: /src/assets/images/
+   *
+   * To change the preview image shown on a wallpaper card, change the "images" array:
+   *   images: ['/src/assets/images/your_new_image.jpg']
+   *
+   * To change what file is downloaded when purchased or freebie downloaded:
+   *   downloadFileName: 'your_wallpaper_file.zip' (or .jpg)
+   * ========================================================================================= */
   products: [
     {
       id: 'prod-desktop-1',

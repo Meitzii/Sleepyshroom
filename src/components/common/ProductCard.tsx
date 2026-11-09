@@ -46,7 +46,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         isFree ? 'border-[#D6C8F2] ring-2 ring-[#D6C8F2]/40' : 'border-[#E8C9C1]'
       }`}
     >
-      {/* Image Container */}
+      {/* =========================================================================
+       * 🖼️ [WALLPAPER DISPLAY IMAGE]
+       * This <img> tag renders the wallpaper preview on the website.
+       * The image source comes from `product.images[0]`.
+       * To change which image displays here:
+       *   -> Edit `data/store.json` (search for the wallpaper title, change `images[0]`)
+       *   -> OR edit in Admin Dashboard at /admin -> Products -> Edit Product -> Image URL
+       * ========================================================================= */}
       <div 
         className={`relative w-full overflow-hidden bg-[#E8C9C1]/20 ${
           isPortrait ? 'aspect-9/14 sm:aspect-9/14' : 'aspect-16/10'

@@ -136,6 +136,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               </div>
             </div>
 
+            {/* =========================================================================
+             * 🖼️ [PRODUCT DETAIL WALLPAPER PREVIEW]
+             * Renders the wallpaper inside interactive Desktop, Tablet, and Mobile device frames.
+             * Sourced from `product.images` (controlled by `data/store.json` or Admin Dashboard).
+             * ========================================================================= */}
             {/* Main Interactive Screen Frame */}
             <div className="bg-[#F9F6F0] p-4 sm:p-6 rounded-3xl border border-[#E8C9C1] flex items-center justify-center min-h-[380px] sm:min-h-[460px]">
               

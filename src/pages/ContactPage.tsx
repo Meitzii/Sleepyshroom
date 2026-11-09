@@ -98,7 +98,7 @@ export const ContactPage: React.FC = () => {
               </h2>
               <p className="text-xs sm:text-sm text-[#33222C] font-medium leading-relaxed">
                 Thank you so much for reaching out! Your note has been delivered to{' '}
-                <strong className="text-[#1E1419] font-bold">{settings?.contactEmail || 'shop@sleepyshroom.com'}</strong>.
+                <strong className="text-[#1E1419] font-bold">{settings?.contactEmail || 'sleepyshroom@gmail.com'}</strong>.
                 I usually reply within 24–48 cozy hours.
               </p>
               <button
@@ -222,10 +222,10 @@ export const ContactPage: React.FC = () => {
         <div className="mt-8 text-center text-xs text-[#33222C] font-medium">
           Prefer standard email? You can also write directly to{' '}
           <a
-            href={`mailto:${settings?.contactEmail || 'shop@sleepyshroom.com'}`}
+            href={`mailto:${settings?.contactEmail || 'sleepyshroom@gmail.com'}`}
             className="font-bold underline text-[#1E1419] hover:text-[#945367]"
           >
-            {settings?.contactEmail || 'shop@sleepyshroom.com'}
+            {settings?.contactEmail || 'sleepyshroom@gmail.com'}
           </a>
         </div>
 
