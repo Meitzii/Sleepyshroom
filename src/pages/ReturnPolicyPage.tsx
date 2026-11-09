@@ -24,7 +24,7 @@ In the rare event that a downloaded file is corrupted or fails to unpack, please
 If you need help setting up your wallpaper on a specific iOS, Android, macOS, or Windows device, reach out anytime! We provide step-by-step setup guides for both Lock Screens and Home Screens.
 
 ## 6. How to Contact Us
-For any questions or assistance with your order, email us at sleepyshroom@gmail.com or use our Contact Form. We typically respond within 24-48 hours.`,
+For any questions or assistance with your order, email us at shop.sleepyshroom@gmail.com or use our Contact Form. We typically respond within 24-48 hours.`,
   };
 
   return (

@@ -146,6 +146,8 @@ export interface UserAccount {
   name: string;
   email: string;
   createdAt: string;
+  isAdmin?: boolean;
+  role?: 'admin' | 'customer';
 }
 
 export interface CartItem {

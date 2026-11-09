@@ -2,7 +2,7 @@
   "settings": {
     "storeName": "sleepyshroom",
     "tagline": "Little screens, sweeter dreams.",
-    "contactEmail": "sleepyshroom@gmail.com",
+    "contactEmail": "shop.sleepyshroom@gmail.com",
     "currency": "USD",
     "currencySymbol": "$",
     "heroHeadline": "Cozy wallpapers for your dreamy days.",
@@ -42,7 +42,7 @@
     "returnPolicy": {
       "title": "Digital Goods Return & Refund Policy",
       "lastUpdated": "November 2026",
-      "content": "## 1. Digital Download Nature\nAll products available on sleepyshroom are digital downloads (PNG, HEIC, and high-resolution ZIP archives). Because digital files are delivered immediately upon order completion and cannot be returned physically, all sales are generally final.\n\n## 2. Instant Download Access\nOnce payment is completed, you receive instant download links on your confirmation screen, an email receipt with your secure download token, and permanent access inside your customer account.\n\n## 3. Duplicate Purchases\nAccidentally purchase the exact same wallpaper twice? No worries! Contact us within 14 days with your order numbers, and we will happily refund the duplicate transaction.\n\n## 4. Damaged or Corrupted Files\nIn the rare event that a downloaded file is corrupted or fails to unpack, please email us right away. We will immediately reissue fresh, verified download files or provide direct links.\n\n## 5. Device Compatibility Assistance\nIf you need help setting up your wallpaper on a specific iOS, Android, macOS, or Windows device, reach out anytime! We provide step-by-step setup guides for both Lock Screens and Home Screens.\n\n## 6. How to Contact Us\nFor any questions or assistance with your order, email us at sleepyshroom@gmail.com or use our Contact Form. We typically respond within 24-48 hours."
+      "content": "## 1. Digital Download Nature\nAll products available on sleepyshroom are digital downloads (PNG, HEIC, and high-resolution ZIP archives). Because digital files are delivered immediately upon order completion and cannot be returned physically, all sales are generally final.\n\n## 2. Instant Download Access\nOnce payment is completed, you receive instant download links on your confirmation screen, an email receipt with your secure download token, and permanent access inside your customer account.\n\n## 3. Duplicate Purchases\nAccidentally purchase the exact same wallpaper twice? No worries! Contact us within 14 days with your order numbers, and we will happily refund the duplicate transaction.\n\n## 4. Damaged or Corrupted Files\nIn the rare event that a downloaded file is corrupted or fails to unpack, please email us right away. We will immediately reissue fresh, verified download files or provide direct links.\n\n## 5. Device Compatibility Assistance\nIf you need help setting up your wallpaper on a specific iOS, Android, macOS, or Windows device, reach out anytime! We provide step-by-step setup guides for both Lock Screens and Home Screens.\n\n## 6. How to Contact Us\nFor any questions or assistance with your order, email us at shop.sleepyshroom@gmail.com or use our Contact Form. We typically respond within 24-48 hours."
     }
   },
   "carouselSlides": [
@@ -641,6 +641,14 @@
     }
   ],
   "users": [
+    {
+      "id": "usr-admin",
+      "name": "Sleepyshroom Owner",
+      "email": "shop.sleepyshroom@gmail.com",
+      "isAdmin": true,
+      "role": "admin",
+      "createdAt": "2026-11-01T08:00:00.000Z"
+    },
     {
       "id": "usr-demo",
       "name": "Cozy Dreamer",

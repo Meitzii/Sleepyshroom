@@ -47,7 +47,7 @@ const defaultStore: AppStore = {
   settings: {
     storeName: 'sleepyshroom',
     tagline: 'Little screens, sweeter dreams.',
-    contactEmail: 'sleepyshroom@gmail.com',
+    contactEmail: 'shop.sleepyshroom@gmail.com',
     currency: 'USD',
     currencySymbol: '$',
     heroHeadline: 'Cozy wallpapers for your dreamy days.',
@@ -103,7 +103,7 @@ In the rare event that a downloaded file is corrupted or fails to unpack, please
 If you need help setting up your wallpaper on a specific iOS, Android, macOS, or Windows device, reach out anytime! We provide step-by-step setup guides for both Lock Screens and Home Screens.
 
 ## 6. How to Contact Us
-For any questions or assistance with your order, email us at sleepyshroom@gmail.com or use our Contact Form. We typically respond within 24-48 hours.`,
+For any questions or assistance with your order, email us at shop.sleepyshroom@gmail.com or use our Contact Form. We typically respond within 24-48 hours.`,
     },
   },
   carouselSlides: [
@@ -523,6 +523,14 @@ For any questions or assistance with your order, email us at sleepyshroom@gmail.
     }
   ],
   users: [
+    {
+      id: 'usr-admin',
+      name: 'Sleepyshroom Owner',
+      email: 'shop.sleepyshroom@gmail.com',
+      isAdmin: true,
+      role: 'admin',
+      createdAt: '2026-11-01T08:00:00.000Z',
+    },
     {
       id: 'usr-demo',
       name: 'Cozy Dreamer',
@@ -1197,15 +1205,22 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
     return;
   }
   let user = store.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  const isOwnerEmail = email.toLowerCase() === 'shop.sleepyshroom@gmail.com';
   if (!user) {
     // Convenient auto-create or mock demo user for frictionless testing
     user = {
-      id: `usr-${Date.now()}`,
-      name: email.split('@')[0],
+      id: isOwnerEmail ? 'usr-admin' : `usr-${Date.now()}`,
+      name: isOwnerEmail ? 'Sleepyshroom Owner' : email.split('@')[0],
       email,
+      isAdmin: isOwnerEmail,
+      role: isOwnerEmail ? 'admin' : 'customer',
       createdAt: new Date().toISOString(),
     };
     store.users.push(user);
+    saveStore(store);
+  } else if (isOwnerEmail) {
+    user.isAdmin = true;
+    user.role = 'admin';
     saveStore(store);
   }
   res.json({ success: true, user });

@@ -215,13 +215,23 @@ export const CustomerAccountPage: React.FC = () => {
                 {authLoading ? 'Signing in...' : isLoginTab ? 'Sign In to Account' : 'Create My Account'}
               </button>
 
+              {/* Shop Owner Admin Quick Sign-In */}
+              <button
+                type="button"
+                onClick={() => login('shop.sleepyshroom@gmail.com', 'Sleepyshroom Owner')}
+                className="w-full py-2 bg-[#8B6F7A] text-[#F7F3E9] hover:bg-[#785E69] text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Shop Owner Login (shop.sleepyshroom@gmail.com)</span>
+              </button>
+
               {/* Instant Demo Account login button for test convenience */}
               <button
                 type="button"
                 onClick={() => login('dreamer@sleepyshroom.com', 'Cozy Dreamer')}
                 className="w-full py-2 bg-[#F4EAE6] text-[#1E1419] hover:bg-[#E8C9C1]/50 text-xs font-bold rounded-xl border border-[#D5C2BB] transition-colors cursor-pointer"
               >
-                Quick Demo Sign-In (Preview Past Orders)
+                Customer Demo Sign-In (Preview Past Orders)
               </button>
             </form>
 
@@ -282,7 +292,7 @@ export const CustomerAccountPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            {(user.email.toLowerCase() === 'sleepyshroom@gmail.com' || user.email.toLowerCase().includes('admin') || user.name.toLowerCase().includes('admin')) && (
+            {(user.email.toLowerCase() === 'shop.sleepyshroom@gmail.com' || user.isAdmin || user.role === 'admin' || user.email.toLowerCase().includes('admin') || user.name.toLowerCase().includes('admin')) && (
               <button
                 onClick={() => navigateTo('admin')}
                 className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#F7F3E9] bg-[#8B6F7A] hover:bg-[#785E69] rounded-xl transition-all shadow-xs cursor-pointer"
