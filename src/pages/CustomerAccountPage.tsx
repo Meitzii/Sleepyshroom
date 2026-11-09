@@ -9,7 +9,8 @@ import {
   KeyRound, 
   Sparkles, 
   CheckCircle, 
-  AlertCircle 
+  AlertCircle,
+  ShieldCheck 
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import type { Order } from '../types/index.ts';
@@ -280,13 +281,24 @@ export const CustomerAccountPage: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={logout}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-[#1E1419] hover:bg-[#E8C9C1]/40 rounded-xl transition-colors self-start sm:self-auto border border-[#D5C2BB] cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Sign Out</span>
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {(user.email.toLowerCase() === 'sleepyshroom@gmail.com' || user.email.toLowerCase().includes('admin') || user.name.toLowerCase().includes('admin')) && (
+              <button
+                onClick={() => navigateTo('admin')}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#F7F3E9] bg-[#8B6F7A] hover:bg-[#785E69] rounded-xl transition-all shadow-xs cursor-pointer"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Admin Dashboard</span>
+              </button>
+            )}
+            <button
+              onClick={logout}
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-[#1E1419] hover:bg-[#E8C9C1]/40 rounded-xl transition-colors border border-[#D5C2BB] cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
 
         {/* Purchased Downloads Section */}

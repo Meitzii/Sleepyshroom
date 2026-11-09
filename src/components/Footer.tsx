@@ -165,14 +165,9 @@ export const Footer: React.FC = () => {
         {/* Bottom bar */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-[#33222C] font-medium gap-3">
           <p>© 2026 sleepyshroom. All rights reserved.</p>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigateTo('admin')}
-              className="text-[11px] font-bold text-[#1E1419] hover:underline"
-            >
-              Shop Owner Admin Login
-            </button>
-          </div>
+          <p className="text-[11px] text-[#5A4550]">
+            Little screens, sweeter dreams. 🍄
+          </p>
         </div>
 
       </div>

@@ -101,7 +101,7 @@ If you want to modify how the image is rendered or styled in the React code:
 
 You don't even have to edit code files if you don't want to:
 
-1. Click the **Admin** button in the top right header (or navigate to `/admin`).
+1. Open the Admin Dashboard by navigating to `/#admin` in your browser URL (or sign in to your Account with `sleepyshroom@gmail.com`). Public visitors cannot see the Admin button.
 2. Go to the **Products Catalog** tab.
 3. Click **Edit** on any wallpaper.
 4. You will see:

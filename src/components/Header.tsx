@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Search, ShoppingBag, User, X, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Menu, Search, ShoppingBag, User, X, ArrowRight } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { ShroomLogoIcon } from './common/Icons.tsx';
 
@@ -241,16 +241,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
                 {cartCount}
               </span>
             )}
-          </button>
-
-          {/* Admin Dashboard Quick Access Button */}
-          <button
-            onClick={() => navigateTo('admin')}
-            title="Open Admin Dashboard"
-            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-[#24171E] bg-[#E8C9C1]/50 hover:bg-[#E8C9C1] rounded-lg transition-colors border border-[#8B6F7A]/30"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-[#24171E]" />
-            <span>Admin</span>
           </button>
 
         </div>

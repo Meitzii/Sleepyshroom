@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Sparkles, Monitor, Smartphone, MessageCircle, Heart, Shield, FileText, User } from 'lucide-react';
+import { X, Sparkles, Monitor, Smartphone, MessageCircle, Heart, FileText, User } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { ShroomLogoIcon } from './common/Icons.tsx';
 
@@ -125,7 +125,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClos
           </button>
 
           <div className="pt-4 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[#3B2834]">
-            Management
+            My Account
           </div>
 
           <button
@@ -134,14 +134,6 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClos
           >
             <User className="w-4 h-4 text-[#4A323D]" />
             <span>{user ? `Account (${user.name})` : 'Sign In / Account'}</span>
-          </button>
-
-          <button
-            onClick={() => handleNav('admin')}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#24171E] bg-[#E8C9C1]/50 hover:bg-[#E8C9C1]/80 transition-colors text-left"
-          >
-            <Shield className="w-4 h-4 text-[#24171E]" />
-            <span>Admin Dashboard</span>
           </button>
         </div>
 
