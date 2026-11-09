@@ -112,16 +112,16 @@ export const CollectionsPage: React.FC = () => {
   const hasActiveFilters = selectedDevice !== 'all' || selectedTheme !== 'all' || selectedCollection !== 'all' || searchFilter !== '' || maxPrice < 10 || onlyFree;
 
   return (
-    <div className="py-8 sm:py-12">
+    <div className="py-8 sm:py-12 bg-[#FFFCF7]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Page Header */}
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#3B2633] uppercase tracking-wider mb-2">
-            <Sparkles className="w-3.5 h-3.5 text-[#3B2633]" />
+          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#777777] uppercase tracking-wider mb-2">
+            <Sparkles className="w-3.5 h-3.5 text-[#A64B3C]" />
             <span>Digital Wallpapers</span>
           </div>
-          <h1 className="font-heading font-bold text-3xl sm:text-4xl text-[#1E1419] tracking-tight">
+          <h1 className="font-heading font-bold text-3xl sm:text-4xl text-[#292929] tracking-tight">
             {onlyFree
               ? 'Complimentary Free Wallpapers'
               : selectedDevice === 'desktop'
@@ -130,7 +130,7 @@ export const CollectionsPage: React.FC = () => {
               ? 'Mobile & Tablet Themes'
               : 'All Wallpaper Collections'}
           </h1>
-          <p className="mt-2 text-sm text-[#33222C] font-medium">
+          <p className="mt-2 text-sm text-[#777777] font-medium">
             {onlyFree
               ? 'Download our sweet complimentary wallpapers instantly — completely free.'
               : 'Explore high-resolution digital wallpapers crafted for peaceful and cozy screen spaces.'}
@@ -141,20 +141,20 @@ export const CollectionsPage: React.FC = () => {
         <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
           <button
             onClick={() => { setSelectedDevice('all'); setOnlyFree(false); }}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               selectedDevice === 'all' && !onlyFree
-                ? 'bg-[#8B6F7A] text-[#F7F3E9] shadow-xs'
-                : 'bg-[#F9F6F0] text-[#281822] hover:bg-[#E8C9C1]/40 border border-[#E8C9C1]'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'bg-[#FCF3E2] text-[#292929] hover:bg-[#EADCC8] border border-[#EADCC8]'
             }`}
           >
             All Screens
           </button>
           <button
             onClick={() => { setSelectedDevice('desktop'); setOnlyFree(false); }}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               selectedDevice === 'desktop' && !onlyFree
-                ? 'bg-[#8B6F7A] text-[#F7F3E9] shadow-xs'
-                : 'bg-[#F9F6F0] text-[#281822] hover:bg-[#E8C9C1]/40 border border-[#E8C9C1]'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'bg-[#FCF3E2] text-[#292929] hover:bg-[#EADCC8] border border-[#EADCC8]'
             }`}
           >
             <Monitor className="w-4 h-4" />
@@ -162,10 +162,10 @@ export const CollectionsPage: React.FC = () => {
           </button>
           <button
             onClick={() => { setSelectedDevice('mobile'); setOnlyFree(false); }}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               selectedDevice === 'mobile' && !onlyFree
-                ? 'bg-[#8B6F7A] text-[#F7F3E9] shadow-xs'
-                : 'bg-[#F9F6F0] text-[#281822] hover:bg-[#E8C9C1]/40 border border-[#E8C9C1]'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'bg-[#FCF3E2] text-[#292929] hover:bg-[#EADCC8] border border-[#EADCC8]'
             }`}
           >
             <Smartphone className="w-4 h-4" />
@@ -173,10 +173,10 @@ export const CollectionsPage: React.FC = () => {
           </button>
           <button
             onClick={() => { setSelectedDevice('tablet'); setOnlyFree(false); }}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               selectedDevice === 'tablet' && !onlyFree
-                ? 'bg-[#8B6F7A] text-[#F7F3E9] shadow-xs'
-                : 'bg-[#F9F6F0] text-[#281822] hover:bg-[#E8C9C1]/40 border border-[#E8C9C1]'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'bg-[#FCF3E2] text-[#292929] hover:bg-[#EADCC8] border border-[#EADCC8]'
             }`}
           >
             <Tablet className="w-4 h-4" />
@@ -184,10 +184,10 @@ export const CollectionsPage: React.FC = () => {
           </button>
           <button
             onClick={() => setOnlyFree(!onlyFree)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               onlyFree
-                ? 'bg-[#945367] text-[#F7F3E9] shadow-xs ring-2 ring-[#945367]/40'
-                : 'bg-[#FAF7F0] text-[#945367] border-2 border-[#D6C8F2] hover:bg-[#D6C8F2]/30'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs ring-2 ring-[#A64B3C]/40'
+                : 'bg-[#FCF3E2] text-[#A64B3C] border-2 border-[#EADCC8] hover:bg-[#EADCC8]/40'
             }`}
           >
             <span>🎁 Freebies ($0)</span>
@@ -195,17 +195,17 @@ export const CollectionsPage: React.FC = () => {
         </div>
 
         {/* Toolbar: Result count + Mobile filter toggle + Sorting */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 py-3 px-4 bg-[#F9F6F0] rounded-2xl border border-[#E8C9C1] mb-8">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 py-3 px-4 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] mb-8">
           
           <div className="flex items-center justify-between sm:justify-start gap-4">
-            <span className="text-xs font-bold text-[#3B2834]">
-              Showing <span className="font-extrabold text-[#1E1419]">{filteredProducts.length}</span> wallpapers
+            <span className="text-xs font-bold text-[#777777]">
+              Showing <span className="font-extrabold text-[#292929]">{filteredProducts.length}</span> wallpapers
             </span>
 
             {/* Mobile Filter trigger */}
             <button
               onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
-              className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#24171E] bg-[#E8C9C1]/50"
+              className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#292929] bg-[#EADCC8]/60 cursor-pointer"
             >
               <Filter className="w-3.5 h-3.5" />
               <span>Filters</span>
@@ -216,7 +216,7 @@ export const CollectionsPage: React.FC = () => {
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="text-xs text-[#24171E] hover:text-[#8B6F7A] underline font-bold self-start sm:self-auto"
+              className="text-xs text-[#A64B3C] hover:underline font-bold self-start sm:self-auto cursor-pointer"
             >
               Clear all filters
             </button>
@@ -224,14 +224,14 @@ export const CollectionsPage: React.FC = () => {
 
           {/* Sort By Dropdown */}
           <div className="flex items-center gap-2 self-end sm:self-auto">
-            <label htmlFor="sort-select" className="text-xs text-[#2D1C26] font-bold shrink-0">
+            <label htmlFor="sort-select" className="text-xs text-[#777777] font-bold shrink-0">
               Sort by:
             </label>
             <select
               id="sort-select"
               value={sortBy}
               onChange={e => setSortBy(e.target.value)}
-              className="text-xs font-bold text-[#1E1419] bg-transparent border-0 focus:ring-0 cursor-pointer p-1"
+              className="text-xs font-bold text-[#292929] bg-transparent border-0 focus:ring-0 cursor-pointer p-1"
             >
               <option value="newest">Newest Releases</option>
               <option value="popularity">Most Popular</option>
@@ -247,15 +247,15 @@ export const CollectionsPage: React.FC = () => {
           
           {/* Desktop Filter Sidebar */}
           <aside className={`md:col-span-3 space-y-6 ${mobileFilterOpen ? 'block' : 'hidden md:block'}`}>
-            <div className="bg-[#F9F6F0] rounded-3xl p-5 border border-[#E8C9C1] space-y-6">
+            <div className="bg-[#FCF3E2] rounded-3xl p-5 border border-[#EADCC8] space-y-6">
               
-              <div className="flex items-center justify-between border-b border-[#E8C9C1]/50 pb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#24171E] flex items-center gap-1.5">
-                  <SlidersHorizontal className="w-3.5 h-3.5" />
+              <div className="flex items-center justify-between border-b border-[#EADCC8] pb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#292929] flex items-center gap-1.5">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-[#A64B3C]" />
                   <span>Refine Catalog</span>
                 </span>
                 {hasActiveFilters && (
-                  <button onClick={clearFilters} className="text-[11px] font-bold text-[#8B6F7A] hover:underline">
+                  <button onClick={clearFilters} className="text-[11px] font-bold text-[#A64B3C] hover:underline cursor-pointer">
                     Reset
                   </button>
                 )}
@@ -263,34 +263,34 @@ export const CollectionsPage: React.FC = () => {
 
               {/* Theme Filter */}
               <div>
-                <h3 className="text-xs font-bold text-[#1E1419] mb-2.5">
+                <h3 className="text-xs font-bold text-[#292929] mb-2.5">
                   Themes
                 </h3>
                 <div className="space-y-1.5">
                   <button
                     onClick={() => setSelectedTheme('all')}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-between ${
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
                       selectedTheme === 'all'
-                        ? 'bg-[#E8C9C1]/50 text-[#1E1419]'
-                        : 'text-[#382631] hover:bg-[#E8C9C1]/30'
+                        ? 'bg-[#FFFCF7] text-[#292929] border border-[#EADCC8]'
+                        : 'text-[#777777] hover:bg-[#FFFCF7]/60'
                     }`}
                   >
                     <span>All Themes</span>
-                    {selectedTheme === 'all' && <Check className="w-3.5 h-3.5 text-[#8B6F7A]" />}
+                    {selectedTheme === 'all' && <Check className="w-3.5 h-3.5 text-[#A64B3C]" />}
                   </button>
                   {themes.map(t => (
                     <button
                       key={t}
                       onClick={() => setSelectedTheme(t)}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-between ${
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
                         selectedTheme.toLowerCase() === t.toLowerCase()
-                          ? 'bg-[#E8C9C1]/50 text-[#1E1419]'
-                          : 'text-[#382631] hover:bg-[#E8C9C1]/30'
+                          ? 'bg-[#FFFCF7] text-[#292929] border border-[#EADCC8]'
+                          : 'text-[#777777] hover:bg-[#FFFCF7]/60'
                       }`}
                     >
                       <span>{t}</span>
                       {selectedTheme.toLowerCase() === t.toLowerCase() && (
-                        <Check className="w-3.5 h-3.5 text-[#8B6F7A]" />
+                        <Check className="w-3.5 h-3.5 text-[#A64B3C]" />
                       )}
                     </button>
                   ))}
@@ -298,35 +298,35 @@ export const CollectionsPage: React.FC = () => {
               </div>
 
               {/* Collections Filter */}
-              <div className="border-t border-[#E8C9C1]/50 pt-4">
-                <h3 className="text-xs font-bold text-[#1E1419] mb-2.5">
+              <div className="border-t border-[#EADCC8] pt-4">
+                <h3 className="text-xs font-bold text-[#292929] mb-2.5">
                   Collections
                 </h3>
                 <div className="space-y-1.5">
                   <button
                     onClick={() => setSelectedCollection('all')}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-between ${
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
                       selectedCollection === 'all'
-                        ? 'bg-[#E8C9C1]/50 text-[#1E1419]'
-                        : 'text-[#382631] hover:bg-[#E8C9C1]/30'
+                        ? 'bg-[#FFFCF7] text-[#292929] border border-[#EADCC8]'
+                        : 'text-[#777777] hover:bg-[#FFFCF7]/60'
                     }`}
                   >
                     <span>All Collections</span>
-                    {selectedCollection === 'all' && <Check className="w-3.5 h-3.5 text-[#8B6F7A]" />}
+                    {selectedCollection === 'all' && <Check className="w-3.5 h-3.5 text-[#A64B3C]" />}
                   </button>
                   {collections.map(c => (
                     <button
                       key={c.id}
                       onClick={() => setSelectedCollection(c.name)}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-between ${
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
                         selectedCollection.toLowerCase() === c.name.toLowerCase()
-                          ? 'bg-[#E8C9C1]/50 text-[#1E1419]'
-                          : 'text-[#382631] hover:bg-[#E8C9C1]/30'
+                          ? 'bg-[#FFFCF7] text-[#292929] border border-[#EADCC8]'
+                          : 'text-[#777777] hover:bg-[#FFFCF7]/60'
                       }`}
                     >
                       <span>{c.name}</span>
                       {selectedCollection.toLowerCase() === c.name.toLowerCase() && (
-                        <Check className="w-3.5 h-3.5 text-[#8B6F7A]" />
+                        <Check className="w-3.5 h-3.5 text-[#A64B3C]" />
                       )}
                     </button>
                   ))}
@@ -334,12 +334,12 @@ export const CollectionsPage: React.FC = () => {
               </div>
 
               {/* Price Filter (Price distinctively styled) */}
-              <div className="border-t border-[#E8C9C1]/50 pt-4">
+              <div className="border-t border-[#EADCC8] pt-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs font-bold text-[#1E1419]">
+                  <h3 className="text-xs font-bold text-[#292929]">
                     Max Price
                   </h3>
-                  <span className="text-xs font-bold text-[#945367] tabular-nums tracking-tight">
+                  <span className="text-xs font-bold text-[#A64B3C] tabular-nums tracking-tight">
                     ${maxPrice.toFixed(2)}
                   </span>
                 </div>
@@ -350,9 +350,9 @@ export const CollectionsPage: React.FC = () => {
                   step="0.5"
                   value={maxPrice}
                   onChange={e => setMaxPrice(Number(e.target.value))}
-                  className="w-full accent-[#8B6F7A] cursor-pointer"
+                  className="w-full accent-[#A64B3C] cursor-pointer"
                 />
-                <div className="flex justify-between text-[10px] text-[#45313D] font-bold mt-1">
+                <div className="flex justify-between text-[10px] text-[#777777] font-bold mt-1">
                   <span>$2.00</span>
                   <span>$10.00</span>
                 </div>
@@ -374,17 +374,17 @@ export const CollectionsPage: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="bg-[#F9F6F0] rounded-3xl p-12 text-center border border-[#E8C9C1] max-w-md mx-auto">
+              <div className="bg-[#FCF3E2] rounded-3xl p-12 text-center border border-[#EADCC8] max-w-md mx-auto">
                 <p className="text-3xl mb-3">🍄</p>
-                <h3 className="font-heading font-bold text-lg text-[#1E1419] mb-1">
+                <h3 className="font-heading font-bold text-lg text-[#292929] mb-1">
                   No matching wallpapers found
                 </h3>
-                <p className="text-xs text-[#33222C] font-medium mb-5">
+                <p className="text-xs text-[#777777] font-medium mb-5">
                   Try adjusting or resetting your filter criteria to discover more cozy designs.
                 </p>
                 <button
                   onClick={clearFilters}
-                  className="px-5 py-2.5 bg-[#8B6F7A] text-[#F7F3E9] rounded-xl text-xs font-bold hover:bg-[#785E69] transition-all"
+                  className="px-5 py-2.5 bg-[#A64B3C] text-[#FFFCF7] rounded-xl text-xs font-bold hover:bg-[#8E3E30] transition-all cursor-pointer"
                 >
                   Clear All Filters
                 </button>

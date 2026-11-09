@@ -302,25 +302,25 @@ export const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="py-8 sm:py-12 bg-[#F7F3E9] min-h-screen">
+    <div className="py-8 sm:py-12 bg-[#FFFCF7] min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         
         {/* Top Header */}
-        <div className="bg-[#F9F6F0] rounded-3xl p-6 border border-[#E8C9C1] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-[#FCF3E2] rounded-3xl p-6 border border-[#EADCC8] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#8B6F7A] text-[#F7F3E9] flex items-center justify-center shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-[#A64B3C] text-[#FFFCF7] flex items-center justify-center shadow-xs">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-heading font-bold text-xl sm:text-2xl text-[#1E1419]">
+                <h1 className="font-heading font-bold text-xl sm:text-2xl text-[#292929]">
                   sleepyshroom Admin
                 </h1>
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
                   Live
                 </span>
               </div>
-              <p className="text-xs text-[#33222C] font-medium mt-0.5">
+              <p className="text-xs text-[#777777] font-medium mt-0.5">
                 Simple visual website management for graphic designers. No code editing needed.
               </p>
             </div>
@@ -329,9 +329,9 @@ export const AdminDashboard: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigateTo('home')}
-              className="px-4 py-2 bg-white text-xs font-bold text-[#1E1419] rounded-xl border border-[#D5C2BB] hover:bg-[#F4EAE6] flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-4 py-2 bg-[#FFFCF7] text-xs font-bold text-[#292929] rounded-xl border border-[#EADCC8] hover:bg-[#FCF3E2] flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Eye className="w-4 h-4 text-[#8B6F7A]" />
+              <Eye className="w-4 h-4 text-[#A64B3C]" />
               <span>View Storefront</span>
             </button>
           </div>
@@ -353,13 +353,13 @@ export const AdminDashboard: React.FC = () => {
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-[#E8C9C1]/70">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-[#EADCC8]">
           <button
             onClick={() => setActiveTab('overview')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
               activeTab === 'overview'
-                ? 'bg-[#8B6F7A] text-[#F7F3E9] shadow-xs'
-                : 'text-[#1E1419] hover:bg-[#E8C9C1]/40'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'text-[#292929] hover:bg-[#FCF3E2]'
             }`}
           >
             <LayoutDashboard className="w-4 h-4" />
@@ -370,8 +370,8 @@ export const AdminDashboard: React.FC = () => {
             onClick={() => setActiveTab('carousel')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
               activeTab === 'carousel'
-                ? 'bg-[#8B6F7A] text-[#F7F3E9] shadow-xs'
-                : 'text-[#1E1419] hover:bg-[#E8C9C1]/40'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'text-[#292929] hover:bg-[#FCF3E2]'
             }`}
           >
             <Sliders className="w-4 h-4" />
@@ -382,8 +382,8 @@ export const AdminDashboard: React.FC = () => {
             onClick={() => setActiveTab('products')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
               activeTab === 'products'
-                ? 'bg-[#8B6F7A] text-[#F7F3E9] shadow-xs'
-                : 'text-[#1E1419] hover:bg-[#E8C9C1]/40'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'text-[#292929] hover:bg-[#FCF3E2]'
             }`}
           >
             <Package className="w-4 h-4" />
@@ -394,8 +394,8 @@ export const AdminDashboard: React.FC = () => {
             onClick={() => setActiveTab('homepage')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
               activeTab === 'homepage'
-                ? 'bg-[#8B6F7A] text-[#F7F3E9] shadow-xs'
-                : 'text-[#1E1419] hover:bg-[#E8C9C1]/40'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'text-[#292929] hover:bg-[#FCF3E2]'
             }`}
           >
             <Home className="w-4 h-4" />
@@ -406,8 +406,8 @@ export const AdminDashboard: React.FC = () => {
             onClick={() => setActiveTab('orders')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
               activeTab === 'orders'
-                ? 'bg-[#8B6F7A] text-[#F7F3E9] shadow-xs'
-                : 'text-[#1E1419] hover:bg-[#E8C9C1]/40'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'text-[#292929] hover:bg-[#FCF3E2]'
             }`}
           >
             <ShoppingBag className="w-4 h-4" />
@@ -418,8 +418,8 @@ export const AdminDashboard: React.FC = () => {
             onClick={() => setActiveTab('messages')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
               activeTab === 'messages'
-                ? 'bg-[#8B6F7A] text-[#F7F3E9] shadow-xs'
-                : 'text-[#1E1419] hover:bg-[#E8C9C1]/40'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'text-[#292929] hover:bg-[#FCF3E2]'
             }`}
           >
             <MessageSquare className="w-4 h-4" />
@@ -430,8 +430,8 @@ export const AdminDashboard: React.FC = () => {
             onClick={() => setActiveTab('settings')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
               activeTab === 'settings'
-                ? 'bg-[#8B6F7A] text-[#F7F3E9] shadow-xs'
-                : 'text-[#1E1419] hover:bg-[#E8C9C1]/40'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'text-[#292929] hover:bg-[#FCF3E2]'
             }`}
           >
             <SettingsIcon className="w-4 h-4" />

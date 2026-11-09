@@ -63,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#F7F3E9]/95 backdrop-blur-md border-b border-[#E8C9C1]/50 transition-all">
+    <header className="sticky top-0 z-40 bg-[#FFFCF7]/95 backdrop-blur-md border-b border-[#EADCC8] transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
         
         {/* Left: Hamburger menu + Logo */}
@@ -71,21 +71,21 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
           <button
             onClick={onOpenMenu}
             aria-label="Open navigation menu"
-            className="p-2.5 rounded-xl text-[#8B6F7A] hover:bg-[#E8C9C1]/40 transition-colors focus-visible:ring-2 focus-visible:ring-[#8B6F7A]"
+            className="p-2.5 rounded-xl text-[#292929] hover:bg-[#FCF3E2] transition-colors focus-visible:ring-2 focus-visible:ring-[#A64B3C] cursor-pointer"
           >
             <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
 
           <button
             onClick={() => navigateTo('home')}
-            className="group flex items-center gap-2.5 text-left transition-transform active:scale-95"
+            className="group flex items-center gap-2.5 text-left transition-transform active:scale-95 cursor-pointer"
           >
             <ShroomLogoIcon size={38} className="transition-transform group-hover:rotate-6" />
             <div className="flex flex-col">
-              <span className="font-heading font-bold text-xl sm:text-2xl text-[#24171E] tracking-tight leading-none">
+              <span className="font-heading font-bold text-xl sm:text-2xl text-[#292929] tracking-tight leading-none">
                 {settings?.storeName || 'sleepyshroom'}
               </span>
-              <span className="hidden sm:inline-block text-[11px] font-bold text-[#45313D] tracking-normal leading-tight mt-0.5">
+              <span className="hidden sm:inline-block text-[11px] font-bold text-[#777777] tracking-normal leading-tight mt-0.5">
                 {settings?.tagline || 'Little screens, sweeter dreams.'}
               </span>
             </div>
@@ -93,34 +93,34 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
         </div>
 
         {/* Center: Desktop Quick Nav Links */}
-        <nav className="hidden lg:flex items-center gap-7 text-sm font-bold text-[#2A1B24]">
+        <nav className="hidden lg:flex items-center gap-7 text-sm font-bold text-[#292929]">
           <button
             onClick={() => navigateTo('collections')}
-            className="hover:text-[#0F070B] transition-colors py-1 border-b-2 border-transparent hover:border-[#2A1B24]"
+            className="hover:text-[#A64B3C] transition-colors py-1 border-b-2 border-transparent hover:border-[#A64B3C] cursor-pointer"
           >
             All Collections
           </button>
           <button
             onClick={() => navigateTo('collections', 'free=true')}
-            className="text-[#945367] hover:text-[#78374B] transition-colors py-1 border-b-2 border-transparent hover:border-[#945367] flex items-center gap-1 font-extrabold"
+            className="text-[#A64B3C] hover:text-[#8E3E30] transition-colors py-1 border-b-2 border-transparent hover:border-[#A64B3C] flex items-center gap-1 font-extrabold cursor-pointer"
           >
             <span>Freebies 🎁</span>
           </button>
           <button
             onClick={() => navigateTo('collections', 'device=desktop')}
-            className="hover:text-[#0F070B] transition-colors py-1 border-b-2 border-transparent hover:border-[#2A1B24]"
+            className="hover:text-[#A64B3C] transition-colors py-1 border-b-2 border-transparent hover:border-[#A64B3C] cursor-pointer"
           >
             Desktop Themes
           </button>
           <button
             onClick={() => navigateTo('collections', 'device=mobile')}
-            className="hover:text-[#0F070B] transition-colors py-1 border-b-2 border-transparent hover:border-[#2A1B24]"
+            className="hover:text-[#A64B3C] transition-colors py-1 border-b-2 border-transparent hover:border-[#A64B3C] cursor-pointer"
           >
             Mobile & Tablet
           </button>
           <button
             onClick={() => navigateTo('about')}
-            className="hover:text-[#0F070B] transition-colors py-1 border-b-2 border-transparent hover:border-[#2A1B24]"
+            className="hover:text-[#A64B3C] transition-colors py-1 border-b-2 border-transparent hover:border-[#A64B3C] cursor-pointer"
           >
             About Me
           </button>
@@ -142,14 +142,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
                     setIsFocused(true);
                   }}
                   onFocus={() => setIsFocused(true)}
-                  className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm bg-[#F9F6F0] border border-[#E8C9C1] rounded-full text-[#1E1419] font-medium placeholder-[#5A4550] focus:outline-none focus:ring-2 focus:ring-[#8B6F7A]/40 transition-all"
+                  className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm bg-[#FCF3E2] border border-[#EADCC8] rounded-full text-[#292929] font-medium placeholder-[#777777] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40 focus:border-[#A64B3C] transition-all"
                 />
-                <Search className="w-4 h-4 text-[#4A323D] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-4 h-4 text-[#777777] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 {searchInput && (
                   <button
                     type="button"
                     onClick={() => setSearchInput('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-[#5A4550] hover:text-[#1E1419]"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-[#777777] hover:text-[#292929] cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -160,7 +160,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
             {/* Mobile search toggle button */}
             <button
               onClick={() => setSearchOpen(!searchOpen)}
-              className="md:hidden p-2 rounded-xl text-[#24171E] hover:bg-[#E8C9C1]/40 transition-colors"
+              className="md:hidden p-2 rounded-xl text-[#292929] hover:bg-[#FCF3E2] transition-colors cursor-pointer"
               aria-label="Toggle search"
             >
               <Search className="w-5 h-5" />
@@ -168,8 +168,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
 
             {/* Search autocomplete dropdown */}
             {isFocused && searchInput.trim().length > 1 && (
-              <div className="absolute right-0 top-full mt-2 w-72 sm:w-84 bg-[#F9F6F0] rounded-2xl shadow-xl border border-[#E8C9C1] p-2 z-50 overflow-hidden">
-                <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#24171E] border-b border-[#E8C9C1]/40">
+              <div className="absolute right-0 top-full mt-2 w-72 sm:w-84 bg-[#FCF3E2] rounded-2xl shadow-xl border border-[#EADCC8] p-2 z-50 overflow-hidden">
+                <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#777777] border-b border-[#EADCC8]">
                   Wallpaper Suggestions
                 </div>
                 {searchResults.length > 0 ? (
@@ -178,37 +178,37 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
                       <button
                         key={prod.id}
                         onClick={() => handleSelectProduct(prod.slug)}
-                        className="w-full flex items-center gap-3 p-2 text-left rounded-xl hover:bg-[#E8C9C1]/30 transition-colors group"
+                        className="w-full flex items-center gap-3 p-2 text-left rounded-xl hover:bg-[#FFFCF7] transition-colors group cursor-pointer"
                       >
                         <img
                           src={prod.images[0]}
                           alt={prod.title}
-                          className="w-10 h-10 object-cover rounded-lg shrink-0 border border-[#E8C9C1]"
+                          className="w-10 h-10 object-cover rounded-lg shrink-0 border border-[#EADCC8]"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#1E1419] truncate group-hover:text-[#8B6F7A]">
+                          <p className="text-xs font-bold text-[#292929] truncate group-hover:text-[#A64B3C]">
                             {prod.title}
                           </p>
-                          <p className="text-[11px] text-[#45313D] truncate">
-                            <span>{prod.theme}</span> · <span className="font-bold text-[#945367]">${prod.price.toFixed(2)}</span>
+                          <p className="text-[11px] text-[#777777] truncate">
+                            <span>{prod.theme}</span> · <span className="font-bold text-[#A64B3C]">${prod.price.toFixed(2)}</span>
                           </p>
                         </div>
-                        <ArrowRight className="w-3.5 h-3.5 text-[#5A4550] group-hover:text-[#1E1419] group-hover:translate-x-0.5 transition-all" />
+                        <ArrowRight className="w-3.5 h-3.5 text-[#777777] group-hover:text-[#A64B3C] group-hover:translate-x-0.5 transition-all" />
                       </button>
                     ))}
                     <button
                       onClick={handleSearchSubmit}
-                      className="w-full mt-1 pt-2 border-t border-[#E8C9C1]/40 text-center text-xs font-bold text-[#24171E] hover:underline"
+                      className="w-full mt-1 pt-2 border-t border-[#EADCC8] text-center text-xs font-bold text-[#A64B3C] hover:underline cursor-pointer"
                     >
                       View all results for "{searchInput}"
                     </button>
                   </div>
                 ) : (
                   <div className="py-6 px-4 text-center">
-                    <p className="text-xs font-bold text-[#1E1419]">
+                    <p className="text-xs font-bold text-[#292929]">
                       No wallpapers found
                     </p>
-                    <p className="text-[11px] text-[#45313D] mt-1">
+                    <p className="text-[11px] text-[#777777] mt-1">
                       Try searching "garden", "autumn", "mushroom", or "desktop"
                     </p>
                   </div>
@@ -220,10 +220,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
           {/* Account / Sign In */}
           <button
             onClick={() => navigateTo('account')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#24171E] hover:bg-[#E8C9C1]/40 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#292929] hover:bg-[#FCF3E2] transition-colors cursor-pointer"
             title={user ? `Signed in as ${user.name}` : 'Sign In'}
           >
-            <User className="w-4 h-4 text-[#24171E]" />
+            <User className="w-4 h-4 text-[#292929]" />
             <span className="hidden sm:inline">
               {user ? user.name.split(' ')[0] : 'Sign In'}
             </span>
@@ -233,11 +233,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
           <button
             onClick={() => setIsCartOpen(true)}
             aria-label="View shopping cart"
-            className="relative p-2.5 rounded-xl text-[#24171E] hover:bg-[#E8C9C1]/40 transition-colors focus-visible:ring-2 focus-visible:ring-[#8B6F7A]"
+            className="relative p-2.5 rounded-xl text-[#292929] hover:bg-[#FCF3E2] transition-colors focus-visible:ring-2 focus-visible:ring-[#A64B3C] cursor-pointer"
           >
             <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6" />
             {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-5 h-5 px-1 bg-[#8B6F7A] text-[#F7F3E9] text-[11px] font-bold rounded-full shadow-sm animate-in zoom-in-50 duration-200">
+              <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-5 h-5 px-1 bg-[#A64B3C] text-[#FFFCF7] text-[11px] font-bold rounded-full shadow-sm animate-in zoom-in-50 duration-200">
                 {cartCount}
               </span>
             )}
@@ -248,7 +248,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
 
       {/* Mobile Search Dropdown row */}
       {searchOpen && (
-        <div className="md:hidden px-4 pb-3 pt-1 border-t border-[#E8C9C1]/40">
+        <div className="md:hidden px-4 pb-3 pt-1 border-t border-[#EADCC8]">
           <form onSubmit={handleSearchSubmit} className="relative">
             <input
               type="text"
@@ -256,13 +256,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               autoFocus
-              className="w-full pl-9 pr-9 py-2 text-xs bg-[#F9F6F0] border border-[#E8C9C1] rounded-full text-[#1E1419] font-medium placeholder-[#5A4550] focus:outline-none focus:ring-2 focus:ring-[#8B6F7A]/40"
+              className="w-full pl-9 pr-9 py-2 text-xs bg-[#FCF3E2] border border-[#EADCC8] rounded-full text-[#292929] font-medium placeholder-[#777777] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
             />
-            <Search className="w-4 h-4 text-[#24171E] absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[#777777] absolute left-3 top-1/2 -translate-y-1/2" />
             <button
               type="button"
               onClick={() => setSearchOpen(false)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-[#24171E]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-[#292929] cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>

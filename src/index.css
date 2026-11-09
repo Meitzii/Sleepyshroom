@@ -4,25 +4,34 @@
   --font-heading: 'Comfortaa', cursive, sans-serif;
   --font-body: 'Quicksand', sans-serif;
 
-  --color-shroom-beige: #F7F3E9;
-  --color-shroom-blush: #E8C9C1;
-  --color-shroom-lavender: #D6C8F2;
-  --color-shroom-mocha: #8B6F7A;
-  --color-shroom-lilac: #A99BEA;
-  --color-shroom-sunlight: #FFD58A;
-  --color-shroom-text: #1E1419;
-  --color-shroom-dark: #140C10;
+  /* Official 4-Color Brand Palette */
+  --color-shroom-red: #A64B3C;
+  --color-shroom-white: #FFFCF7;
+  --color-shroom-charcoal: #292929;
+  --color-shroom-cream: #FCF3E2;
+  --color-shroom-gray: #777777;
+
+  /* Legacy theme aliases mapped to new palette */
+  --color-shroom-beige: #FFFCF7;
+  --color-shroom-blush: #FCF3E2;
+  --color-shroom-lavender: #A64B3C;
+  --color-shroom-mocha: #A64B3C;
+  --color-shroom-lilac: #A64B3C;
+  --color-shroom-sunlight: #A64B3C;
+  --color-shroom-text: #292929;
+  --color-shroom-dark: #292929;
 }
 
 body {
   font-family: var(--font-body);
-  background-color: #F7F3E9;
-  color: #1E1419;
+  background-color: #FFFCF7;
+  color: #292929;
   overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6, .font-heading {
   font-family: var(--font-heading);
+  color: #292929;
 }
 
 /* Custom cozy scrollbar */
@@ -31,12 +40,12 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #F2ECE0;
+  background: #FCF3E2;
 }
 ::-webkit-scrollbar-thumb {
-  background: #D8C3BE;
+  background: #E5D5C0;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #8B6F7A;
+  background: #A64B3C;
 }

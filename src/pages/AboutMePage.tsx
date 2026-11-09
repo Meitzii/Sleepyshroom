@@ -15,22 +15,22 @@ export const AboutMePage: React.FC = () => {
   };
 
   return (
-    <div className="py-12 sm:py-16">
+    <div className="py-12 sm:py-16 bg-[#FFFCF7]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         
         {/* Hero Card */}
-        <div className="bg-[#F9F6F0] rounded-3xl p-6 sm:p-10 border border-[#E8C9C1] shadow-xs">
+        <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-10 border border-[#EADCC8] shadow-xs">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
             
             {/* Profile Image */}
             <div className="md:col-span-5">
-              <div className="relative mx-auto max-w-xs aspect-square rounded-3xl overflow-hidden border-4 border-[#FDFBF7] shadow-md bg-[#E8C9C1]/30">
+              <div className="relative mx-auto max-w-xs aspect-square rounded-3xl overflow-hidden border-4 border-[#FFFCF7] shadow-md bg-[#EADCC8]/30">
                 <img
                   src={about.profileImage || '/src/assets/images/theme_sleepy_garden_1794020165839.jpg'}
                   alt="Creator of sleepyshroom"
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute bottom-2.5 right-2.5 bg-[#F7F3E9]/90 px-2.5 py-1 rounded-xl text-[10px] font-bold text-[#8B6F7A] border border-[#E8C9C1]">
+                <div className="absolute bottom-2.5 right-2.5 bg-[#FFFCF7]/95 px-2.5 py-1 rounded-xl text-[10px] font-bold text-[#A64B3C] border border-[#EADCC8]">
                   Artist & Creator 🍄
                 </div>
               </div>
@@ -38,14 +38,14 @@ export const AboutMePage: React.FC = () => {
 
             {/* Introduction Text */}
             <div className="md:col-span-7 space-y-4 text-center md:text-left">
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1E1419] uppercase tracking-wider">
-                <Heart className="w-3.5 h-3.5 text-[#945367] fill-current" />
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#A64B3C] uppercase tracking-wider">
+                <Heart className="w-3.5 h-3.5 text-[#A64B3C] fill-current" />
                 <span>The Story Behind The Shroom</span>
               </div>
-              <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#1E1419] tracking-tight">
+              <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#292929] tracking-tight">
                 {about.heading}
               </h1>
-              <p className="text-sm sm:text-base text-[#33222C] font-medium leading-relaxed">
+              <p className="text-sm sm:text-base text-[#777777] font-medium leading-relaxed">
                 {about.introduction}
               </p>
             </div>
@@ -57,27 +57,27 @@ export const AboutMePage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           
           {/* Why I Started */}
-          <div className="bg-[#F9F6F0] rounded-3xl p-6 sm:p-8 border border-[#E8C9C1] space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-[#E8C9C1]/50 text-[#1E1419] flex items-center justify-center mb-1">
+          <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-[#FFFCF7] border border-[#EADCC8] text-[#A64B3C] flex items-center justify-center mb-1">
               <Coffee className="w-5 h-5" />
             </div>
-            <h2 className="font-heading font-bold text-lg text-[#1E1419]">
+            <h2 className="font-heading font-bold text-lg text-[#292929]">
               Why I started sleepyshroom
             </h2>
-            <p className="text-xs sm:text-sm text-[#33222C] font-medium leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#777777] font-medium leading-relaxed">
               {about.whyStarted}
             </p>
           </div>
 
           {/* Design Inspiration */}
-          <div className="bg-[#F9F6F0] rounded-3xl p-6 sm:p-8 border border-[#E8C9C1] space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-[#D6C8F2]/50 text-[#1E1419] flex items-center justify-center mb-1">
+          <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-[#FFFCF7] border border-[#EADCC8] text-[#A64B3C] flex items-center justify-center mb-1">
               <Palette className="w-5 h-5" />
             </div>
-            <h2 className="font-heading font-bold text-lg text-[#1E1419]">
+            <h2 className="font-heading font-bold text-lg text-[#292929]">
               My Design Inspiration
             </h2>
-            <p className="text-xs sm:text-sm text-[#33222C] font-medium leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#777777] font-medium leading-relaxed">
               {about.designInspiration}
             </p>
           </div>
@@ -85,20 +85,20 @@ export const AboutMePage: React.FC = () => {
         </div>
 
         {/* Cozy Call to Action Card */}
-        <div className="bg-[#F4EAE6] rounded-3xl p-8 border border-[#E8C9C1] text-center space-y-4">
+        <div className="bg-[#FCF3E2] rounded-3xl p-8 border border-[#EADCC8] text-center space-y-4">
           <div className="flex justify-center">
             <ShroomLogoIcon size={48} />
           </div>
-          <h3 className="font-heading font-bold text-xl text-[#1E1419]">
+          <h3 className="font-heading font-bold text-xl text-[#292929]">
             Ready to make your screen a little cozier?
           </h3>
-          <p className="text-xs sm:text-sm text-[#33222C] font-medium max-w-md mx-auto">
+          <p className="text-xs sm:text-sm text-[#777777] font-medium max-w-md mx-auto">
             Take a look through our desktop, phone, and tablet wallpaper collections.
           </p>
           <div>
             <button
               onClick={() => navigateTo('collections')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#8B6F7A] hover:bg-[#785E69] text-[#F7F3E9] text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all cursor-pointer"
             >
               <span>Explore Wallpapers</span>
               <ArrowRight className="w-4 h-4" />

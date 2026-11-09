@@ -28,43 +28,43 @@ For any questions or assistance with your order, email us at shop.sleepyshroom@g
   };
 
   return (
-    <div className="py-12 sm:py-16">
+    <div className="py-12 sm:py-16 bg-[#FFFCF7]">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1E1419] uppercase tracking-wider">
-            <FileText className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#777777] uppercase tracking-wider">
+            <FileText className="w-3.5 h-3.5 text-[#A64B3C]" />
             <span>Store Policies</span>
           </div>
-          <h1 className="font-heading font-bold text-3xl sm:text-4xl text-[#1E1419]">
+          <h1 className="font-heading font-bold text-3xl sm:text-4xl text-[#292929]">
             {policy.title}
           </h1>
-          <p className="text-xs text-[#45313D] font-medium">
+          <p className="text-xs text-[#777777] font-medium">
             Last updated: {policy.lastUpdated}
           </p>
         </div>
 
         {/* Notice Card */}
-        <div className="p-4 sm:p-5 bg-[#E8C9C1]/40 rounded-2xl border border-[#D5C2BB] flex items-start gap-3">
-          <ShieldAlert className="w-5 h-5 text-[#8B6F7A] shrink-0 mt-0.5" />
-          <p className="text-xs text-[#1E1419] font-medium leading-relaxed">
+        <div className="p-4 sm:p-5 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] flex items-start gap-3">
+          <ShieldAlert className="w-5 h-5 text-[#A64B3C] shrink-0 mt-0.5" />
+          <p className="text-xs text-[#292929] font-medium leading-relaxed">
             <strong className="font-bold">Important Digital Goods Notice:</strong> Because our wallpapers are delivered as instant digital downloads, standard physical item returns do not apply. However, we guarantee that all files are intact, high-resolution, and we always refund accidental duplicates.
           </p>
         </div>
 
         {/* Policy Content */}
-        <div className="bg-[#F9F6F0] rounded-3xl p-6 sm:p-10 border border-[#E8C9C1] shadow-xs prose prose-stone max-w-none text-xs sm:text-sm text-[#33222C] leading-relaxed space-y-6">
+        <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-10 border border-[#EADCC8] shadow-xs max-w-none text-xs sm:text-sm text-[#777777] leading-relaxed space-y-6">
           {policy.content.split('## ').filter(Boolean).map((section, idx) => {
             const lines = section.split('\n');
             const heading = lines[0];
             const body = lines.slice(1).join('\n');
             return (
               <div key={idx} className="space-y-2">
-                <h2 className="font-heading font-bold text-base sm:text-lg text-[#1E1419]">
+                <h2 className="font-heading font-bold text-base sm:text-lg text-[#292929]">
                   {heading}
                 </h2>
-                <p className="text-xs sm:text-sm text-[#33222C] font-medium whitespace-pre-line leading-relaxed">
+                <p className="text-xs sm:text-sm text-[#777777] font-medium whitespace-pre-line leading-relaxed">
                   {body.trim()}
                 </p>
               </div>
@@ -74,12 +74,12 @@ For any questions or assistance with your order, email us at shop.sleepyshroom@g
 
         {/* Contact Help */}
         <div className="text-center pt-4">
-          <p className="text-xs text-[#33222C] font-medium mb-3">
+          <p className="text-xs text-[#777777] font-medium mb-3">
             Need help with a purchase or download issue?
           </p>
           <button
             onClick={() => navigateTo('contact')}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#8B6F7A] text-[#F7F3E9] rounded-xl text-xs font-bold hover:bg-[#785E69] transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#A64B3C] text-[#FFFCF7] rounded-xl text-xs font-bold hover:bg-[#8E3E30] transition-all cursor-pointer"
           >
             <MessageCircle className="w-4 h-4" />
             <span>Contact Customer Support</span>

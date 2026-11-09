@@ -17,21 +17,21 @@ export const DesktopThemesSection: React.FC = () => {
         {/* Section Header with See All */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
           <div>
-            <div className="inline-flex items-center gap-2 text-xs font-bold text-[#3B2633] uppercase tracking-wider mb-1">
-              <Monitor className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 text-xs font-bold text-[#777777] uppercase tracking-wider mb-1">
+              <Monitor className="w-3.5 h-3.5 text-[#A64B3C]" />
               <span>Computer Wallpapers</span>
             </div>
-            <h2 className="font-heading font-bold text-2xl sm:text-3xl text-[#1E1419] tracking-tight">
+            <h2 className="font-heading font-bold text-2xl sm:text-3xl text-[#292929] tracking-tight">
               Desktop Themes
             </h2>
-            <p className="mt-1 text-sm text-[#33222C] font-medium">
+            <p className="mt-1 text-sm text-[#777777] font-medium">
               Give your workspace a little cozy magic.
             </p>
           </div>
 
           <button
             onClick={() => navigateTo('collections', 'device=desktop')}
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#24171E] hover:text-[#8B6F7A] transition-colors group self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#292929] hover:text-[#A64B3C] transition-colors group self-start sm:self-auto cursor-pointer"
           >
             <span>See All Desktop Themes</span>
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />

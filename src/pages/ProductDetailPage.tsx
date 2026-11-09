@@ -34,15 +34,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
     return (
       <div className="py-20 text-center max-w-md mx-auto px-4">
         <p className="text-4xl mb-4">🍄</p>
-        <h2 className="font-heading font-bold text-2xl text-[#1E1419] mb-2">
+        <h2 className="font-heading font-bold text-2xl text-[#292929] mb-2">
           Wallpaper Not Found
         </h2>
-        <p className="text-sm text-[#33222C] font-medium mb-6">
+        <p className="text-sm text-[#777777] font-medium mb-6">
           The digital wallpaper you are looking for may have been retired or moved.
         </p>
         <button
           onClick={() => navigateTo('collections')}
-          className="px-6 py-3 bg-[#8B6F7A] text-[#F7F3E9] rounded-xl text-sm font-bold hover:bg-[#785E69] transition-all"
+          className="px-6 py-3 bg-[#A64B3C] text-[#FFFCF7] rounded-xl text-sm font-bold hover:bg-[#8E3E30] transition-all cursor-pointer"
         >
           Return to Collections
         </button>
@@ -69,20 +69,20 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
   const activeImage = product.images[activeImageIndex] || product.images[0];
 
   return (
-    <div className="py-8 sm:py-12">
+    <div className="py-8 sm:py-12 bg-[#FFFCF7]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Breadcrumb Navigation */}
-        <nav className="flex items-center gap-2 text-xs text-[#45313D] font-bold mb-6">
-          <button onClick={() => navigateTo('home')} className="hover:text-[#1E1419]">
+        <nav className="flex items-center gap-2 text-xs text-[#777777] font-bold mb-6">
+          <button onClick={() => navigateTo('home')} className="hover:text-[#A64B3C] cursor-pointer">
             Home
           </button>
           <ChevronRight className="w-3.5 h-3.5" />
-          <button onClick={() => navigateTo('collections')} className="hover:text-[#1E1419]">
+          <button onClick={() => navigateTo('collections')} className="hover:text-[#A64B3C] cursor-pointer">
             Wallpapers
           </button>
           <ChevronRight className="w-3.5 h-3.5" />
-          <span className="text-[#1E1419] font-extrabold truncate max-w-xs">
+          <span className="text-[#292929] font-extrabold truncate max-w-xs">
             {product.title}
           </span>
         </nav>
@@ -94,18 +94,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           <div className="lg:col-span-7 space-y-4">
             
             {/* Device Mockup Toggle Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-[#E8C9C1]/40">
-              <span className="text-xs font-bold text-[#24171E] uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#24171E]" />
+            <div className="flex items-center justify-between pb-2 border-b border-[#EADCC8]">
+              <span className="text-xs font-bold text-[#292929] uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#A64B3C]" />
                 <span>Interactive Screen Preview</span>
               </span>
-              <div className="flex items-center gap-1 bg-[#F9F6F0] p-1 rounded-xl border border-[#E8C9C1]">
+              <div className="flex items-center gap-1 bg-[#FCF3E2] p-1 rounded-xl border border-[#EADCC8]">
                 <button
                   onClick={() => setDevicePreview('desktop')}
-                  className={`p-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                     devicePreview === 'desktop'
-                      ? 'bg-[#8B6F7A] text-[#F7F3E9]'
-                      : 'text-[#24171E] hover:bg-[#E8C9C1]/40'
+                      ? 'bg-[#A64B3C] text-[#FFFCF7]'
+                      : 'text-[#292929] hover:bg-[#EADCC8]'
                   }`}
                   title="Desktop Monitor Frame"
                 >
@@ -113,10 +113,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 </button>
                 <button
                   onClick={() => setDevicePreview('mobile')}
-                  className={`p-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                     devicePreview === 'mobile'
-                      ? 'bg-[#8B6F7A] text-[#F7F3E9]'
-                      : 'text-[#24171E] hover:bg-[#E8C9C1]/40'
+                      ? 'bg-[#A64B3C] text-[#FFFCF7]'
+                      : 'text-[#292929] hover:bg-[#EADCC8]'
                   }`}
                   title="Phone Lock Screen Frame"
                 >
@@ -124,10 +124,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 </button>
                 <button
                   onClick={() => setDevicePreview('tablet')}
-                  className={`p-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                     devicePreview === 'tablet'
-                      ? 'bg-[#8B6F7A] text-[#F7F3E9]'
-                      : 'text-[#24171E] hover:bg-[#E8C9C1]/40'
+                      ? 'bg-[#A64B3C] text-[#FFFCF7]'
+                      : 'text-[#292929] hover:bg-[#EADCC8]'
                   }`}
                   title="Tablet Screen Frame"
                 >
@@ -142,11 +142,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
              * Sourced from `product.images` (controlled by `data/store.json` or Admin Dashboard).
              * ========================================================================= */}
             {/* Main Interactive Screen Frame */}
-            <div className="bg-[#F9F6F0] p-4 sm:p-6 rounded-3xl border border-[#E8C9C1] flex items-center justify-center min-h-[380px] sm:min-h-[460px]">
+            <div className="bg-[#FCF3E2] p-4 sm:p-6 rounded-3xl border border-[#EADCC8] flex items-center justify-center min-h-[380px] sm:min-h-[460px]">
               
               {devicePreview === 'desktop' && (
                 /* Desktop Monitor Frame */
-                <div className="w-full max-w-2xl bg-[#4A3B43] rounded-2xl p-2.5 sm:p-3.5 shadow-2xl border-2 border-[#8B6F7A]/40 flex flex-col items-center">
+                <div className="w-full max-w-2xl bg-[#292929] rounded-2xl p-2.5 sm:p-3.5 shadow-2xl border-2 border-[#EADCC8]/40 flex flex-col items-center">
                   <div className="w-full aspect-16/10 rounded-lg overflow-hidden bg-black relative">
                     <img
                       src={activeImage}
@@ -160,14 +160,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                     </div>
                   </div>
                   {/* Stand */}
-                  <div className="w-16 h-3 bg-[#35282F] mt-1.5 rounded-b" />
-                  <div className="w-28 h-1.5 bg-[#4A3B43] rounded-full" />
+                  <div className="w-16 h-3 bg-[#1e1e1e] mt-1.5 rounded-b" />
+                  <div className="w-28 h-1.5 bg-[#292929] rounded-full" />
                 </div>
               )}
 
               {devicePreview === 'mobile' && (
                 /* Phone Frame */
-                <div className="w-64 sm:w-72 aspect-9/18 bg-[#35282F] rounded-[40px] p-2.5 shadow-2xl border-4 border-[#8B6F7A]/50 relative flex flex-col">
+                <div className="w-64 sm:w-72 aspect-9/18 bg-[#292929] rounded-[40px] p-2.5 shadow-2xl border-4 border-[#EADCC8]/50 relative flex flex-col">
                   {/* Speaker Notch */}
                   <div className="absolute top-4 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-10 flex items-center justify-end pr-2">
                     <div className="w-2 h-2 rounded-full bg-slate-900 border border-slate-800" />
@@ -190,7 +190,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
 
               {devicePreview === 'tablet' && (
                 /* Tablet Frame */
-                <div className="w-80 sm:w-96 aspect-4/3 bg-[#35282F] rounded-3xl p-3 shadow-2xl border-4 border-[#8B6F7A]/40 flex flex-col">
+                <div className="w-80 sm:w-96 aspect-4/3 bg-[#292929] rounded-3xl p-3 shadow-2xl border-4 border-[#EADCC8]/40 flex flex-col">
                   <div className="w-full h-full rounded-2xl overflow-hidden relative">
                     <img
                       src={activeImage}
@@ -213,10 +213,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                   <button
                     key={idx}
                     onClick={() => setActiveImageIndex(idx)}
-                    className={`relative w-20 h-14 rounded-xl overflow-hidden border-2 transition-all ${
+                    className={`relative w-20 h-14 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
                       activeImageIndex === idx
-                        ? 'border-[#8B6F7A] scale-102 shadow-sm'
-                        : 'border-[#E8C9C1] opacity-70 hover:opacity-100'
+                        ? 'border-[#A64B3C] scale-102 shadow-sm'
+                        : 'border-[#EADCC8] opacity-70 hover:opacity-100'
                     }`}
                   >
                     <img src={img} alt="" className="w-full h-full object-cover" />
@@ -226,13 +226,13 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
             )}
 
             {/* Digital Download Notice Banner */}
-            <div className="p-4 rounded-2xl bg-[#D6C8F2]/30 border border-[#A99BEA]/50 flex items-start gap-3">
-              <Download className="w-5 h-5 text-[#24171E] shrink-0 mt-0.5" />
-              <div className="text-xs text-[#1E1419] space-y-1">
-                <p className="font-extrabold text-[#1E1419]">
+            <div className="p-4 rounded-2xl bg-[#FCF3E2] border border-[#EADCC8] flex items-start gap-3">
+              <Download className="w-5 h-5 text-[#A64B3C] shrink-0 mt-0.5" />
+              <div className="text-xs text-[#292929] space-y-1">
+                <p className="font-extrabold text-[#292929]">
                   Instant Digital Download
                 </p>
-                <p className="text-[#33222C] font-medium leading-relaxed">
+                <p className="text-[#777777] font-medium leading-relaxed">
                   This is a digital wallpaper file. No physical goods will be shipped. You will receive immediate download access upon checkout and via your email confirmation receipt.
                 </p>
               </div>
@@ -243,27 +243,27 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           {/* Right Column: Contiguous Purchase Module */}
           <div className="lg:col-span-5 space-y-6">
             
-            <div className="bg-[#F9F6F0] rounded-3xl p-6 sm:p-8 border border-[#E8C9C1] shadow-xs space-y-6">
+            <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs space-y-6">
               
               {/* Category & Theme Metadata */}
-              <div className="flex items-center gap-2 text-xs text-[#382631] font-bold">
+              <div className="flex items-center gap-2 text-xs text-[#777777] font-bold">
                 <span>{product.theme}</span>
                 <span aria-hidden="true">·</span>
                 <span>{product.collection}</span>
               </div>
 
               {/* Title */}
-              <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#1E1419] tracking-tight leading-tight">
+              <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#292929] tracking-tight leading-tight">
                 {product.title}
               </h1>
 
               {/* Social Proof: Download Numbers & Live recent activity ticker */}
-              <div className="p-3 bg-[#F4EAE6]/70 rounded-2xl border border-[#D5C2BB] flex flex-wrap items-center justify-between gap-2 text-xs">
-                <span className="flex items-center gap-1.5 text-[#1E1419] font-bold">
-                  <Download className="w-4 h-4 text-[#8B6F7A]" />
+              <div className="p-3 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8] flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="flex items-center gap-1.5 text-[#292929] font-bold">
+                  <Download className="w-4 h-4 text-[#A64B3C]" />
                   <span>{(product.downloadCount || 0).toLocaleString()} happy screens downloaded</span>
                 </span>
-                <span className="text-[11px] font-bold text-emerald-900 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-300">
+                <span className="text-[11px] font-bold text-[#292929] flex items-center gap-1 bg-[#FCF3E2] px-2 py-0.5 rounded-full border border-[#EADCC8]">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span>
                     {product.recentDownloadTime === 'just now'
@@ -273,29 +273,29 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 </span>
               </div>
 
-              {/* Price Row (Prices kept distinctive in #945367!) */}
+              {/* Price Row (Prices in Mushroom Red #A64B3C) */}
               <div className="flex items-baseline gap-3">
                 {Boolean(product.isFree || product.price === 0) ? (
-                  <span className="text-3xl sm:text-4xl font-extrabold text-[#945367] tracking-tight">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-[#A64B3C] tracking-tight">
                     FREE
                   </span>
                 ) : (
-                  <span className="text-3xl sm:text-4xl font-extrabold text-[#945367] tabular-nums tracking-tight">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-[#A64B3C] tabular-nums tracking-tight">
                     ${product.price.toFixed(2)}
                   </span>
                 )}
                 {product.compareAtPrice && (
-                  <span className="text-base text-[#7A6672] font-medium line-through tabular-nums">
+                  <span className="text-base text-[#777777] font-medium line-through tabular-nums">
                     ${product.compareAtPrice.toFixed(2)}
                   </span>
                 )}
-                <span className="text-xs font-bold text-[#1E1419] bg-[#E8C9C1]/60 px-2.5 py-0.5 rounded-full border border-[#8B6F7A]/20">
+                <span className="text-xs font-bold text-[#292929] bg-[#FFFCF7] px-2.5 py-0.5 rounded-full border border-[#EADCC8]">
                   {Boolean(product.isFree || product.price === 0) ? '100% Free Complimentary Gift' : 'All Resolutions Included'}
                 </span>
               </div>
 
               {/* Description */}
-              <p className="text-sm text-[#33222C] font-medium leading-relaxed">
+              <p className="text-sm text-[#777777] font-medium leading-relaxed">
                 {product.description}
               </p>
 
@@ -310,8 +310,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                     }}
                     className={`w-full py-4 px-6 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md ${
                       downloading
-                        ? 'bg-emerald-700 text-white'
-                        : 'bg-[#945367] hover:bg-[#804255] text-white active:scale-98'
+                        ? 'bg-emerald-700 text-[#FFFCF7]'
+                        : 'bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] active:scale-98'
                     }`}
                   >
                     {downloading ? (
@@ -332,8 +332,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                       onClick={handleAddToCart}
                       className={`w-full py-3.5 px-6 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                         added
-                          ? 'bg-[#A99BEA] text-white shadow-xs'
-                          : 'bg-[#8B6F7A] hover:bg-[#785E69] text-[#F7F3E9] active:scale-98 shadow-sm'
+                          ? 'bg-emerald-700 text-[#FFFCF7] shadow-xs'
+                          : 'bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] active:scale-98 shadow-sm'
                       }`}
                     >
                       {added ? (
@@ -351,7 +351,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
 
                     <button
                       onClick={handleBuyNow}
-                      className="w-full py-3.5 px-6 rounded-2xl text-sm font-bold text-[#1E1419] bg-[#E8C9C1]/60 hover:bg-[#E8C9C1] active:scale-98 border border-[#8B6F7A]/30 transition-all flex items-center justify-center cursor-pointer"
+                      className="w-full py-3.5 px-6 rounded-2xl text-sm font-bold text-[#292929] bg-[#FFFCF7] hover:bg-[#EADCC8] active:scale-98 border border-[#EADCC8] transition-all flex items-center justify-center cursor-pointer"
                     >
                       Buy Now with 1-Click Checkout
                     </button>
@@ -360,45 +360,45 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               </div>
 
               {/* Technical Specifications Breakdown */}
-              <div className="border-t border-[#E8C9C1]/50 pt-5 space-y-4">
+              <div className="border-t border-[#EADCC8] pt-5 space-y-4">
                 
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#24171E]">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#292929]">
                   Digital Package Specifications
                 </h3>
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 bg-[#F4EAE6]/60 rounded-xl">
-                    <p className="text-[#45313D] font-bold">Device Types</p>
-                    <p className="font-bold text-[#1E1419] mt-0.5 capitalize">
+                  <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8]">
+                    <p className="text-[#777777] font-bold">Device Types</p>
+                    <p className="font-bold text-[#292929] mt-0.5 capitalize">
                       {product.deviceTypes.join(', ')}
                     </p>
                   </div>
-                  <div className="p-3 bg-[#F4EAE6]/60 rounded-xl">
-                    <p className="text-[#45313D] font-bold">Archive Size</p>
-                    <p className="font-bold text-[#1E1419] mt-0.5">
+                  <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8]">
+                    <p className="text-[#777777] font-bold">Archive Size</p>
+                    <p className="font-bold text-[#292929] mt-0.5">
                       {product.fileSize}
                     </p>
                   </div>
                 </div>
 
-                <div className="p-3 bg-[#F4EAE6]/60 rounded-xl text-xs">
-                  <p className="text-[#45313D] font-bold">Available Resolutions</p>
+                <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs">
+                  <p className="text-[#777777] font-bold">Available Resolutions</p>
                   <ul className="mt-1 space-y-0.5">
                     {product.resolutions.map((res, i) => (
-                      <li key={i} className="font-bold text-[#1E1419] flex items-center gap-1.5">
-                        <span className="w-1 h-1 rounded-full bg-[#8B6F7A]" />
+                      <li key={i} className="font-bold text-[#292929] flex items-center gap-1.5">
+                        <span className="w-1 h-1 rounded-full bg-[#A64B3C]" />
                         <span>{res}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                <div className="p-3 bg-[#F4EAE6]/60 rounded-xl text-xs">
-                  <p className="text-[#45313D] font-bold">What's Included</p>
+                <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs">
+                  <p className="text-[#777777] font-bold">What's Included</p>
                   <ul className="mt-1 space-y-1">
                     {product.whatsIncluded.map((inc, i) => (
-                      <li key={i} className="text-[#1E1419] font-medium flex items-start gap-1.5">
-                        <FileCheck className="w-3.5 h-3.5 text-[#8B6F7A] shrink-0 mt-0.5" />
+                      <li key={i} className="text-[#292929] font-medium flex items-start gap-1.5">
+                        <FileCheck className="w-3.5 h-3.5 text-[#A64B3C] shrink-0 mt-0.5" />
                         <span>{inc}</span>
                       </li>
                     ))}
@@ -408,8 +408,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               </div>
 
               {/* Guarantees */}
-              <div className="border-t border-[#E8C9C1]/50 pt-4 flex items-center gap-2 text-xs text-[#24171E] font-bold">
-                <ShieldCheck className="w-4 h-4 text-[#8B6F7A]" />
+              <div className="border-t border-[#EADCC8] pt-4 flex items-center gap-2 text-xs text-[#292929] font-bold">
+                <ShieldCheck className="w-4 h-4 text-[#A64B3C]" />
                 <span>300 DPI Lossless Quality & Permanent Account Access</span>
               </div>
 
@@ -421,19 +421,19 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
 
         {/* Related Wallpapers Section */}
         {relatedProducts.length > 0 && (
-          <section className="mt-16 sm:mt-20 pt-12 border-t border-[#E8C9C1]/60">
+          <section className="mt-16 sm:mt-20 pt-12 border-t border-[#EADCC8]">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="font-heading font-bold text-xl sm:text-2xl text-[#1E1419]">
+                <h2 className="font-heading font-bold text-xl sm:text-2xl text-[#292929]">
                   More from {product.theme}
                 </h2>
-                <p className="text-xs sm:text-sm text-[#33222C] font-medium mt-1">
+                <p className="text-xs sm:text-sm text-[#777777] font-medium mt-1">
                   You might also adore these matching cozy wallpapers.
                 </p>
               </div>
               <button
                 onClick={() => navigateTo('collections', `theme=${encodeURIComponent(product.theme)}`)}
-                className="text-xs font-bold text-[#24171E] hover:underline"
+                className="text-xs font-bold text-[#A64B3C] hover:underline cursor-pointer"
               >
                 View collection
               </button>

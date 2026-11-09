@@ -36,8 +36,8 @@ const MainLayout: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F3E9] text-[#382831] space-y-3">
-        <div className="w-12 h-12 rounded-full border-3 border-[#8B6F7A]/20 border-t-[#8B6F7A] animate-spin" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FFFCF7] text-[#292929] space-y-3">
+        <div className="w-12 h-12 rounded-full border-3 border-[#A64B3C]/20 border-t-[#A64B3C] animate-spin" />
         <p className="font-heading font-bold text-sm">
           Opening the little mushroom cottage...
         </p>
@@ -46,7 +46,7 @@ const MainLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F7F3E9] text-[#1E1419] selection:bg-[#E8C9C1] selection:text-[#1E1419]">
+    <div className="min-h-screen flex flex-col bg-[#FFFCF7] text-[#292929] selection:bg-[#FCF3E2] selection:text-[#292929]">
       
       {/* Sticky Header with Navigation, Search, Cart */}
       <Header onOpenMenu={() => setMobileMenuOpen(true)} />
