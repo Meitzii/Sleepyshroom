@@ -1,0 +1,9 @@
+{
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/((?!assets/|wallpapers/|images/|uploads/|src/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

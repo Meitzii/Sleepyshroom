@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import type { Order } from '../types/index.ts';
+import { downloadWallpaperFile } from '../utils/downloadHelper.ts';
 
 interface OrderConfirmationPageProps {
   token: string;
@@ -41,16 +42,12 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
     }
   }, [token, latestOrder]);
 
-  const handleDownloadFile = (productId: string, title: string) => {
-    const downloadUrl = `/api/downloads/${token || order?.downloadToken}/file/${productId}`;
-    
-    // Create temporary anchor to trigger browser download
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = `${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownloadFile = async (productId: string, title: string) => {
+    const item = order?.items.find(i => i.productId === productId);
+    const imageSrc = item?.image || `/wallpapers/${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
+    const filename = `${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
+
+    await downloadWallpaperFile(imageSrc, filename);
 
     setDownloadSuccessMessage(`Download started for "${title}"! Check your downloads folder.`);
     setTimeout(() => setDownloadSuccessMessage(null), 5000);

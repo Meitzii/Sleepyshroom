@@ -14,9 +14,10 @@ import {
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import type { Order } from '../types/index.ts';
+import { downloadWallpaperFile } from '../utils/downloadHelper.ts';
 
 export const CustomerAccountPage: React.FC = () => {
-  const { user, login, logout, navigateTo } = useShop();
+  const { user, login, logout, navigateTo, products } = useShop();
 
   const [isLoginTab, setIsLoginTab] = useState(true);
   const [emailInput, setEmailInput] = useState('');
@@ -90,14 +91,11 @@ export const CustomerAccountPage: React.FC = () => {
     }
   };
 
-  const handleDownloadFile = (token: string, productId: string, title: string) => {
-    const downloadUrl = `/api/downloads/${token}/file/${productId}`;
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = `${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownloadFile = async (_token: string, productId: string, title: string) => {
+    const prod = products.find(p => p.id === productId);
+    const imageSrc = prod?.images[0] || `/wallpapers/${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
+    const filename = `${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
+    await downloadWallpaperFile(imageSrc, filename);
   };
 
   // If user is NOT logged in: Show Auth Form

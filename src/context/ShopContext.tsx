@@ -9,6 +9,13 @@ import type {
   UserAccount,
   Order 
 } from '../types/index.ts';
+import { 
+  initialSettings, 
+  initialCarouselSlides, 
+  initialProducts, 
+  initialCollections 
+} from '../data/initialData.ts';
+import { downloadWallpaperFile } from '../utils/downloadHelper.ts';
 
 interface ShopContextType {
   products: Product[];
@@ -49,11 +56,11 @@ interface ShopContextType {
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
 
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [carouselSlides, setCarouselSlides] = useState<CarouselSlide[]>([]);
-  const [settings, setSettings] = useState<WebsiteSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [collections, setCollections] = useState<Collection[]>(initialCollections);
+  const [carouselSlides, setCarouselSlides] = useState<CarouselSlide[]>(initialCarouselSlides);
+  const [settings, setSettings] = useState<WebsiteSettings | null>(initialSettings);
+  const [loading, setLoading] = useState(false);
   const [liveToast, setLiveToast] = useState<string | null>(null);
 
   // Cart state persisted to localStorage
@@ -150,19 +157,25 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (contentRes.ok) {
         const contentData = await contentRes.json();
-        setSettings(contentData.settings);
-        setCarouselSlides(contentData.carouselSlides || []);
+        if (contentData.settings) setSettings(contentData.settings);
+        if (Array.isArray(contentData.carouselSlides) && contentData.carouselSlides.length > 0) {
+          setCarouselSlides(contentData.carouselSlides);
+        }
       }
       if (prodsRes.ok) {
         const prodData = await prodsRes.json();
-        setProducts(prodData);
+        if (Array.isArray(prodData) && prodData.length > 0) {
+          setProducts(prodData);
+        }
       }
       if (colsRes.ok) {
         const colData = await colsRes.json();
-        setCollections(colData);
+        if (Array.isArray(colData) && colData.length > 0) {
+          setCollections(colData);
+        }
       }
     } catch (err) {
-      console.error('Failed to load shop data:', err);
+      // Running statically (e.g. Vercel, GitHub Pages) - initial state is already loaded!
     } finally {
       setLoading(false);
     }
@@ -288,15 +301,14 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const downloadFreebie = async (product: Product) => {
     try {
-      // 1. Direct browser download trigger
-      const link = document.createElement('a');
-      link.href = `/api/free-download/${product.id}`;
-      link.download = product.downloadFileName.replace('.zip', '.jpg');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // 1. Download real image file directly as valid binary image (works offline & on Vercel)
+      const imageSrc = product.images[0] || `/wallpapers/${product.downloadFileName.replace(/\.zip$/i, '.jpg')}`;
+      await downloadWallpaperFile(imageSrc, product.downloadFileName);
 
-      // 2. Optimistically update local download count and live activity indicator
+      // 2. Notify backend if available (non-blocking)
+      fetch(`/api/free-download/${product.id}`).catch(() => {});
+
+      // 3. Optimistically update local download count and live activity indicator
       setProducts(prev => prev.map(p => {
         if (p.id === product.id) {
           return {
@@ -308,7 +320,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return p;
       }));
 
-      // 3. Show live notification toast
+      // 4. Show live notification toast
       setLiveToast(`🎉 Freebie downloaded! "${product.title}" has started downloading.`);
       setTimeout(() => setLiveToast(null), 5000);
     } catch (e) {
