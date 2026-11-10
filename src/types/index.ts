@@ -148,6 +148,8 @@ export interface UserAccount {
   createdAt: string;
   isAdmin?: boolean;
   role?: 'admin' | 'customer';
+  avatarUrl?: string;
+  authProvider?: string;
 }
 
 export interface CartItem {

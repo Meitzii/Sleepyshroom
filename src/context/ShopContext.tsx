@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { 
   Product, 
   CarouselSlide, 
@@ -16,6 +17,14 @@ import {
   initialCollections 
 } from '../data/initialData.ts';
 import { downloadWallpaperFile } from '../utils/downloadHelper.ts';
+import { supabase, isSupabaseConfigured } from '../lib/supabase.ts';
+
+export interface GoogleSignInResult {
+  success: boolean;
+  error?: string;
+  needsNewTab?: boolean;
+  externalTabUrl?: string;
+}
 
 interface ShopContextType {
   products: Product[];
@@ -39,7 +48,10 @@ interface ShopContextType {
   removeDiscount: () => void;
   user: UserAccount | null;
   login: (email: string, name?: string) => Promise<boolean>;
-  logout: () => void;
+  signInWithGoogle: () => Promise<GoogleSignInResult>;
+  logout: () => Promise<void>;
+  oauthError: string | null;
+  clearOAuthError: () => void;
   activeView: string;
   viewParam: string | null;
   navigateTo: (view: string, param?: string | null) => void;
@@ -62,6 +74,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [settings, setSettings] = useState<WebsiteSettings | null>(initialSettings);
   const [loading, setLoading] = useState(false);
   const [liveToast, setLiveToast] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+  const clearOAuthError = () => setOauthError(null);
 
   // Cart state persisted to localStorage
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -97,6 +111,14 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace(/^#\/?/, '');
+      if (
+        hash.startsWith('access_token=') ||
+        hash.startsWith('error=') ||
+        hash.includes('refresh_token=') ||
+        hash.includes('error_description=')
+      ) {
+        return;
+      }
       if (!hash) {
         setActiveView('home');
         setViewParam(null);
@@ -276,7 +298,196 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const total = Number(Math.max(0, subtotal - discountAmount).toFixed(2));
 
-  // User authentication
+  // Sync authenticated Supabase Google user into Sleepyshroom customer profile
+  const syncSupabaseUser = async (supaUser: SupabaseUser): Promise<UserAccount | null> => {
+    const email = supaUser.email?.trim();
+    if (!email) return null;
+
+    const meta = supaUser.user_metadata || {};
+    const fullName =
+      (typeof meta.full_name === 'string' && meta.full_name.trim()) ||
+      (typeof meta.name === 'string' && meta.name.trim()) ||
+      email.split('@')[0] ||
+      'Cozy Friend';
+    const avatarUrl =
+      (typeof meta.avatar_url === 'string' && meta.avatar_url.trim()) ||
+      (typeof meta.picture === 'string' && meta.picture.trim()) ||
+      undefined;
+    const isOwnerEmail = email.toLowerCase() === 'shop.sleepyshroom@gmail.com';
+    const provider =
+      (typeof supaUser.app_metadata?.provider === 'string' && supaUser.app_metadata.provider) ||
+      'google';
+
+    let syncedUser: UserAccount = {
+      id: supaUser.id,
+      name: isOwnerEmail ? 'Sleepyshroom Owner' : fullName,
+      email,
+      createdAt: supaUser.created_at || new Date().toISOString(),
+      isAdmin: isOwnerEmail,
+      role: isOwnerEmail ? 'admin' : 'customer',
+      avatarUrl,
+      authProvider: provider,
+    };
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name: fullName }),
+      });
+      if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+        const data = await res.json();
+        if (data?.user) {
+          const serverUser = data.user as UserAccount;
+          const emailPrefix = email.split('@')[0];
+          const resolvedName =
+            serverUser.name && serverUser.name !== emailPrefix
+              ? serverUser.name
+              : syncedUser.name;
+          syncedUser = {
+            ...serverUser,
+            name: resolvedName,
+            avatarUrl: avatarUrl || serverUser.avatarUrl,
+            authProvider: provider,
+            isAdmin: Boolean(serverUser.isAdmin || isOwnerEmail),
+            role: isOwnerEmail || serverUser.isAdmin ? 'admin' : serverUser.role || 'customer',
+          };
+        }
+      }
+    } catch {
+      // Static deployments (e.g. Vercel without Express) gracefully use Supabase profile metadata directly
+    }
+
+    setUser(syncedUser);
+    return syncedUser;
+  };
+
+  // Listen to Supabase OAuth callbacks & session changes
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const rawHash = window.location.hash.replace(/^#\/?/, '');
+    const hashParams = new URLSearchParams(rawHash.includes('=') ? rawHash : '');
+
+    const urlError =
+      searchParams.get('error_description') ||
+      searchParams.get('error') ||
+      hashParams.get('error_description') ||
+      hashParams.get('error');
+
+    if (urlError) {
+      const readable = urlError.replace(/\+/g, ' ');
+      setOauthError(readable);
+      setActiveView('account');
+      setViewParam(null);
+      try {
+        window.history.replaceState(null, '', `${window.location.pathname}#account`);
+      } catch {
+        window.location.hash = '#account';
+      }
+    }
+
+    const hadOAuthCallbackParams =
+      searchParams.has('code') ||
+      rawHash.startsWith('access_token=') ||
+      rawHash.includes('refresh_token=');
+
+    if (!supabase) return;
+
+    let isMounted = true;
+    let handledPostOAuthRedirect = false;
+    let lastSyncedSessionKey: string | null = null;
+
+    const completePostOAuthNavigation = (isSignInEvent: boolean) => {
+      if (handledPostOAuthRedirect) return;
+
+      let shouldOpenAccount = false;
+      try {
+        shouldOpenAccount = sessionStorage.getItem('sleepyshroom_post_auth_view') === 'account';
+        sessionStorage.removeItem('sleepyshroom_post_auth_view');
+      } catch {
+        // Ignore storage errors
+      }
+
+      const currentSearch = new URLSearchParams(window.location.search);
+      const currentHash = window.location.hash.replace(/^#\/?/, '');
+      const hasUrlTokens =
+        currentSearch.has('code') ||
+        currentSearch.has('state') ||
+        currentHash.startsWith('access_token=') ||
+        currentHash.includes('refresh_token=');
+
+      if (shouldOpenAccount || hadOAuthCallbackParams || hasUrlTokens || isSignInEvent) {
+        handledPostOAuthRedirect = true;
+        setActiveView('account');
+        setViewParam(null);
+        try {
+          window.history.replaceState(null, '', `${window.location.pathname}#account`);
+        } catch {
+          window.location.hash = '#account';
+        }
+      }
+    };
+
+    const syncIfNeeded = (sessionUser: SupabaseUser, accessToken: string, isSignInEvent: boolean) => {
+      const sessionKey = `${sessionUser.id}:${accessToken}`;
+      if (lastSyncedSessionKey === sessionKey) {
+        if (isSignInEvent) {
+          completePostOAuthNavigation(true);
+        }
+        return;
+      }
+      lastSyncedSessionKey = sessionKey;
+      setOauthError(null);
+      void syncSupabaseUser(sessionUser).then(() => {
+        if (isMounted) {
+          completePostOAuthNavigation(isSignInEvent);
+        }
+      });
+    };
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
+
+      if (event === 'SIGNED_OUT') {
+        lastSyncedSessionKey = null;
+        setUser(null);
+        return;
+      }
+
+      if (session?.user) {
+        syncIfNeeded(session.user, session.access_token || '', event === 'SIGNED_IN');
+      } else if (event === 'INITIAL_SESSION') {
+        setUser(prev => (prev?.authProvider && prev.authProvider !== 'email' ? null : prev));
+      }
+    });
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!isMounted) return;
+      if (error && !urlError) {
+        setOauthError(error.message || 'Unable to complete Google sign-in.');
+        if (hadOAuthCallbackParams) {
+          setActiveView('account');
+          setViewParam(null);
+          try {
+            window.history.replaceState(null, '', `${window.location.pathname}#account`);
+          } catch {
+            window.location.hash = '#account';
+          }
+        }
+        return;
+      }
+      if (data.session?.user) {
+        syncIfNeeded(data.session.user, data.session.access_token || '', false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  // User authentication (preserves existing email/password login)
   const login = async (email: string, name?: string) => {
     try {
       const res = await fetch('/api/auth/login', {
@@ -284,19 +495,123 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, name }),
       });
-      if (res.ok) {
+      if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
         const data = await res.json();
-        setUser(data.user);
+        setUser({ ...data.user, authProvider: 'email' });
         return true;
       }
-      return false;
+      if (!res.ok) {
+        return false;
+      }
     } catch {
-      return false;
+      // Static fallback when Express backend is unavailable (e.g. static Vercel deploy)
+    }
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !trimmedEmail.includes('@')) return false;
+    const isOwnerEmail = trimmedEmail.toLowerCase() === 'shop.sleepyshroom@gmail.com';
+    setUser({
+      id: isOwnerEmail ? 'usr-admin' : `usr-${Date.now()}`,
+      name: isOwnerEmail ? 'Sleepyshroom Owner' : (name?.trim() || trimmedEmail.split('@')[0]),
+      email: trimmedEmail,
+      createdAt: new Date().toISOString(),
+      isAdmin: isOwnerEmail,
+      role: isOwnerEmail ? 'admin' : 'customer',
+      authProvider: 'email',
+    });
+    return true;
+  };
+
+  // Google OAuth 2.0 via Supabase Auth
+  const signInWithGoogle = async (): Promise<GoogleSignInResult> => {
+    setOauthError(null);
+
+    if (!isSupabaseConfigured || !supabase) {
+      const msg =
+        'Google Sign-In requires Supabase client configuration. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.';
+      setOauthError(msg);
+      return { success: false, error: msg };
+    }
+
+    let inIframe = false;
+    try {
+      inIframe = window.self !== window.top;
+    } catch {
+      inIframe = true;
+    }
+
+    if (inIframe) {
+      return {
+        success: false,
+        error:
+          'Google Sign-In cannot open inside an embedded preview frame. Please open Sleepyshroom in a new browser tab to sign in with Google.',
+        needsNewTab: true,
+        externalTabUrl: `${window.location.origin}/#account`,
+      };
+    }
+
+    try {
+      try {
+        sessionStorage.setItem('sleepyshroom_post_auth_view', 'account');
+      } catch {
+        // Ignore storage errors
+      }
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+          queryParams: {
+            prompt: 'select_account',
+          },
+        },
+      });
+
+      if (error) {
+        try {
+          sessionStorage.removeItem('sleepyshroom_post_auth_view');
+        } catch {
+          // Ignore
+        }
+        const msg = error.message || 'Unable to start Google Sign-In.';
+        setOauthError(msg);
+        return { success: false, error: msg };
+      }
+
+      if (!data?.url) {
+        const msg = 'No Google authentication redirect URL was returned.';
+        setOauthError(msg);
+        return { success: false, error: msg };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      try {
+        sessionStorage.removeItem('sleepyshroom_post_auth_view');
+      } catch {
+        // Ignore
+      }
+      const msg = err?.message || 'An error occurred while connecting to Google.';
+      setOauthError(msg);
+      return { success: false, error: msg };
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null);
+    setOauthError(null);
+    try {
+      localStorage.removeItem('sleepyshroom_user');
+    } catch {
+      // Ignore
+    }
+    if (supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        console.error('Supabase sign-out error:', err);
+      }
+    }
   };
 
   const downloadFreebie = async (product: Product) => {
@@ -387,7 +702,10 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         removeDiscount,
         user,
         login,
+        signInWithGoogle,
         logout,
+        oauthError,
+        clearOAuthError,
         activeView,
         viewParam,
         navigateTo,

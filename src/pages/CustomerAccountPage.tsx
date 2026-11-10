@@ -10,14 +10,25 @@ import {
   Sparkles, 
   CheckCircle, 
   AlertCircle,
-  ShieldCheck 
+  ShieldCheck,
+  Loader2,
+  ExternalLink
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import type { Order } from '../types/index.ts';
 import { downloadWallpaperFile } from '../utils/downloadHelper.ts';
 
 export const CustomerAccountPage: React.FC = () => {
-  const { user, login, logout, navigateTo, products } = useShop();
+  const {
+    user,
+    login,
+    signInWithGoogle,
+    logout,
+    oauthError,
+    clearOAuthError,
+    navigateTo,
+    products,
+  } = useShop();
 
   const [isLoginTab, setIsLoginTab] = useState(true);
   const [emailInput, setEmailInput] = useState('');
@@ -25,6 +36,9 @@ export const CustomerAccountPage: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [previewTabUrl, setPreviewTabUrl] = useState<string | null>(null);
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
 
@@ -33,10 +47,18 @@ export const CustomerAccountPage: React.FC = () => {
   const [loadingOrders, setLoadingOrders] = useState(false);
 
   useEffect(() => {
+    setAvatarFailed(false);
+  }, [user?.avatarUrl]);
+
+  useEffect(() => {
     if (user?.email) {
       setLoadingOrders(true);
       fetch(`/api/orders?email=${encodeURIComponent(user.email)}`)
-        .then(res => res.json())
+        .then(res =>
+          res.ok && res.headers.get('content-type')?.includes('application/json')
+            ? res.json()
+            : []
+        )
         .then(data => {
           if (Array.isArray(data)) {
             setUserOrders(data);
@@ -52,6 +74,8 @@ export const CustomerAccountPage: React.FC = () => {
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    clearOAuthError();
+    setPreviewTabUrl(null);
 
     if (!emailInput.trim()) {
       setAuthError('Please enter your email.');
@@ -77,17 +101,44 @@ export const CustomerAccountPage: React.FC = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: emailInput.trim(), name: nameInput.trim() }),
         });
-        const data = await res.json();
-        if (res.ok) {
-          await login(emailInput.trim(), nameInput.trim());
+        if (res.headers.get('content-type')?.includes('application/json')) {
+          const data = await res.json();
+          if (res.ok) {
+            await login(emailInput.trim(), nameInput.trim());
+          } else {
+            setAuthError(data.error || 'Registration failed.');
+          }
         } else {
-          setAuthError(data.error || 'Registration failed.');
+          // Static deployment fallback when Express API is unavailable
+          const success = await login(emailInput.trim(), nameInput.trim());
+          if (!success) {
+            setAuthError('Registration failed. Please verify your details.');
+          }
         }
       }
     } catch {
       setAuthError('An error occurred during authentication.');
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    setAuthError(null);
+    clearOAuthError();
+    setPreviewTabUrl(null);
+    setGoogleLoading(true);
+
+    try {
+      const result = await signInWithGoogle();
+      if (!result.success) {
+        setAuthError(result.error || 'Unable to sign in with Google.');
+        setPreviewTabUrl(result.externalTabUrl || null);
+        setGoogleLoading(false);
+      }
+    } catch {
+      setAuthError('An error occurred while connecting to Google.');
+      setGoogleLoading(false);
     }
   };
 
@@ -123,7 +174,12 @@ export const CustomerAccountPage: React.FC = () => {
             <div className="flex bg-[#FFFCF7] p-1 rounded-2xl mb-6 border border-[#EADCC8]">
               <button
                 type="button"
-                onClick={() => { setIsLoginTab(true); setAuthError(null); }}
+                onClick={() => {
+                  setIsLoginTab(true);
+                  setAuthError(null);
+                  clearOAuthError();
+                  setPreviewTabUrl(null);
+                }}
                 className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   isLoginTab ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs' : 'text-[#292929]'
                 }`}
@@ -132,7 +188,12 @@ export const CustomerAccountPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => { setIsLoginTab(false); setAuthError(null); }}
+                onClick={() => {
+                  setIsLoginTab(false);
+                  setAuthError(null);
+                  clearOAuthError();
+                  setPreviewTabUrl(null);
+                }}
                 className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   !isLoginTab ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs' : 'text-[#292929]'
                 }`}
@@ -198,21 +259,85 @@ export const CustomerAccountPage: React.FC = () => {
                 />
               </div>
 
-              {authError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700 font-medium">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{authError}</span>
+              {(authError || oauthError) && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl space-y-2 text-xs text-red-700 font-medium">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{authError || oauthError}</span>
+                  </div>
+                  {previewTabUrl && (
+                    <a
+                      href={previewTabUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFCF7] hover:bg-[#FCF3E2] text-[#A64B3C] border border-[#EADCC8] rounded-lg text-[11px] font-bold transition-colors"
+                    >
+                      <span>Open Sleepyshroom in New Tab</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
                 </div>
               )}
 
               <button
                 type="submit"
-                disabled={authLoading}
-                className="w-full py-3 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all disabled:opacity-60 cursor-pointer"
+                disabled={authLoading || googleLoading}
+                className="w-full py-3 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all disabled:opacity-60 cursor-pointer flex items-center justify-center gap-2"
               >
-                {authLoading ? 'Signing in...' : isLoginTab ? 'Sign In to Account' : 'Create My Account'}
+                {authLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>
+                  {authLoading
+                    ? isLoginTab
+                      ? 'Signing in...'
+                      : 'Creating account...'
+                    : isLoginTab
+                    ? 'Sign In to Account'
+                    : 'Create My Account'}
+                </span>
               </button>
             </form>
+
+            {/* Divider */}
+            <div className="relative my-5 flex items-center">
+              <div className="flex-grow border-t border-[#EADCC8]" />
+              <span className="mx-3 shrink-0 text-[11px] font-bold uppercase tracking-wider text-[#777777]">
+                or
+              </span>
+              <div className="flex-grow border-t border-[#EADCC8]" />
+            </div>
+
+            {/* Continue with Google (Shown on both Login & Sign Up sections) */}
+            <button
+              type="button"
+              onClick={handleGoogleAuth}
+              disabled={authLoading || googleLoading}
+              aria-label={isLoginTab ? 'Continue with Google to sign in' : 'Continue with Google to sign up'}
+              className="w-full py-3 px-4 bg-[#FFFCF7] hover:bg-[#FCF3E2]/50 border border-[#EADCC8] hover:border-[#A64B3C]/60 text-[#292929] text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all disabled:opacity-60 cursor-pointer flex items-center justify-center gap-2.5"
+            >
+              {googleLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-[#A64B3C]" />
+              ) : (
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+              )}
+              <span>{googleLoading ? 'Connecting to Google...' : 'Continue with Google'}</span>
+            </button>
 
             {/* Forgot password popup */}
             {forgotOpen && (
@@ -257,9 +382,19 @@ export const CustomerAccountPage: React.FC = () => {
         {/* Account Header */}
         <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-[#A64B3C] text-[#FFFCF7] flex items-center justify-center font-heading font-bold text-xl">
-              {user.name.charAt(0).toUpperCase()}
-            </div>
+            {user.avatarUrl && !avatarFailed ? (
+              <img
+                src={user.avatarUrl}
+                alt={user.name}
+                referrerPolicy="no-referrer"
+                onError={() => setAvatarFailed(true)}
+                className="w-14 h-14 rounded-2xl object-cover border border-[#EADCC8] shrink-0"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-[#A64B3C] text-[#FFFCF7] flex items-center justify-center font-heading font-bold text-xl shrink-0">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
               <h1 className="font-heading font-bold text-2xl text-[#292929]">
                 Hello, {user.name}!
@@ -281,7 +416,7 @@ export const CustomerAccountPage: React.FC = () => {
               </button>
             )}
             <button
-              onClick={logout}
+              onClick={() => { void logout(); }}
               className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-[#292929] hover:bg-[#FFFCF7] rounded-xl transition-colors border border-[#EADCC8] cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
