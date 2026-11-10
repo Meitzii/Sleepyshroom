@@ -21,12 +21,15 @@ import {
   Check, 
   Sparkles, 
   AlertCircle,
-  ExternalLink,
   DollarSign,
   Users,
-  ImagePlus
+  ImagePlus,
+  Lock,
+  Loader2
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
+import { supabase } from '../lib/supabase.ts';
+import { ContactMessagesPanel } from '../components/admin/ContactMessagesPanel.tsx';
 import type { 
   Product, 
   CarouselSlide, 
@@ -37,11 +40,13 @@ import type {
 } from '../types/index.ts';
 
 export const AdminDashboard: React.FC = () => {
-  const { navigateTo, refreshData } = useShop();
+  const { user, navigateTo, refreshData } = useShop();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'carousel' | 'products' | 'homepage' | 'collections' | 'orders' | 'messages' | 'settings'>('overview');
   const [stats, setStats] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [verifyingAdmin, setVerifyingAdmin] = useState(true);
+  const [adminToken, setAdminToken] = useState<string | null>(null);
 
   // Editable state loaded from server
   const [slides, setSlides] = useState<CarouselSlide[]>([]);
@@ -50,6 +55,10 @@ export const AdminDashboard: React.FC = () => {
   const [settings, setSettings] = useState<WebsiteSettings | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messagesSetupError, setMessagesSetupError] = useState<string | null>(null);
+  const [emailConfigured, setEmailConfigured] = useState(false);
+  const [emailProvider, setEmailProvider] = useState<string | null>(null);
 
   // Feedback notifications
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -63,17 +72,75 @@ export const AdminDashboard: React.FC = () => {
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
 
-  // Load all admin data
-  const loadAdminData = async () => {
+  const isAuthorizedAdminUser = Boolean(
+    user &&
+      (user.role === 'admin' ||
+        user.isAdmin ||
+        user.email.toLowerCase() === 'shop.sleepyshroom@gmail.com')
+  );
+
+  const getFreshAdminToken = async (): Promise<string | null> => {
+    if (!supabase) return adminToken;
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token || null;
+    if (token !== adminToken) {
+      setAdminToken(token);
+    }
+    return token;
+  };
+
+  const fetchAdminMessages = async (tokenOverride?: string | null) => {
+    const token = tokenOverride ?? (await getFreshAdminToken());
+    if (!token) {
+      setMessages([]);
+      setMessagesSetupError('Please sign in with an administrator account to access inquiries.');
+      return;
+    }
+
+    try {
+      setMessagesLoading(true);
+      setMessagesSetupError(null);
+      const msgsRes = await fetch('/api/admin/messages', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const msgsData = await msgsRes.json().catch(() => null);
+      if (!msgsRes.ok || !msgsData?.success) {
+        setMessages([]);
+        setMessagesSetupError(
+          msgsData?.error || 'Unable to load contact messages from Supabase.'
+        );
+        return;
+      }
+
+      setMessages(Array.isArray(msgsData.messages) ? msgsData.messages : []);
+      setEmailConfigured(Boolean(msgsData.emailConfigured));
+      setEmailProvider(msgsData.emailProvider || null);
+    } catch (err: any) {
+      setMessagesSetupError(err?.message || 'Unable to load contact messages.');
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
+  // Load all admin data strictly when an authenticated admin session is present
+  const loadAdminData = async (tokenOverride?: string | null) => {
+    const token = tokenOverride ?? (await getFreshAdminToken());
+    if (!isAuthorizedAdminUser || !token) {
+      setLoadingStats(false);
+      return;
+    }
+
     try {
       setLoadingStats(true);
-      const [statsRes, contentRes, prodsRes, colsRes, ordersRes, msgsRes] = await Promise.all([
-        fetch('/api/admin/stats'),
-        fetch('/api/admin/content'),
+      const authHeaders = { Authorization: `Bearer ${token}` };
+      const [statsRes, contentRes, prodsRes, colsRes, ordersRes] = await Promise.all([
+        fetch('/api/admin/stats', { headers: authHeaders }),
+        fetch('/api/admin/content', { headers: authHeaders }),
         fetch('/api/products?includeDrafts=true'),
         fetch('/api/collections'),
         fetch('/api/orders'),
-        fetch('/api/admin/messages'),
       ]);
 
       if (statsRes.ok) setStats(await statsRes.json());
@@ -85,7 +152,8 @@ export const AdminDashboard: React.FC = () => {
       if (prodsRes.ok) setAllProducts(await prodsRes.json());
       if (colsRes.ok) setAllCollections(await colsRes.json());
       if (ordersRes.ok) setOrders(await ordersRes.json());
-      if (msgsRes.ok) setMessages(await msgsRes.json());
+
+      await fetchAdminMessages(token);
     } catch (err: any) {
       setErrorMessage('Failed to load admin data: ' + err.message);
     } finally {
@@ -94,8 +162,105 @@ export const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    loadAdminData();
-  }, []);
+    let active = true;
+    const verifyAndLoad = async () => {
+      setVerifyingAdmin(true);
+      try {
+        if (!isAuthorizedAdminUser) {
+          if (active) {
+            setAdminToken(null);
+            setLoadingStats(false);
+          }
+          return;
+        }
+        const token = await getFreshAdminToken();
+        if (!active) return;
+        if (!token) {
+          setLoadingStats(false);
+          return;
+        }
+        await loadAdminData(token);
+      } finally {
+        if (active) setVerifyingAdmin(false);
+      }
+    };
+    void verifyAndLoad();
+    return () => {
+      active = false;
+    };
+  }, [user?.id, user?.role, user?.email]);
+
+  const handleUpdateMessageStatus = async (
+    id: string,
+    status: 'unread' | 'read' | 'replied'
+  ): Promise<{ success: boolean; error?: string }> => {
+    const token = await getFreshAdminToken();
+    if (!token) return { success: false, error: 'Administrator session expired.' };
+
+    const res = await fetch(`/api/admin/messages/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.success) {
+      return { success: false, error: data?.error || 'Could not update message status.' };
+    }
+    if (data.message) {
+      setMessages(prev => prev.map(m => (m.id === id ? data.message : m)));
+    }
+    return { success: true };
+  };
+
+  const handleDeleteMessage = async (id: string): Promise<{ success: boolean; error?: string }> => {
+    const token = await getFreshAdminToken();
+    if (!token) return { success: false, error: 'Administrator session expired.' };
+
+    const res = await fetch(`/api/admin/messages/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.success) {
+      return { success: false, error: data?.error || 'Could not delete message.' };
+    }
+    setMessages(prev => prev.filter(m => m.id !== id));
+    return { success: true };
+  };
+
+  const handleSendReply = async (
+    id: string,
+    replySubject: string,
+    replyBody: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const token = await getFreshAdminToken();
+    if (!token) return { success: false, error: 'Administrator session expired.' };
+
+    const res = await fetch(`/api/admin/messages/${encodeURIComponent(id)}/reply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ replySubject, replyBody }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.success || !data?.emailDelivered) {
+      return {
+        success: false,
+        error: data?.error || 'Failed to send reply email.',
+      };
+    }
+    if (data.message) {
+      setMessages(prev => prev.map(m => (m.id === id ? data.message : m)));
+    }
+    return { success: true };
+  };
 
   const triggerSaveNotification = (msg: string) => {
     setSaveStatus(msg);
@@ -301,6 +466,53 @@ export const AdminDashboard: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  if (verifyingAdmin) {
+    return (
+      <div className="py-20 bg-[#FFFCF7] min-h-[70vh] flex flex-col items-center justify-center space-y-3">
+        <Loader2 className="w-7 h-7 text-[#A64B3C] animate-spin" />
+        <p className="text-xs font-bold text-[#777777]">Verifying administrator access...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthorizedAdminUser || !adminToken) {
+    return (
+      <div className="py-16 bg-[#FFFCF7] min-h-[70vh] px-4">
+        <div className="max-w-md mx-auto bg-[#FCF3E2] rounded-3xl p-8 border border-[#EADCC8] text-center space-y-4 shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-[#A64B3C]/10 text-[#A64B3C] flex items-center justify-center mx-auto">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h1 className="font-heading font-bold text-xl text-[#292929]">
+            Administrator Access Required
+          </h1>
+          <p className="text-xs text-[#777777] font-medium leading-relaxed">
+            {user
+              ? `Signed in as ${user.email}, which does not have administrator privileges.`
+              : 'Please sign in with an authorized administrator account to view store management and customer inquiries.'}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => navigateTo('account')}
+              className="px-5 py-2.5 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] text-xs font-bold rounded-xl cursor-pointer transition-colors"
+            >
+              {user ? 'Switch Account' : 'Admin Sign In'}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigateTo('home')}
+              className="px-5 py-2.5 bg-[#FFFCF7] hover:bg-[#EADCC8]/40 text-[#292929] border border-[#EADCC8] text-xs font-bold rounded-xl cursor-pointer transition-colors"
+            >
+              Back to Shop
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const unreadMessagesCount = messages.filter(m => m.status === 'unread').length;
+
   return (
     <div className="py-8 sm:py-12 bg-[#FFFCF7] min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
@@ -424,6 +636,17 @@ export const AdminDashboard: React.FC = () => {
           >
             <MessageSquare className="w-4 h-4" />
             <span>Messages ({messages.length})</span>
+            {unreadMessagesCount > 0 && (
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold leading-none ${
+                  activeTab === 'messages'
+                    ? 'bg-[#FFFCF7] text-[#A64B3C]'
+                    : 'bg-[#A64B3C] text-[#FFFCF7]'
+                }`}
+              >
+                {unreadMessagesCount}
+              </span>
+            )}
           </button>
 
           <button
@@ -1008,53 +1231,17 @@ export const AdminDashboard: React.FC = () => {
 
         {/* TAB 6: INCOMING MESSAGES */}
         {activeTab === 'messages' && (
-          <div className="space-y-6">
-            <div className="bg-[#F9F6F0] p-5 rounded-3xl border border-[#E8C9C1]">
-              <h2 className="font-heading font-bold text-lg text-[#1E1419]">
-                Contact Form Submissions
-              </h2>
-              <p className="text-xs text-[#33222C]">
-                Customer notes submitted through the Contact Page.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {messages.length > 0 ? (
-                messages.map(m => (
-                  <div key={m.id} className="p-5 bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="font-bold text-sm text-[#1E1419]">{m.fullName}</span>
-                        <span className="text-xs text-[#8B6F7A] ml-2 font-medium">({m.email})</span>
-                      </div>
-                      <span className="text-xs text-[#8B6F7A]/70">
-                        {new Date(m.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-xs font-bold text-[#8B6F7A]">
-                      Subject: {m.subject}
-                    </p>
-                    <p className="text-xs text-[#33222C] leading-relaxed bg-white p-3.5 rounded-2xl border border-[#E8C9C1]">
-                      {m.message}
-                    </p>
-                    <div className="text-right">
-                      <a
-                        href={`mailto:${m.email}?subject=Re: ${encodeURIComponent(m.subject)}`}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-[#8B6F7A] hover:underline"
-                      >
-                        <span>Reply via Email</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-8 bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] text-center text-xs text-[#8B6F7A]">
-                  No messages received yet.
-                </div>
-              )}
-            </div>
-          </div>
+          <ContactMessagesPanel
+            messages={messages}
+            loading={messagesLoading}
+            setupError={messagesSetupError}
+            emailConfigured={emailConfigured}
+            emailProvider={emailProvider}
+            onRefresh={() => fetchAdminMessages()}
+            onUpdateStatus={handleUpdateMessageStatus}
+            onDelete={handleDeleteMessage}
+            onSendReply={handleSendReply}
+          />
         )}
 
         {/* TAB 7: WEBSITE SETTINGS */}

@@ -536,7 +536,7 @@ export const CustomerAccountPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            {(user.email.toLowerCase() === 'shop.sleepyshroom@gmail.com' || user.isAdmin || user.role === 'admin' || user.email.toLowerCase().includes('admin') || user.name.toLowerCase().includes('admin')) && (
+            {(user.role === 'admin' || user.isAdmin || user.email.toLowerCase() === 'shop.sleepyshroom@gmail.com') && (
               <button
                 onClick={() => navigateTo('admin')}
                 className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#FFFCF7] bg-[#A64B3C] hover:bg-[#8E3E30] rounded-xl transition-all shadow-xs cursor-pointer"

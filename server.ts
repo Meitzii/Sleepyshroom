@@ -15,6 +15,13 @@ import type {
   DiscountCode, 
   UserAccount 
 } from './src/types/index.ts';
+import {
+  handleContactSubmission,
+  handleAdminListMessages,
+  handleAdminUpdateMessageStatus,
+  handleAdminDeleteMessage,
+  handleAdminReplyMessage,
+} from './lib/contact-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -499,7 +506,7 @@ For any questions or assistance with your order, email us at shop.sleepyshroom@g
       subject: 'Custom ultrawide resolution request',
       message: 'I love your Sleepy Garden wallpapers so much! Will you be releasing dual 32:9 super ultrawide editions soon? Keep up the magical work!',
       consent: true,
-      status: 'new',
+      status: 'unread',
       createdAt: '2026-11-06T15:10:00.000Z',
     }
   ],
@@ -1092,59 +1099,63 @@ app.get('/api/downloads/:token/file/:productId', (req: Request, res: Response) =
   res.send(`=== SLEEPYSHROOM DIGITAL WALLPAPER BUNDLE ===\n\nTitle: ${prod.title}\nTheme: ${prod.theme}\nSupported Devices: ${prod.deviceTypes.join(', ')}\nResolutions: ${prod.resolutions.join(', ')}\nFile Format: ${prod.fileFormat}\n\nThank you so much for supporting sleepyshroom!\n"Little screens, sweeter dreams."`);
 });
 
-// 8. Contact Form
-app.post('/api/contact', (req: Request, res: Response) => {
-  const store = readStore();
-  const { fullName, email, subject, message, consent } = req.body;
-
-  if (!fullName || !email || !message) {
-    res.status(400).json({ error: 'Please provide your name, email, and message.' });
-    return;
+// 8. Contact Form & Admin Contact Messages (Supabase + Email Delivery)
+app.post('/api/contact', async (req: Request, res: Response) => {
+  try {
+    const result = await handleContactSubmission(req);
+    res.status(result.status ?? 500).json(result.body);
+  } catch (err: any) {
+    console.error('[Contact API Error]', err);
+    res.status(500).json({
+      success: false,
+      savedToDatabase: false,
+      error: err?.message || 'Unexpected error submitting contact form.',
+    });
   }
-
-  if (!consent) {
-    res.status(400).json({ error: 'Please agree to the privacy consent checkbox.' });
-    return;
-  }
-
-  const newMsg: ContactMessage = {
-    id: `msg-${Date.now()}`,
-    fullName,
-    email,
-    subject: subject || 'General inquiry',
-    message,
-    consent: Boolean(consent),
-    status: 'new',
-    createdAt: new Date().toISOString(),
-  };
-
-  store.messages.unshift(newMsg);
-  saveStore(store);
-
-  console.log(`[Contact Form Received] From ${fullName} (${email}): ${subject}. Forwarded to store recipient: ${store.settings.contactEmail}`);
-
-  res.json({
-    success: true,
-    message: 'Thank you for your message! We will get back to you shortly.',
-    id: newMsg.id,
-  });
 });
 
-app.get('/api/admin/messages', (_req: Request, res: Response) => {
-  const store = readStore();
-  res.json(store.messages);
+app.get('/api/admin/messages', async (req: Request, res: Response) => {
+  try {
+    const result = await handleAdminListMessages(req);
+    res.status(result.status ?? 500).json(result.body);
+  } catch (err: any) {
+    console.error('[Admin Messages List Error]', err);
+    res.status(500).json({ success: false, error: 'Unable to load contact messages.' });
+  }
 });
 
-app.patch('/api/admin/messages/:id/status', (req: Request, res: Response) => {
-  const store = readStore();
-  const msg = store.messages.find(m => m.id === req.params.id);
-  if (!msg) {
-    res.status(404).json({ error: 'Message not found' });
-    return;
+app.patch(['/api/admin/messages/:id', '/api/admin/messages/:id/status'], async (req: Request, res: Response) => {
+  try {
+    const result = await handleAdminUpdateMessageStatus(req, String(req.params.id || ''));
+    res.status(result.status ?? 500).json(result.body);
+  } catch (err: any) {
+    console.error('[Admin Message Update Error]', err);
+    res.status(500).json({ success: false, error: 'Unable to update message status.' });
   }
-  msg.status = req.body.status || 'read';
-  saveStore(store);
-  res.json({ success: true, message: msg });
+});
+
+app.delete('/api/admin/messages/:id', async (req: Request, res: Response) => {
+  try {
+    const result = await handleAdminDeleteMessage(req, String(req.params.id || ''));
+    res.status(result.status ?? 500).json(result.body);
+  } catch (err: any) {
+    console.error('[Admin Message Delete Error]', err);
+    res.status(500).json({ success: false, error: 'Unable to delete contact message.' });
+  }
+});
+
+app.post('/api/admin/messages/:id/reply', async (req: Request, res: Response) => {
+  try {
+    const result = await handleAdminReplyMessage(req, String(req.params.id || ''));
+    res.status(result.status ?? 500).json(result.body);
+  } catch (err: any) {
+    console.error('[Admin Message Reply Error]', err);
+    res.status(500).json({
+      success: false,
+      emailDelivered: false,
+      error: err?.message || 'Unable to send reply email.',
+    });
+  }
 });
 
 // 9. Admin Image Upload / Asset handler
@@ -1234,7 +1245,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
 });
 
 // 11. Admin Statistics Overview
-app.get('/api/admin/stats', (_req: Request, res: Response) => {
+app.get('/api/admin/stats', async (req: Request, res: Response) => {
   const store = readStore();
   const totalRevenue = store.orders.reduce((sum, o) => sum + (o.paymentStatus === 'completed' ? o.total : 0), 0);
   const totalOrders = store.orders.length;
@@ -1242,7 +1253,16 @@ app.get('/api/admin/stats', (_req: Request, res: Response) => {
   const draftProducts = store.products.filter(p => p.status === 'draft').length;
   const totalCustomers = store.users.length;
   const recentOrders = store.orders.slice(0, 5);
-  const unreadMessages = store.messages.filter(m => m.status === 'new').length;
+
+  let unreadMessages = 0;
+  try {
+    const msgRes = await handleAdminListMessages(req);
+    if (msgRes.status === 200 && Array.isArray(msgRes.body?.messages)) {
+      unreadMessages = msgRes.body.messages.filter((m: any) => m.status === 'unread').length;
+    }
+  } catch {
+    unreadMessages = 0;
+  }
 
   res.json({
     totalRevenue,

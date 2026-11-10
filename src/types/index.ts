@@ -124,13 +124,20 @@ export interface Order {
 
 export interface ContactMessage {
   id: string;
+  submissionId?: string;
+  userId?: string | null;
   fullName: string;
   email: string;
   subject: string;
   message: string;
   consent: boolean;
-  status: 'new' | 'read' | 'replied';
+  status: 'unread' | 'read' | 'replied';
+  emailSent?: boolean;
+  emailSentAt?: string | null;
+  emailError?: string | null;
+  repliedAt?: string | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface DiscountCode {
