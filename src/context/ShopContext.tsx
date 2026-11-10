@@ -26,6 +26,13 @@ export interface GoogleSignInResult {
   externalTabUrl?: string;
 }
 
+export interface AuthActionResult {
+  success: boolean;
+  error?: string;
+  needsEmailVerification?: boolean;
+  pendingEmail?: string;
+}
+
 interface ShopContextType {
   products: Product[];
   collections: Collection[];
@@ -47,7 +54,10 @@ interface ShopContextType {
   applyDiscount: (code: string) => Promise<{ success: boolean; message: string }>;
   removeDiscount: () => void;
   user: UserAccount | null;
-  login: (email: string, name?: string) => Promise<boolean>;
+  signInWithEmail: (email: string, password: string) => Promise<AuthActionResult>;
+  signUpWithEmail: (name: string, email: string, password: string) => Promise<AuthActionResult>;
+  resendVerificationEmail: (email: string) => Promise<AuthActionResult>;
+  sendPasswordResetEmail: (email: string) => Promise<AuthActionResult>;
   signInWithGoogle: () => Promise<GoogleSignInResult>;
   logout: () => Promise<void>;
   oauthError: string | null;
@@ -298,15 +308,16 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const total = Number(Math.max(0, subtotal - discountAmount).toFixed(2));
 
-  // Sync authenticated Supabase Google user into Sleepyshroom customer profile
+  // Sync authenticated Supabase user (Email/Password or Google) into public.profiles
   const syncSupabaseUser = async (supaUser: SupabaseUser): Promise<UserAccount | null> => {
     const email = supaUser.email?.trim();
     if (!email) return null;
 
     const meta = supaUser.user_metadata || {};
-    const fullName =
+    const metaName =
       (typeof meta.full_name === 'string' && meta.full_name.trim()) ||
       (typeof meta.name === 'string' && meta.name.trim()) ||
+      (typeof meta.display_name === 'string' && meta.display_name.trim()) ||
       email.split('@')[0] ||
       'Cozy Friend';
     const avatarUrl =
@@ -316,53 +327,90 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isOwnerEmail = email.toLowerCase() === 'shop.sleepyshroom@gmail.com';
     const provider =
       (typeof supaUser.app_metadata?.provider === 'string' && supaUser.app_metadata.provider) ||
-      'google';
+      'email';
 
-    let syncedUser: UserAccount = {
+    let resolvedName =
+      isOwnerEmail && metaName === email.split('@')[0] ? 'Sleepyshroom Owner' : metaName;
+    let resolvedRole: 'admin' | 'customer' = isOwnerEmail ? 'admin' : 'customer';
+    let resolvedCreatedAt = supaUser.created_at || new Date().toISOString();
+
+    if (supabase) {
+      try {
+        const { data: existingProfile, error: selectError } = await supabase
+          .from('profiles')
+          .select('id, email, display_name, role, created_at')
+          .eq('id', supaUser.id)
+          .maybeSingle();
+
+        if (!selectError && existingProfile) {
+          if (typeof existingProfile.display_name === 'string' && existingProfile.display_name.trim()) {
+            resolvedName = existingProfile.display_name.trim();
+          } else if (metaName) {
+            await supabase
+              .from('profiles')
+              .update({ display_name: metaName })
+              .eq('id', supaUser.id);
+          }
+
+          if (existingProfile.role === 'admin' || isOwnerEmail) {
+            resolvedRole = 'admin';
+          }
+          if (existingProfile.created_at) {
+            resolvedCreatedAt = existingProfile.created_at;
+          }
+        } else if (!selectError && !existingProfile) {
+          const targetRole: 'admin' | 'customer' = isOwnerEmail ? 'admin' : 'customer';
+          const { data: upsertedProfile, error: upsertError } = await supabase
+            .from('profiles')
+            .upsert(
+              {
+                id: supaUser.id,
+                email,
+                display_name: resolvedName,
+                role: targetRole,
+              },
+              { onConflict: 'id', ignoreDuplicates: true }
+            )
+            .select('id, email, display_name, role, created_at')
+            .maybeSingle();
+
+          if (!upsertError && upsertedProfile) {
+            if (typeof upsertedProfile.display_name === 'string' && upsertedProfile.display_name.trim()) {
+              resolvedName = upsertedProfile.display_name.trim();
+            }
+            if (upsertedProfile.role === 'admin' || isOwnerEmail) {
+              resolvedRole = 'admin';
+            }
+            if (upsertedProfile.created_at) {
+              resolvedCreatedAt = upsertedProfile.created_at;
+            }
+          } else if (upsertError) {
+            console.warn('Could not sync public.profiles row:', upsertError.message);
+          }
+        } else if (selectError) {
+          console.warn('Could not read public.profiles row:', selectError.message);
+        }
+      } catch (err) {
+        console.warn('Profile sync warning:', err);
+      }
+    }
+
+    const syncedUser: UserAccount = {
       id: supaUser.id,
-      name: isOwnerEmail ? 'Sleepyshroom Owner' : fullName,
+      name: resolvedName,
       email,
-      createdAt: supaUser.created_at || new Date().toISOString(),
-      isAdmin: isOwnerEmail,
-      role: isOwnerEmail ? 'admin' : 'customer',
+      createdAt: resolvedCreatedAt,
+      isAdmin: resolvedRole === 'admin',
+      role: resolvedRole,
       avatarUrl,
       authProvider: provider,
     };
-
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name: fullName }),
-      });
-      if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
-        const data = await res.json();
-        if (data?.user) {
-          const serverUser = data.user as UserAccount;
-          const emailPrefix = email.split('@')[0];
-          const resolvedName =
-            serverUser.name && serverUser.name !== emailPrefix
-              ? serverUser.name
-              : syncedUser.name;
-          syncedUser = {
-            ...serverUser,
-            name: resolvedName,
-            avatarUrl: avatarUrl || serverUser.avatarUrl,
-            authProvider: provider,
-            isAdmin: Boolean(serverUser.isAdmin || isOwnerEmail),
-            role: isOwnerEmail || serverUser.isAdmin ? 'admin' : serverUser.role || 'customer',
-          };
-        }
-      }
-    } catch {
-      // Static deployments (e.g. Vercel without Express) gracefully use Supabase profile metadata directly
-    }
 
     setUser(syncedUser);
     return syncedUser;
   };
 
-  // Listen to Supabase OAuth callbacks & session changes
+  // Listen to Supabase Auth callbacks & persistent session changes
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const rawHash = window.location.hash.replace(/^#\/?/, '');
@@ -386,19 +434,25 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    const hadOAuthCallbackParams =
+    const hadAuthCallbackParams =
       searchParams.has('code') ||
+      searchParams.get('type') === 'signup' ||
+      searchParams.get('type') === 'email' ||
+      searchParams.get('type') === 'recovery' ||
       rawHash.startsWith('access_token=') ||
       rawHash.includes('refresh_token=');
 
-    if (!supabase) return;
+    if (!supabase) {
+      setUser(null);
+      return;
+    }
 
     let isMounted = true;
-    let handledPostOAuthRedirect = false;
+    let handledPostAuthRedirect = false;
     let lastSyncedSessionKey: string | null = null;
 
-    const completePostOAuthNavigation = (isSignInEvent: boolean) => {
-      if (handledPostOAuthRedirect) return;
+    const completePostAuthNavigation = (isSignInEvent: boolean) => {
+      if (handledPostAuthRedirect) return;
 
       let shouldOpenAccount = false;
       try {
@@ -416,8 +470,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentHash.startsWith('access_token=') ||
         currentHash.includes('refresh_token=');
 
-      if (shouldOpenAccount || hadOAuthCallbackParams || hasUrlTokens || isSignInEvent) {
-        handledPostOAuthRedirect = true;
+      if (shouldOpenAccount || hadAuthCallbackParams || hasUrlTokens || isSignInEvent) {
+        handledPostAuthRedirect = true;
         setActiveView('account');
         setViewParam(null);
         try {
@@ -432,7 +486,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const sessionKey = `${sessionUser.id}:${accessToken}`;
       if (lastSyncedSessionKey === sessionKey) {
         if (isSignInEvent) {
-          completePostOAuthNavigation(true);
+          completePostAuthNavigation(true);
         }
         return;
       }
@@ -440,7 +494,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setOauthError(null);
       void syncSupabaseUser(sessionUser).then(() => {
         if (isMounted) {
-          completePostOAuthNavigation(isSignInEvent);
+          completePostAuthNavigation(isSignInEvent);
         }
       });
     };
@@ -450,6 +504,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (event === 'SIGNED_OUT') {
         lastSyncedSessionKey = null;
+        handledPostAuthRedirect = false;
         setUser(null);
         return;
       }
@@ -457,15 +512,15 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         syncIfNeeded(session.user, session.access_token || '', event === 'SIGNED_IN');
       } else if (event === 'INITIAL_SESSION') {
-        setUser(prev => (prev?.authProvider && prev.authProvider !== 'email' ? null : prev));
+        setUser(null);
       }
     });
 
     supabase.auth.getSession().then(({ data, error }) => {
       if (!isMounted) return;
       if (error && !urlError) {
-        setOauthError(error.message || 'Unable to complete Google sign-in.');
-        if (hadOAuthCallbackParams) {
+        setOauthError(error.message || 'Unable to verify authentication session.');
+        if (hadAuthCallbackParams) {
           setActiveView('account');
           setViewParam(null);
           try {
@@ -478,6 +533,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       if (data.session?.user) {
         syncIfNeeded(data.session.user, data.session.access_token || '', false);
+      } else {
+        setUser(null);
       }
     });
 
@@ -487,39 +544,223 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // User authentication (preserves existing email/password login)
-  const login = async (email: string, name?: string) => {
+  // Email & Password Sign Up via Supabase Auth
+  const signUpWithEmail = async (
+    name: string,
+    email: string,
+    password: string
+  ): Promise<AuthActionResult> => {
+    setOauthError(null);
+
+    if (!isSupabaseConfigured || !supabase) {
+      return {
+        success: false,
+        error:
+          'Authentication requires Supabase configuration (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY).',
+      };
+    }
+
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedName) {
+      return { success: false, error: 'Please enter your name.' };
+    }
+    if (!trimmedEmail || !trimmedEmail.includes('@')) {
+      return { success: false, error: 'Please enter a valid email address.' };
+    }
+    if (!password || password.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters long.' };
+    }
+
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name }),
+      const { data, error } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: {
+            full_name: trimmedName,
+            name: trimmedName,
+            display_name: trimmedName,
+          },
+        },
       });
-      if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
-        const data = await res.json();
-        setUser({ ...data.user, authProvider: 'email' });
-        return true;
+
+      if (error) {
+        console.error('Supabase signUp error:', error);
+        const msg = error.message || 'Could not create your account.';
+        const lower = msg.toLowerCase();
+
+        if (error.code === 'user_already_exists' || lower.includes('already registered')) {
+          return {
+            success: false,
+            error: 'An account with this email already exists. Please sign in instead.',
+          };
+        }
+        if (error.code === 'over_email_send_rate_limit' || error.status === 429) {
+          return {
+            success: false,
+            error: 'Too many verification emails were requested. Please wait a few minutes and try again.',
+          };
+        }
+        return { success: false, error: msg };
       }
-      if (!res.ok) {
-        return false;
+
+      // Supabase returns identities: [] when signing up with an already-existing confirmed email
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        return {
+          success: false,
+          error:
+            'An account with this email already exists. Please switch to Sign In or use Continue with Google.',
+        };
       }
-    } catch {
-      // Static fallback when Express backend is unavailable (e.g. static Vercel deploy)
+
+      if (data.session && data.user) {
+        await syncSupabaseUser(data.user);
+        navigateTo('account');
+        return { success: true };
+      }
+
+      if (data.user && !data.session) {
+        return {
+          success: true,
+          needsEmailVerification: true,
+          pendingEmail: trimmedEmail,
+        };
+      }
+
+      return { success: false, error: 'Could not complete registration. Please try again.' };
+    } catch (err: any) {
+      console.error('Unexpected signUp error:', err);
+      return {
+        success: false,
+        error: err?.message || 'An unexpected error occurred during registration.',
+      };
+    }
+  };
+
+  // Email & Password Login via Supabase Auth
+  const signInWithEmail = async (
+    email: string,
+    password: string
+  ): Promise<AuthActionResult> => {
+    setOauthError(null);
+
+    if (!isSupabaseConfigured || !supabase) {
+      return {
+        success: false,
+        error:
+          'Authentication requires Supabase configuration (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY).',
+      };
     }
 
     const trimmedEmail = email.trim();
-    if (!trimmedEmail || !trimmedEmail.includes('@')) return false;
-    const isOwnerEmail = trimmedEmail.toLowerCase() === 'shop.sleepyshroom@gmail.com';
-    setUser({
-      id: isOwnerEmail ? 'usr-admin' : `usr-${Date.now()}`,
-      name: isOwnerEmail ? 'Sleepyshroom Owner' : (name?.trim() || trimmedEmail.split('@')[0]),
-      email: trimmedEmail,
-      createdAt: new Date().toISOString(),
-      isAdmin: isOwnerEmail,
-      role: isOwnerEmail ? 'admin' : 'customer',
-      authProvider: 'email',
-    });
-    return true;
+    if (!trimmedEmail || !trimmedEmail.includes('@')) {
+      return { success: false, error: 'Please enter a valid email address.' };
+    }
+    if (!password) {
+      return { success: false, error: 'Please enter your password.' };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password,
+      });
+
+      if (error) {
+        console.error('Supabase signInWithPassword error:', error);
+        const msg = error.message || 'Sign in failed.';
+        const lower = msg.toLowerCase();
+
+        if (error.code === 'email_not_confirmed' || lower.includes('email not confirmed')) {
+          return {
+            success: false,
+            needsEmailVerification: true,
+            pendingEmail: trimmedEmail,
+            error:
+              'Please verify your email before signing in. Check your inbox for the confirmation link or resend it below.',
+          };
+        }
+        if (error.code === 'invalid_credentials' || lower.includes('invalid login credentials')) {
+          return {
+            success: false,
+            error:
+              'Invalid email or password. If you signed up using Google, click "Continue with Google" below.',
+          };
+        }
+        return { success: false, error: msg };
+      }
+
+      if (data.session && data.user) {
+        await syncSupabaseUser(data.user);
+        navigateTo('account');
+        return { success: true };
+      }
+
+      return { success: false, error: 'Unable to establish a sign-in session.' };
+    } catch (err: any) {
+      console.error('Unexpected signInWithPassword error:', err);
+      return {
+        success: false,
+        error: err?.message || 'An unexpected error occurred during sign in.',
+      };
+    }
+  };
+
+  const resendVerificationEmail = async (email: string): Promise<AuthActionResult> => {
+    if (!isSupabaseConfigured || !supabase) {
+      return {
+        success: false,
+        error: 'Supabase authentication is not configured.',
+      };
+    }
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      return { success: false, error: 'Please enter your email address.' };
+    }
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: trimmedEmail,
+        options: {
+          emailRedirectTo: window.location.origin,
+        },
+      });
+      if (error) {
+        return { success: false, error: error.message || 'Could not resend verification email.' };
+      }
+      return { success: true, pendingEmail: trimmedEmail };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Could not resend verification email.' };
+    }
+  };
+
+  const sendPasswordResetEmail = async (email: string): Promise<AuthActionResult> => {
+    if (!isSupabaseConfigured || !supabase) {
+      return {
+        success: false,
+        error: 'Supabase authentication is not configured.',
+      };
+    }
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !trimmedEmail.includes('@')) {
+      return { success: false, error: 'Please enter your email address above first.' };
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+        redirectTo: window.location.origin,
+      });
+      if (error) {
+        return { success: false, error: error.message || 'Could not send reset email.' };
+      }
+      return { success: true, pendingEmail: trimmedEmail };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Could not send reset email.' };
+    }
   };
 
   // Google OAuth 2.0 via Supabase Auth
@@ -701,7 +942,10 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         applyDiscount,
         removeDiscount,
         user,
-        login,
+        signInWithEmail,
+        signUpWithEmail,
+        resendVerificationEmail,
+        sendPasswordResetEmail,
         signInWithGoogle,
         logout,
         oauthError,

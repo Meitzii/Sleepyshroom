@@ -21,7 +21,10 @@ import { downloadWallpaperFile } from '../utils/downloadHelper.ts';
 export const CustomerAccountPage: React.FC = () => {
   const {
     user,
-    login,
+    signInWithEmail,
+    signUpWithEmail,
+    resendVerificationEmail,
+    sendPasswordResetEmail,
     signInWithGoogle,
     logout,
     oauthError,
@@ -38,9 +41,15 @@ export const CustomerAccountPage: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [previewTabUrl, setPreviewTabUrl] = useState<string | null>(null);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
+  const [verificationFromSignup, setVerificationFromSignup] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
 
   // User orders state
   const [userOrders, setUserOrders] = useState<Order[]>([]);
@@ -76,9 +85,16 @@ export const CustomerAccountPage: React.FC = () => {
     setAuthError(null);
     clearOAuthError();
     setPreviewTabUrl(null);
+    setResendMessage(null);
+    setVerificationFromSignup(false);
 
     if (!emailInput.trim()) {
       setAuthError('Please enter your email.');
+      return;
+    }
+
+    if (!passwordInput) {
+      setAuthError('Please enter your password.');
       return;
     }
 
@@ -86,9 +102,15 @@ export const CustomerAccountPage: React.FC = () => {
 
     try {
       if (isLoginTab) {
-        const success = await login(emailInput.trim());
-        if (!success) {
-          setAuthError('Login failed. Please verify your email.');
+        setPendingVerificationEmail(null);
+        const result = await signInWithEmail(emailInput.trim(), passwordInput);
+        if (!result.success) {
+          setAuthError(result.error || 'Sign in failed. Please check your email and password.');
+          if (result.needsEmailVerification && result.pendingEmail) {
+            setPendingVerificationEmail(result.pendingEmail);
+          }
+        } else {
+          setPasswordInput('');
         }
       } else {
         if (!nameInput.trim()) {
@@ -96,30 +118,59 @@ export const CustomerAccountPage: React.FC = () => {
           setAuthLoading(false);
           return;
         }
-        const res = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: emailInput.trim(), name: nameInput.trim() }),
-        });
-        if (res.headers.get('content-type')?.includes('application/json')) {
-          const data = await res.json();
-          if (res.ok) {
-            await login(emailInput.trim(), nameInput.trim());
-          } else {
-            setAuthError(data.error || 'Registration failed.');
-          }
+        if (passwordInput.length < 6) {
+          setAuthError('Password must be at least 6 characters long.');
+          setAuthLoading(false);
+          return;
+        }
+
+        const result = await signUpWithEmail(nameInput.trim(), emailInput.trim(), passwordInput);
+        if (!result.success) {
+          setAuthError(result.error || 'Registration failed.');
+        } else if (result.needsEmailVerification && result.pendingEmail) {
+          setPendingVerificationEmail(result.pendingEmail);
+          setVerificationFromSignup(true);
+          setPasswordInput('');
         } else {
-          // Static deployment fallback when Express API is unavailable
-          const success = await login(emailInput.trim(), nameInput.trim());
-          if (!success) {
-            setAuthError('Registration failed. Please verify your details.');
-          }
+          setPasswordInput('');
         }
       }
     } catch {
       setAuthError('An error occurred during authentication.');
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    const targetEmail = pendingVerificationEmail || emailInput.trim();
+    if (!targetEmail) return;
+    setResendLoading(true);
+    setResendMessage(null);
+    try {
+      const result = await resendVerificationEmail(targetEmail);
+      if (result.success) {
+        setResendMessage(`Confirmation email resent to ${targetEmail}.`);
+      } else {
+        setAuthError(result.error || 'Could not resend verification email.');
+      }
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setForgotError(null);
+    setForgotLoading(true);
+    try {
+      const result = await sendPasswordResetEmail(emailInput);
+      if (result.success) {
+        setForgotSent(true);
+      } else {
+        setForgotError(result.error || 'Unable to send reset email.');
+      }
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -179,6 +230,9 @@ export const CustomerAccountPage: React.FC = () => {
                   setAuthError(null);
                   clearOAuthError();
                   setPreviewTabUrl(null);
+                  setPendingVerificationEmail(null);
+                  setVerificationFromSignup(false);
+                  setResendMessage(null);
                 }}
                 className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   isLoginTab ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs' : 'text-[#292929]'
@@ -193,6 +247,10 @@ export const CustomerAccountPage: React.FC = () => {
                   setAuthError(null);
                   clearOAuthError();
                   setPreviewTabUrl(null);
+                  setPendingVerificationEmail(null);
+                  setVerificationFromSignup(false);
+                  setResendMessage(null);
+                  setForgotOpen(false);
                 }}
                 className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   !isLoginTab ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs' : 'text-[#292929]'
@@ -201,6 +259,51 @@ export const CustomerAccountPage: React.FC = () => {
                 New Customer
               </button>
             </div>
+
+            {/* Email Confirmation Prompt (when Sign Up requires email verification) */}
+            {verificationFromSignup && pendingVerificationEmail && (
+              <div className="mb-5 p-4 bg-[#FFFCF7] border border-[#EADCC8] rounded-2xl space-y-3 text-xs">
+                <div className="flex items-start gap-2.5">
+                  <Mail className="w-4 h-4 text-[#A64B3C] shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold text-[#292929]">
+                      Verify your email to finish creating your account
+                    </p>
+                    <p className="text-[#777777] font-medium leading-relaxed">
+                      We sent a confirmation link to{' '}
+                      <strong className="text-[#292929]">{pendingVerificationEmail}</strong>. Please open your inbox and click the verification link before signing in.
+                    </p>
+                  </div>
+                </div>
+                {resendMessage && (
+                  <p className="text-emerald-800 font-semibold flex items-center gap-1.5">
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{resendMessage}</span>
+                  </p>
+                )}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLoginTab(true);
+                      setVerificationFromSignup(false);
+                      setAuthError(null);
+                    }}
+                    className="px-3.5 py-2 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] rounded-xl font-bold cursor-pointer transition-colors"
+                  >
+                    Go to Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { void handleResendVerification(); }}
+                    disabled={resendLoading}
+                    className="px-3.5 py-2 bg-[#FCF3E2] hover:bg-[#EADCC8]/40 text-[#292929] border border-[#EADCC8] rounded-xl font-bold cursor-pointer transition-colors disabled:opacity-60"
+                  >
+                    {resendLoading ? 'Sending...' : 'Resend Confirmation Email'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Form */}
             <form onSubmit={handleAuthSubmit} className="space-y-4">
@@ -252,6 +355,7 @@ export const CustomerAccountPage: React.FC = () => {
                 <input
                   type="password"
                   required
+                  minLength={isLoginTab ? undefined : 6}
                   placeholder="••••••••"
                   value={passwordInput}
                   onChange={e => setPasswordInput(e.target.value)}
@@ -265,6 +369,21 @@ export const CustomerAccountPage: React.FC = () => {
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                     <span>{authError || oauthError}</span>
                   </div>
+                  {pendingVerificationEmail && !verificationFromSignup && (
+                    <div className="space-y-1.5">
+                      <button
+                        type="button"
+                        onClick={() => { void handleResendVerification(); }}
+                        disabled={resendLoading}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFCF7] hover:bg-[#FCF3E2] text-[#A64B3C] border border-[#EADCC8] rounded-lg text-[11px] font-bold transition-colors cursor-pointer disabled:opacity-60"
+                      >
+                        <span>{resendLoading ? 'Sending...' : 'Resend Verification Email'}</span>
+                      </button>
+                      {resendMessage && (
+                        <p className="text-emerald-800 font-semibold">{resendMessage}</p>
+                      )}
+                    </div>
+                  )}
                   {previewTabUrl && (
                     <a
                       href={previewTabUrl}
@@ -344,23 +463,37 @@ export const CustomerAccountPage: React.FC = () => {
               <div className="mt-4 p-4 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8] text-xs space-y-2">
                 <div className="flex justify-between items-center font-bold text-[#292929]">
                   <span>Reset Password</span>
-                  <button onClick={() => setForgotOpen(false)} className="text-[#292929] font-bold">✕</button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotOpen(false);
+                      setForgotSent(false);
+                      setForgotError(null);
+                    }}
+                    className="text-[#292929] font-bold cursor-pointer"
+                  >
+                    ✕
+                  </button>
                 </div>
                 {forgotSent ? (
                   <p className="text-emerald-800 font-semibold">
-                    A password reset instructions link has been dispatched to your email.
+                    Password reset instructions have been sent to {emailInput.trim()}.
                   </p>
                 ) : (
                   <div className="space-y-2">
                     <p className="text-[#777777] font-medium">
-                      Enter your email above and click send to receive a secure login link.
+                      Enter your email above and click send to receive a password reset link.
                     </p>
+                    {forgotError && (
+                      <p className="text-red-700 font-semibold">{forgotError}</p>
+                    )}
                     <button
                       type="button"
-                      onClick={() => setForgotSent(true)}
-                      className="px-3 py-1.5 bg-[#A64B3C] text-[#FFFCF7] rounded-lg text-xs font-bold cursor-pointer"
+                      disabled={forgotLoading}
+                      onClick={() => { void handleForgotPassword(); }}
+                      className="px-3 py-1.5 bg-[#A64B3C] text-[#FFFCF7] rounded-lg text-xs font-bold cursor-pointer disabled:opacity-60"
                     >
-                      Send Reset Email
+                      {forgotLoading ? 'Sending...' : 'Send Reset Email'}
                     </button>
                   </div>
                 )}
