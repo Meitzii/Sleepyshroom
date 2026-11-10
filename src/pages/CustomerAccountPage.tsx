@@ -11,8 +11,7 @@ import {
   CheckCircle, 
   AlertCircle,
   ShieldCheck,
-  Loader2,
-  ExternalLink
+  Loader2
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import type { Order } from '../types/index.ts';
@@ -40,7 +39,6 @@ export const CustomerAccountPage: React.FC = () => {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [previewTabUrl, setPreviewTabUrl] = useState<string | null>(null);
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
   const [verificationFromSignup, setVerificationFromSignup] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -57,7 +55,18 @@ export const CustomerAccountPage: React.FC = () => {
 
   useEffect(() => {
     setAvatarFailed(false);
-  }, [user?.avatarUrl]);
+    setGoogleLoading(false);
+  }, [user]);
+
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setGoogleLoading(false);
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
 
   useEffect(() => {
     if (user?.email) {
@@ -84,7 +93,6 @@ export const CustomerAccountPage: React.FC = () => {
     e.preventDefault();
     setAuthError(null);
     clearOAuthError();
-    setPreviewTabUrl(null);
     setResendMessage(null);
     setVerificationFromSignup(false);
 
@@ -177,14 +185,16 @@ export const CustomerAccountPage: React.FC = () => {
   const handleGoogleAuth = async () => {
     setAuthError(null);
     clearOAuthError();
-    setPreviewTabUrl(null);
     setGoogleLoading(true);
 
     try {
       const result = await signInWithGoogle();
       if (!result.success) {
-        setAuthError(result.error || 'Unable to sign in with Google.');
-        setPreviewTabUrl(result.externalTabUrl || null);
+        if (!result.cancelled) {
+          setAuthError(result.error || 'Unable to sign in with Google.');
+        }
+        setGoogleLoading(false);
+      } else if (result.completedInPopup) {
         setGoogleLoading(false);
       }
     } catch {
@@ -229,7 +239,6 @@ export const CustomerAccountPage: React.FC = () => {
                   setIsLoginTab(true);
                   setAuthError(null);
                   clearOAuthError();
-                  setPreviewTabUrl(null);
                   setPendingVerificationEmail(null);
                   setVerificationFromSignup(false);
                   setResendMessage(null);
@@ -246,7 +255,6 @@ export const CustomerAccountPage: React.FC = () => {
                   setIsLoginTab(false);
                   setAuthError(null);
                   clearOAuthError();
-                  setPreviewTabUrl(null);
                   setPendingVerificationEmail(null);
                   setVerificationFromSignup(false);
                   setResendMessage(null);
@@ -383,17 +391,6 @@ export const CustomerAccountPage: React.FC = () => {
                         <p className="text-emerald-800 font-semibold">{resendMessage}</p>
                       )}
                     </div>
-                  )}
-                  {previewTabUrl && (
-                    <a
-                      href={previewTabUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFCF7] hover:bg-[#FCF3E2] text-[#A64B3C] border border-[#EADCC8] rounded-lg text-[11px] font-bold transition-colors"
-                    >
-                      <span>Open Sleepyshroom in New Tab</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
                   )}
                 </div>
               )}

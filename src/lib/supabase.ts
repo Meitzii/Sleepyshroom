@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const rawUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() || '';
+const rawUrl = ((import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() || '').replace(/\/+$/, '');
 const rawAnonKey =
   (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() ||
   (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)?.trim() ||
@@ -19,7 +19,7 @@ export const isSupabaseConfigured =
   isValidHttpUrl(rawUrl) &&
   rawAnonKey.length > 0 &&
   !rawUrl.includes('your-project-ref') &&
-  !rawAnonKey.includes('your-supabase-anon-key');
+  !rawAnonKey.includes('your-supabase-');
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(rawUrl, rawAnonKey, {

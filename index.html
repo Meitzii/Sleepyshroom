@@ -16,6 +16,35 @@
   </head>
   <body class="bg-[#FFFCF7] text-[#292929] antialiased selection:bg-[#FCF3E2] selection:text-[#292929]">
     <div id="root"></div>
+    <script>
+      (function () {
+        try {
+          var search = window.location.search || '';
+          var hash = window.location.hash || '';
+          var hasOAuthPayload =
+            /[?&](code|error|error_description)=/.test(search) ||
+            /access_token=|refresh_token=|error=|error_description=/.test(hash);
+          if (
+            window.opener &&
+            !window.opener.closed &&
+            (window.name === 'sleepyshroom_google_oauth' || window.location.pathname.indexOf('/auth/callback') === 0) &&
+            hasOAuthPayload
+          ) {
+            window.opener.postMessage(
+              {
+                type: 'SLEEPYSHROOM_OAUTH_CALLBACK',
+                search: search,
+                hash: hash
+              },
+              '*'
+            );
+            setTimeout(function () {
+              try { window.close(); } catch (e) {}
+            }, 120);
+          }
+        } catch (e) {}
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

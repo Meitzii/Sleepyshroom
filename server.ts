@@ -1252,6 +1252,99 @@ app.get('/api/admin/stats', (_req: Request, res: Response) => {
   });
 });
 
+// 12. OAuth Callback Relay (lightweight HTML response for popup OAuth flows inside iframe previews)
+app.get(['/auth/callback', '/auth/callback/'], (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signing in to sleepyshroom...</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #FFFCF7;
+        color: #292929;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        padding: 24px;
+        text-align: center;
+      }
+      .card {
+        max-width: 360px;
+        width: 100%;
+        background: #FCF3E2;
+        border: 1px solid #EADCC8;
+        border-radius: 24px;
+        padding: 28px 24px;
+        box-sizing: border-box;
+      }
+      .title {
+        font-size: 18px;
+        font-weight: 700;
+        margin: 0 0 8px;
+      }
+      .desc {
+        font-size: 13px;
+        color: #777777;
+        margin: 0 0 18px;
+        line-height: 1.5;
+      }
+      .btn {
+        display: inline-block;
+        background: #A64B3C;
+        color: #FFFCF7;
+        border: 0;
+        border-radius: 12px;
+        padding: 10px 18px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1 class="title">Completing your sign-in...</h1>
+      <p class="desc" id="status">Returning you cleanly to sleepyshroom.</p>
+      <button type="button" class="btn" onclick="window.close()">Close Window</button>
+    </div>
+    <script>
+      (function () {
+        var payload = {
+          type: 'SLEEPYSHROOM_OAUTH_CALLBACK',
+          search: window.location.search || '',
+          hash: window.location.hash || ''
+        };
+        var sent = false;
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(payload, '*');
+            sent = true;
+          }
+        } catch (e) {}
+        if (sent) {
+          var statusEl = document.getElementById('status');
+          if (statusEl) {
+            statusEl.textContent = 'Google sign-in verified. You can close this window if it does not close automatically.';
+          }
+          setTimeout(function () {
+            try { window.close(); } catch (e) {}
+          }, 120);
+        } else {
+          window.location.replace('/' + (window.location.search || '') + (window.location.hash || ''));
+        }
+      })();
+    </script>
+  </body>
+</html>`);
+});
+
 // Integrate with Vite Dev Server or Production Static Files
 async function startServer() {
   if (process.env.NODE_ENV === 'production') {

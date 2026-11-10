@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { 
   Product, 
@@ -22,8 +22,8 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase.ts';
 export interface GoogleSignInResult {
   success: boolean;
   error?: string;
-  needsNewTab?: boolean;
-  externalTabUrl?: string;
+  cancelled?: boolean;
+  completedInPopup?: boolean;
 }
 
 export interface AuthActionResult {
@@ -86,6 +86,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [liveToast, setLiveToast] = useState<string | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const clearOAuthError = () => setOauthError(null);
+  const lastSyncedSessionKeyRef = useRef<string | null>(null);
+  const inFlightSyncRef = useRef<Map<string, Promise<UserAccount | null>>>(new Map());
 
   // Cart state persisted to localStorage
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -410,6 +412,27 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return syncedUser;
   };
 
+  // Single-flight deduplication across onAuthStateChange, getSession, and popup callback
+  const syncSessionUser = (sessionUser: SupabaseUser, accessToken: string): Promise<UserAccount | null> => {
+    const sessionKey = `${sessionUser.id}:${accessToken}`;
+    const existingPromise = inFlightSyncRef.current.get(sessionKey);
+    if (existingPromise) {
+      return existingPromise;
+    }
+    if (lastSyncedSessionKeyRef.current === sessionKey && user?.id === sessionUser.id) {
+      return Promise.resolve(user);
+    }
+
+    lastSyncedSessionKeyRef.current = sessionKey;
+    setOauthError(null);
+
+    const promise = syncSupabaseUser(sessionUser).finally(() => {
+      inFlightSyncRef.current.delete(sessionKey);
+    });
+    inFlightSyncRef.current.set(sessionKey, promise);
+    return promise;
+  };
+
   // Listen to Supabase Auth callbacks & persistent session changes
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -422,9 +445,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       hashParams.get('error_description') ||
       hashParams.get('error');
 
-    if (urlError) {
-      const readable = urlError.replace(/\+/g, ' ');
-      setOauthError(readable);
+    const navigateToAccountClean = () => {
       setActiveView('account');
       setViewParam(null);
       try {
@@ -432,6 +453,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch {
         window.location.hash = '#account';
       }
+    };
+
+    if (urlError) {
+      const readable = urlError.replace(/\+/g, ' ');
+      setOauthError(readable);
+      navigateToAccountClean();
     }
 
     const hadAuthCallbackParams =
@@ -447,9 +474,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    const client = supabase;
     let isMounted = true;
     let handledPostAuthRedirect = false;
-    let lastSyncedSessionKey: string | null = null;
 
     const completePostAuthNavigation = (isSignInEvent: boolean) => {
       if (handledPostAuthRedirect) return;
@@ -472,71 +499,119 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (shouldOpenAccount || hadAuthCallbackParams || hasUrlTokens || isSignInEvent) {
         handledPostAuthRedirect = true;
-        setActiveView('account');
-        setViewParam(null);
-        try {
-          window.history.replaceState(null, '', `${window.location.pathname}#account`);
-        } catch {
-          window.location.hash = '#account';
-        }
+        navigateToAccountClean();
       }
     };
 
-    const syncIfNeeded = (sessionUser: SupabaseUser, accessToken: string, isSignInEvent: boolean) => {
-      const sessionKey = `${sessionUser.id}:${accessToken}`;
-      if (lastSyncedSessionKey === sessionKey) {
-        if (isSignInEvent) {
-          completePostAuthNavigation(true);
-        }
-        return;
-      }
-      lastSyncedSessionKey = sessionKey;
-      setOauthError(null);
-      void syncSupabaseUser(sessionUser).then(() => {
+    const handleSessionDetected = (sessionUser: SupabaseUser, accessToken: string, isSignInEvent: boolean) => {
+      void syncSessionUser(sessionUser, accessToken).then(() => {
         if (isMounted) {
           completePostAuthNavigation(isSignInEvent);
         }
       });
     };
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: authListener } = client.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
 
       if (event === 'SIGNED_OUT') {
-        lastSyncedSessionKey = null;
+        lastSyncedSessionKeyRef.current = null;
         handledPostAuthRedirect = false;
         setUser(null);
         return;
       }
 
       if (session?.user) {
-        syncIfNeeded(session.user, session.access_token || '', event === 'SIGNED_IN');
+        handleSessionDetected(session.user, session.access_token || '', event === 'SIGNED_IN');
       } else if (event === 'INITIAL_SESSION') {
-        setUser(null);
+        const hasImplicitTokens =
+          Boolean(hashParams.get('access_token') && hashParams.get('refresh_token'));
+        if (!hasImplicitTokens && !searchParams.has('code')) {
+          setUser(null);
+        }
       }
     });
 
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (!isMounted) return;
-      if (error && !urlError) {
-        setOauthError(error.message || 'Unable to verify authentication session.');
-        if (hadAuthCallbackParams) {
-          setActiveView('account');
-          setViewParam(null);
-          try {
-            window.history.replaceState(null, '', `${window.location.pathname}#account`);
-          } catch {
-            window.location.hash = '#account';
+    const hydrateAuthSession = async () => {
+      try {
+        const initRes = await client.auth.initialize();
+        if (!isMounted) return;
+
+        // Recover implicit-grant hash fragments if Supabase returned tokens instead of a PKCE ?code=
+        const implicitAccessToken = hashParams.get('access_token');
+        const implicitRefreshToken = hashParams.get('refresh_token');
+        if (implicitAccessToken && implicitRefreshToken) {
+          const { data: implicitData, error: implicitErr } = await client.auth.setSession({
+            access_token: implicitAccessToken,
+            refresh_token: implicitRefreshToken,
+          });
+          if (!isMounted) return;
+          if (implicitData.session?.user) {
+            await syncSessionUser(implicitData.session.user, implicitData.session.access_token || '');
+            if (isMounted) {
+              completePostAuthNavigation(true);
+            }
+            return;
+          }
+          if (implicitErr && !urlError) {
+            setOauthError(implicitErr.message || 'Unable to verify Google authentication session.');
+            navigateToAccountClean();
+            return;
           }
         }
-        return;
+
+        if (initRes?.error && !urlError) {
+          setOauthError(initRes.error.message || 'Unable to complete authentication.');
+          if (hadAuthCallbackParams) {
+            navigateToAccountClean();
+          }
+          setUser(null);
+          return;
+        }
+
+        const { data, error } = await client.auth.getSession();
+        if (!isMounted) return;
+
+        if (error && !urlError) {
+          setOauthError(error.message || 'Unable to verify authentication session.');
+          if (hadAuthCallbackParams) {
+            navigateToAccountClean();
+          }
+          return;
+        }
+
+        if (data.session?.user) {
+          await syncSessionUser(data.session.user, data.session.access_token || '');
+          if (isMounted) {
+            completePostAuthNavigation(false);
+          }
+          return;
+        }
+
+        // If ?code= was returned from OAuth/email verification but no PKCE verifier existed in storage
+        if (searchParams.has('code') && !urlError) {
+          setOauthError(
+            'Your sign-in verification session expired or browser storage was cleared. Please try signing in with Google again.'
+          );
+          navigateToAccountClean();
+          setUser(null);
+          return;
+        }
+
+        if (!urlError) {
+          setUser(null);
+        }
+      } catch (err: any) {
+        if (!isMounted) return;
+        console.error('Auth initialization error:', err);
+        if (!urlError && hadAuthCallbackParams) {
+          setOauthError(err?.message || 'Unable to complete sign-in.');
+          navigateToAccountClean();
+        }
       }
-      if (data.session?.user) {
-        syncIfNeeded(data.session.user, data.session.access_token || '', false);
-      } else {
-        setUser(null);
-      }
-    });
+    };
+
+    void hydrateAuthSession();
 
     return () => {
       isMounted = false;
@@ -774,21 +849,13 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: msg };
     }
 
+    const client = supabase;
+
     let inIframe = false;
     try {
       inIframe = window.self !== window.top;
     } catch {
       inIframe = true;
-    }
-
-    if (inIframe) {
-      return {
-        success: false,
-        error:
-          'Google Sign-In cannot open inside an embedded preview frame. Please open Sleepyshroom in a new browser tab to sign in with Google.',
-        needsNewTab: true,
-        externalTabUrl: `${window.location.origin}/#account`,
-      };
     }
 
     try {
@@ -798,7 +865,222 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Ignore storage errors
       }
 
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      // Embedded iframe context (e.g., AI Studio preview): Google forbids rendering inside iframes (X-Frame-Options: DENY).
+      // Open a popup directly from the click gesture -> navigate directly to Supabase/Google auth URL -> receive callback via postMessage.
+      if (inIframe) {
+        const width = 520;
+        const height = 660;
+        const screenLeft = typeof window.screenLeft === 'number' ? window.screenLeft : window.screenX || 0;
+        const screenTop = typeof window.screenTop === 'number' ? window.screenTop : window.screenY || 0;
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1000;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 800;
+        const left = Math.max(0, Math.round(screenLeft + (viewportWidth - width) / 2));
+        const top = Math.max(0, Math.round(screenTop + (viewportHeight - height) / 2));
+
+        const popup = window.open(
+          'about:blank',
+          'sleepyshroom_google_oauth',
+          `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+        );
+
+        if (!popup) {
+          try {
+            sessionStorage.removeItem('sleepyshroom_post_auth_view');
+          } catch {
+            // Ignore
+          }
+          const msg =
+            'Your browser blocked the Google Sign-In popup. Please allow popups for this site and click "Continue with Google" again.';
+          setOauthError(msg);
+          return { success: false, error: msg };
+        }
+
+        try {
+          popup.document.write(
+            '<!doctype html><html><head><title>Connecting to Google...</title></head><body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#FFFCF7;color:#292929;font-family:system-ui,sans-serif;"><p style="font-size:14px;font-weight:600;">Connecting to Google...</p></body></html>'
+          );
+          popup.document.close();
+        } catch {
+          // Ignore popup document restrictions
+        }
+
+        const callbackUrl = `${window.location.origin}/auth/callback`;
+        const { data, error } = await client.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: callbackUrl,
+            skipBrowserRedirect: true,
+            queryParams: {
+              prompt: 'select_account',
+            },
+          },
+        });
+
+        if (error || !data?.url) {
+          try {
+            popup.close();
+          } catch {
+            // Ignore
+          }
+          try {
+            sessionStorage.removeItem('sleepyshroom_post_auth_view');
+          } catch {
+            // Ignore
+          }
+          const msg = error?.message || 'Unable to start Google Sign-In.';
+          setOauthError(msg);
+          return { success: false, error: msg };
+        }
+
+        return await new Promise<GoogleSignInResult>(resolve => {
+          let settled = false;
+          let closePollId: number | null = null;
+          let graceTimerId: number | null = null;
+          let ceilingTimerId: number | null = null;
+
+          const cleanup = () => {
+            window.removeEventListener('message', handlePopupMessage);
+            if (closePollId !== null) window.clearInterval(closePollId);
+            if (graceTimerId !== null) window.clearTimeout(graceTimerId);
+            if (ceilingTimerId !== null) window.clearTimeout(ceilingTimerId);
+          };
+
+          const finish = (res: GoogleSignInResult) => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            try {
+              sessionStorage.removeItem('sleepyshroom_post_auth_view');
+            } catch {
+              // Ignore
+            }
+            resolve(res);
+          };
+
+          const handlePopupMessage = (event: MessageEvent) => {
+            if (event.data?.type !== 'SLEEPYSHROOM_OAUTH_CALLBACK') {
+              return;
+            }
+            const isTrustedSource =
+              event.source === popup ||
+              event.origin === window.location.origin ||
+              event.origin.endsWith('.run.app') ||
+              event.origin.includes('localhost');
+            if (!isTrustedSource) {
+              return;
+            }
+
+            cleanup();
+            try {
+              if (!popup.closed) popup.close();
+            } catch {
+              // Ignore
+            }
+
+            void (async () => {
+              try {
+                const rawSearch = typeof event.data.search === 'string' ? event.data.search : '';
+                const rawHash = typeof event.data.hash === 'string' ? event.data.hash.replace(/^#\/?/, '') : '';
+                const cbSearch = new URLSearchParams(rawSearch);
+                const cbHash = new URLSearchParams(rawHash.includes('=') ? rawHash : '');
+
+                const cbError =
+                  cbSearch.get('error_description') ||
+                  cbSearch.get('error') ||
+                  cbHash.get('error_description') ||
+                  cbHash.get('error');
+                if (cbError) {
+                  const readable = cbError.replace(/\+/g, ' ');
+                  setOauthError(readable);
+                  finish({ success: false, error: readable });
+                  return;
+                }
+
+                const code = cbSearch.get('code');
+                const flowId = cbSearch.get('flow_id') || undefined;
+                if (code) {
+                  const { data: exchangeData, error: exchangeError } =
+                    await client.auth.exchangeCodeForSession(code, flowId ? { flowId } : undefined);
+                  if (exchangeError) {
+                    const msg = exchangeError.message || 'Unable to verify Google login session.';
+                    setOauthError(msg);
+                    finish({ success: false, error: msg });
+                    return;
+                  }
+                  if (exchangeData?.session?.user) {
+                    await syncSessionUser(
+                      exchangeData.session.user,
+                      exchangeData.session.access_token || ''
+                    );
+                    navigateTo('account');
+                    finish({ success: true, completedInPopup: true });
+                    return;
+                  }
+                }
+
+                const accessToken = cbHash.get('access_token');
+                const refreshToken = cbHash.get('refresh_token');
+                if (accessToken && refreshToken) {
+                  const { data: sessionData, error: sessionErr } = await client.auth.setSession({
+                    access_token: accessToken,
+                    refresh_token: refreshToken,
+                  });
+                  if (sessionErr) {
+                    const msg = sessionErr.message || 'Unable to establish Google login session.';
+                    setOauthError(msg);
+                    finish({ success: false, error: msg });
+                    return;
+                  }
+                  if (sessionData?.session?.user) {
+                    await syncSessionUser(
+                      sessionData.session.user,
+                      sessionData.session.access_token || ''
+                    );
+                    navigateTo('account');
+                    finish({ success: true, completedInPopup: true });
+                    return;
+                  }
+                }
+
+                const fallbackMsg =
+                  'Google sign-in returned without credentials. Please ensure this site URL is allowlisted in Supabase Redirect URLs.';
+                setOauthError(fallbackMsg);
+                finish({ success: false, error: fallbackMsg });
+              } catch (callbackErr: any) {
+                const msg = callbackErr?.message || 'An error occurred while completing Google Sign-In.';
+                setOauthError(msg);
+                finish({ success: false, error: msg });
+              }
+            })();
+          };
+
+          window.addEventListener('message', handlePopupMessage);
+
+          closePollId = window.setInterval(() => {
+            try {
+              if (popup.closed && graceTimerId === null) {
+                graceTimerId = window.setTimeout(() => {
+                  finish({ success: false, cancelled: true });
+                }, 1200);
+              }
+            } catch {
+              // Ignore cross-origin window.closed checks if blocked transiently
+            }
+          }, 400);
+
+          ceilingTimerId = window.setTimeout(() => {
+            finish({
+              success: false,
+              error: 'Google Sign-In timed out. Please try again.',
+            });
+          }, 180000);
+
+          popup.location.replace(data.url);
+        });
+      }
+
+      // Standard top-level browser redirect flow (e.g., deployed Vercel website)
+      const { data, error } = await client.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.location.origin,
@@ -839,6 +1121,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    lastSyncedSessionKeyRef.current = null;
+    inFlightSyncRef.current.clear();
     setUser(null);
     setOauthError(null);
     try {
