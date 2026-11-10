@@ -4,6 +4,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 import type { 
   Product, 
   CarouselSlide, 
@@ -17,6 +18,9 @@ import type {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '.env.local') });
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1343,6 +1347,108 @@ app.get(['/auth/callback', '/auth/callback/'], (_req: Request, res: Response) =>
     </script>
   </body>
 </html>`);
+});
+
+// 13. Public Runtime Config (exposes non-secret Supabase client config from runtime process.env/.env* to SPA)
+function stripEnvQuotes(value: string | undefined): string {
+  const trimmed = String(value || '').trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
+function normalizeServerSupabaseUrl(raw: string | undefined): string {
+  if (!raw) return '';
+  let clean = stripEnvQuotes(raw).replace(/\/+$/, '');
+  if (!clean || clean.includes('your-project-ref') || clean.startsWith('MY_')) {
+    return '';
+  }
+  if (!clean.includes('://') && /^[a-z0-9.-]+\.supabase\.(co|in|net)$/i.test(clean)) {
+    clean = `https://${clean}`;
+  }
+  try {
+    const parsed = new URL(clean);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return clean;
+    }
+  } catch {
+    return '';
+  }
+  return '';
+}
+
+function isServerSecretKey(key: string): boolean {
+  if (key.startsWith('sb_secret_')) return true;
+  const parts = key.split('.');
+  if (parts.length === 3) {
+    try {
+      const payloadJson = Buffer.from(parts[1], 'base64url').toString('utf8');
+      const payload = JSON.parse(payloadJson) as { role?: string };
+      if (payload?.role === 'service_role') return true;
+    } catch {
+      // Ignore malformed payload
+    }
+  }
+  return false;
+}
+
+function normalizeServerPublicKey(raw: string | undefined): string {
+  if (!raw) return '';
+  const clean = stripEnvQuotes(raw);
+  if (!clean || clean.includes('your-supabase-') || clean.startsWith('MY_')) {
+    return '';
+  }
+  if (isServerSecretKey(clean)) {
+    return '';
+  }
+  return clean;
+}
+
+function pickFirstEnv(candidates: string[], normalizer: (raw: string | undefined) => string): string {
+  for (const name of candidates) {
+    const val = normalizer(process.env[name]);
+    if (val) return val;
+  }
+  return '';
+}
+
+app.get(['/api/runtime-config', '/api/runtime-config.js'], (_req: Request, res: Response) => {
+  const supabaseUrl = pickFirstEnv(
+    ['VITE_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_URL'],
+    normalizeServerSupabaseUrl
+  );
+  const supabaseAnonKey = pickFirstEnv(
+    [
+      'VITE_SUPABASE_ANON_KEY',
+      'VITE_SUPABASE_PUBLISHABLE_KEY',
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+      'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+      'SUPABASE_ANON_KEY',
+      'SUPABASE_PUBLISHABLE_KEY',
+    ],
+    normalizeServerPublicKey
+  );
+  const supabasePublishableKey = pickFirstEnv(
+    [
+      'VITE_SUPABASE_PUBLISHABLE_KEY',
+      'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+      'SUPABASE_PUBLISHABLE_KEY',
+    ],
+    normalizeServerPublicKey
+  );
+
+  const payload: Record<string, string> = {};
+  if (supabaseUrl) payload.VITE_SUPABASE_URL = supabaseUrl;
+  if (supabaseAnonKey) payload.VITE_SUPABASE_ANON_KEY = supabaseAnonKey;
+  if (supabasePublishableKey) payload.VITE_SUPABASE_PUBLISHABLE_KEY = supabasePublishableKey;
+
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.send(`window.__SLEEPYSHROOM_ENV__ = ${JSON.stringify(payload)};`);
 });
 
 // Integrate with Vite Dev Server or Production Static Files

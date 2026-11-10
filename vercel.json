@@ -2,7 +2,7 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/((?!assets/|wallpapers/|images/|uploads/|src/).*)",
+      "source": "/((?!assets/|wallpapers/|images/|uploads/|src/|api/).*)",
       "destination": "/index.html"
     }
   ]
