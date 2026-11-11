@@ -1,72 +1,64 @@
 import React, { useState, useMemo } from 'react';
 import {
   Mail,
-  MailOpen,
   Trash2,
-  Send,
   RefreshCw,
   Search,
   AlertCircle,
   CheckCircle,
   Check,
+  CheckCheck,
   UserCheck,
   User as UserIcon,
   Clock,
   ExternalLink,
   Loader2,
   MessageSquare,
+  Copy,
+  Sparkles,
 } from 'lucide-react';
-import type { ContactMessage } from '../../types/index.ts';
+import type { ContactMessage, ContactMessageStatus } from '../../types/index.ts';
 
 interface ContactMessagesPanelProps {
   messages: ContactMessage[];
   loading: boolean;
   setupError: string | null;
-  emailConfigured: boolean;
-  emailProvider: string | null;
+  emailConfigured?: boolean;
+  emailProvider?: string | null;
   emailUsingSandbox?: boolean;
   onRefresh: () => Promise<void>;
-  onUpdateStatus: (id: string, status: 'unread' | 'read' | 'replied') => Promise<{ success: boolean; error?: string }>;
+  onUpdateStatus: (id: string, status: ContactMessageStatus) => Promise<{ success: boolean; error?: string }>;
   onDelete: (id: string) => Promise<{ success: boolean; error?: string }>;
-  onSendReply: (
+  onSendReply?: (
     id: string,
     replySubject: string,
     replyBody: string
   ) => Promise<{ success: boolean; error?: string }>;
 }
 
-type StatusFilter = 'all' | 'unread' | 'read' | 'replied';
+type StatusFilter = 'all' | ContactMessageStatus;
 
 export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
   messages,
   loading,
   setupError,
-  emailConfigured,
-  emailProvider,
-  emailUsingSandbox = false,
   onRefresh,
   onUpdateStatus,
   onDelete,
-  onSendReply,
 }) => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-
-  // Reply composer state
-  const [replyOpenForId, setReplyOpenForId] = useState<string | null>(null);
-  const [replySubject, setReplySubject] = useState('');
-  const [replyBody, setReplyBody] = useState('');
-  const [replySending, setReplySending] = useState(false);
+  const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null);
   const [panelFeedback, setPanelFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const counts = useMemo(() => {
-    const unread = messages.filter(m => m.status === 'unread').length;
-    const read = messages.filter(m => m.status === 'read').length;
+    const newCount = messages.filter(m => m.status === 'new').length;
+    const inProgress = messages.filter(m => m.status === 'in_progress').length;
     const replied = messages.filter(m => m.status === 'replied').length;
-    return { all: messages.length, unread, read, replied };
+    return { all: messages.length, new: newCount, in_progress: inProgress, replied };
   }, [messages]);
 
   const filteredMessages = useMemo(() => {
@@ -91,18 +83,23 @@ export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
     return filteredMessages[0] || null;
   }, [filteredMessages, selectedId]);
 
-  const handleToggleRead = async (msg: ContactMessage) => {
-    const nextStatus = msg.status === 'unread' ? 'read' : 'unread';
+  const handleStatusChange = async (msg: ContactMessage, nextStatus: ContactMessageStatus) => {
+    if (msg.status === nextStatus || actionBusyId === msg.id) return;
     setPanelFeedback(null);
     setActionBusyId(msg.id);
     try {
       const res = await onUpdateStatus(msg.id, nextStatus);
       if (!res.success) {
-        setPanelFeedback({ type: 'error', text: res.error || 'Unable to update message status.' });
+        setPanelFeedback({ type: 'error', text: res.error || 'Unable to save status to Supabase.' });
       } else {
+        const label =
+          nextStatus === 'new' ? 'New' : nextStatus === 'in_progress' ? 'In Progress' : 'Replied';
         setPanelFeedback({
           type: 'success',
-          text: nextStatus === 'read' ? 'Marked message as read.' : 'Marked message as unread.',
+          text:
+            nextStatus === 'replied'
+              ? `Marked inquiry from ${msg.fullName} as Replied and saved timestamp.`
+              : `Updated inquiry status to ${label}.`,
         });
       }
     } finally {
@@ -120,7 +117,6 @@ export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
       } else {
         setConfirmDeleteId(null);
         if (selectedId === id) setSelectedId(null);
-        if (replyOpenForId === id) setReplyOpenForId(null);
         setPanelFeedback({ type: 'success', text: 'Inquiry deleted permanently.' });
       }
     } finally {
@@ -128,58 +124,73 @@ export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
     }
   };
 
-  const openReplyComposer = (msg: ContactMessage) => {
-    setPanelFeedback(null);
-    setReplyOpenForId(msg.id);
-    setReplySubject(msg.subject.startsWith('Re:') ? msg.subject : `Re: ${msg.subject}`);
-    setReplyBody('');
-  };
-
-  const handleReplySubmit = async (e: React.FormEvent, msg: ContactMessage) => {
-    e.preventDefault();
-    if (!replyBody.trim() || replySending) return;
-
-    setPanelFeedback(null);
-    setReplySending(true);
+  const handleCopyEmail = async (msg: ContactMessage) => {
     try {
-      const res = await onSendReply(msg.id, replySubject.trim() || `Re: ${msg.subject}`, replyBody.trim());
-      if (!res.success) {
-        setPanelFeedback({
-          type: 'error',
-          text: res.error || 'Failed to send reply email.',
-        });
-      } else {
-        setReplyOpenForId(null);
-        setReplyBody('');
-        setPanelFeedback({
-          type: 'success',
-          text: `Email reply confirmed and sent to ${msg.email}.`,
-        });
-      }
-    } finally {
-      setReplySending(false);
+      await navigator.clipboard.writeText(msg.email);
+      setCopiedEmailId(msg.id);
+      setTimeout(() => {
+        setCopiedEmailId(prev => (prev === msg.id ? null : prev));
+      }, 2000);
+    } catch {
+      setPanelFeedback({ type: 'error', text: 'Unable to copy email to clipboard.' });
     }
   };
 
-  const renderStatusBadge = (status: ContactMessage['status']) => {
-    if (status === 'unread') {
+  const buildGmailComposeUrl = (msg: ContactMessage) => {
+    const replySubject = msg.subject.startsWith('Re:') ? msg.subject : `Re: ${msg.subject}`;
+    const body = [
+      `Hi ${msg.fullName},`,
+      '',
+      '',
+      'With cozy wishes,',
+      'sleepyshroom',
+      'shop.sleepyshroom@gmail.com',
+      '',
+      '--- Original Message ---',
+      `From: ${msg.fullName} <${msg.email}>`,
+      `Sent: ${new Date(msg.createdAt).toLocaleString()}`,
+      `Subject: ${msg.subject}`,
+      '',
+      msg.message,
+    ].join('\n');
+
+    const params = new URLSearchParams({
+      view: 'cm',
+      fs: '1',
+      to: msg.email,
+      su: replySubject,
+      body,
+    });
+    return `https://mail.google.com/mail/?${params.toString()}`;
+  };
+
+  const buildMailtoUrl = (msg: ContactMessage) => {
+    const replySubject = msg.subject.startsWith('Re:') ? msg.subject : `Re: ${msg.subject}`;
+    const body = `Hi ${msg.fullName},\n\n\n---\nOriginal inquiry (${new Date(msg.createdAt).toLocaleString()}):\n${msg.message}`;
+    return `mailto:${msg.email}?subject=${encodeURIComponent(replySubject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const renderStatusBadge = (status: ContactMessageStatus) => {
+    if (status === 'new') {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#A64B3C] text-[#FFFCF7]">
-          Unread
+          <Sparkles className="w-3 h-3" />
+          New
         </span>
       );
     }
-    if (status === 'replied') {
+    if (status === 'in_progress') {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-          <Check className="w-3 h-3" />
-          Replied
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+          <Clock className="w-3 h-3" />
+          In Progress
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FFFCF7] text-[#292929] border border-[#EADCC8]">
-        Read
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+        <Check className="w-3 h-3" />
+        Replied
       </span>
     );
   };
@@ -194,7 +205,7 @@ export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
               Contact Form Submissions
             </h2>
             <p className="text-xs text-[#777777] font-medium mt-0.5">
-              Customer & guest inquiries stored in Supabase ({counts.unread} unread · {counts.all} total).
+              {counts.new} new · {counts.in_progress} in progress · {counts.replied} replied ({counts.all} total in Supabase)
             </p>
           </div>
 
@@ -217,9 +228,9 @@ export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
           <div className="flex flex-wrap items-center gap-1.5">
             {(
               [
-                { key: 'all', label: `All (${counts.all})` },
-                { key: 'unread', label: `Unread (${counts.unread})` },
-                { key: 'read', label: `Read (${counts.read})` },
+                { key: 'all', label: `All Messages (${counts.all})` },
+                { key: 'new', label: `New (${counts.new})` },
+                { key: 'in_progress', label: `In Progress (${counts.in_progress})` },
                 { key: 'replied', label: `Replied (${counts.replied})` },
               ] as const
             ).map(tab => (
@@ -250,38 +261,14 @@ export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
           </div>
         </div>
 
-        {/* Email Provider Configuration Notice */}
-        {!emailConfigured ? (
-          <div className="p-3.5 bg-[#FFFCF7] border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-900">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
-            <div>
-              <span className="font-bold">Server email sending is not configured yet.</span>{' '}
-              <span className="text-[#777777] font-medium">
-                Add <code className="font-mono text-[#292929]">RESEND_API_KEY</code> (and{' '}
-                <code className="font-mono text-[#292929]">RESEND_FROM_EMAIL</code> from a verified domain) to your server / Vercel environment variables to notify{' '}
-                <strong className="text-[#292929]">shop.sleepyshroom@gmail.com</strong> and reply from this inbox.
-              </span>
-            </div>
-          </div>
-        ) : emailProvider === 'resend' && emailUsingSandbox ? (
-          <div className="p-3.5 bg-[#FFFCF7] border border-[#EADCC8] rounded-2xl flex items-start gap-2.5 text-xs text-[#292929]">
-            <CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-emerald-700" />
-            <div>
-              <span className="font-bold text-emerald-900">Resend connected</span>{' '}
-              <span className="text-[#777777] font-medium">
-                (using <code className="font-mono text-[#292929]">onboarding@resend.dev</code> test sender). Set{' '}
-                <code className="font-mono text-[#292929]">RESEND_FROM_EMAIL</code> to a verified Resend domain sender to email external customer addresses directly.
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="p-3 bg-[#FFFCF7] border border-emerald-200 rounded-2xl flex items-center gap-2 text-xs text-emerald-900 font-semibold">
-            <CheckCircle className="w-4 h-4 shrink-0 text-emerald-700" />
-            <span>
-              Email delivery active ({emailProvider === 'resend' ? 'Resend' : emailProvider || 'configured'}) · Alerts sent to shop.sleepyshroom@gmail.com
-            </span>
-          </div>
-        )}
+        {/* Manual Gmail Reply Workflow Note */}
+        <div className="px-3.5 py-2.5 bg-[#FFFCF7] border border-[#EADCC8] rounded-2xl flex items-center gap-2 text-xs text-[#777777] font-medium">
+          <Mail className="w-4 h-4 shrink-0 text-[#A64B3C]" />
+          <span>
+            Reply from your <strong className="text-[#292929]">Gmail</strong> account, then click{' '}
+            <strong className="text-[#292929]">Mark as Replied</strong> to save the status and timestamp to Supabase.
+          </span>
+        </div>
       </div>
 
       {/* Feedback Banner */}
@@ -326,7 +313,7 @@ export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
           <p className="text-xs text-[#777777] font-medium">
             {messages.length === 0
               ? 'Messages sent from your Contact Us page will appear securely here.'
-              : 'Try clearing your search or switching back to All.'}
+              : 'Try clearing your search or switching back to All Messages.'}
           </p>
         </div>
       ) : (
@@ -335,16 +322,26 @@ export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
           <div className="lg:col-span-5 bg-[#FCF3E2] rounded-3xl border border-[#EADCC8] divide-y divide-[#EADCC8] overflow-hidden">
             {filteredMessages.map(msg => {
               const isSelected = activeMessage?.id === msg.id;
+              const isBusy = actionBusyId === msg.id;
               return (
-                <button
+                <div
                   key={msg.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
                     setSelectedId(msg.id);
                     setConfirmDeleteId(null);
                     setPanelFeedback(null);
                   }}
-                  className={`w-full text-left p-4 transition-colors cursor-pointer space-y-1.5 ${
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedId(msg.id);
+                      setConfirmDeleteId(null);
+                      setPanelFeedback(null);
+                    }
+                  }}
+                  className={`w-full text-left p-4 transition-colors cursor-pointer space-y-2 ${
                     isSelected
                       ? 'bg-[#FFFCF7] border-l-4 border-l-[#A64B3C]'
                       : 'hover:bg-[#FFFCF7]/70'
@@ -363,18 +360,45 @@ export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
                     {msg.message}
                   </p>
 
-                  <div className="flex items-center justify-between text-[11px] text-[#777777] pt-0.5">
-                    <span className="truncate">{msg.email}</span>
-                    <span className="shrink-0 ml-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#777777] pt-0.5">
+                    <span className="truncate max-w-[180px]">{msg.email}</span>
+                    <span className="shrink-0">
                       {new Date(msg.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                </button>
+
+                  {msg.status === 'replied' && msg.repliedAt ? (
+                    <div className="flex items-center gap-1 text-[11px] text-emerald-800 font-semibold pt-0.5">
+                      <CheckCheck className="w-3.5 h-3.5 shrink-0" />
+                      <span>Replied {new Date(msg.repliedAt).toLocaleString()}</span>
+                    </div>
+                  ) : (
+                    <div className="pt-1 flex items-center justify-end">
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={e => {
+                          e.stopPropagation();
+                          setSelectedId(msg.id);
+                          void handleStatusChange(msg, 'replied');
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {isBusy ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Check className="w-3 h-3" />
+                        )}
+                        <span>Mark as Replied</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
 
-          {/* Right: Complete Message Reader & Actions */}
+          {/* Right: Complete Message Reader & Manual Reply Tracking */}
           {activeMessage && (
             <div className="lg:col-span-7 bg-[#FCF3E2] rounded-3xl border border-[#EADCC8] p-5 sm:p-7 space-y-5">
               {/* Top Meta */}
@@ -405,42 +429,48 @@ export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
                     <span>
                       <strong>{activeMessage.fullName}</strong> ({activeMessage.email})
                     </span>
-                    <span className="inline-flex items-center gap-1 text-[#777777]">
+                    <button
+                      type="button"
+                      onClick={() => { void handleCopyEmail(activeMessage); }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#FFFCF7] border border-[#EADCC8] hover:border-[#A64B3C]/50 rounded-lg text-[11px] font-bold text-[#292929] cursor-pointer"
+                    >
+                      <Copy className="w-3 h-3 text-[#A64B3C]" />
+                      <span>{copiedEmailId === activeMessage.id ? 'Copied!' : 'Copy Email'}</span>
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#777777] font-medium">
+                    <span className="inline-flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5" />
-                      {new Date(activeMessage.createdAt).toLocaleString()}
+                      Submitted: {new Date(activeMessage.createdAt).toLocaleString()}
                     </span>
+
+                    {activeMessage.status === 'replied' && activeMessage.repliedAt && (
+                      <span className="inline-flex items-center gap-1 text-emerald-800 font-bold">
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        Replied: {new Date(activeMessage.repliedAt).toLocaleString()}
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {/* Action Buttons */}
+                {/* Primary Mark as Replied & Delete Controls */}
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    disabled={actionBusyId === activeMessage.id}
-                    onClick={() => { void handleToggleRead(activeMessage); }}
-                    className="px-3 py-2 bg-[#FFFCF7] hover:bg-[#EADCC8]/40 text-[#292929] border border-[#EADCC8] rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
-                  >
-                    {activeMessage.status === 'unread' ? (
-                      <>
-                        <MailOpen className="w-3.5 h-3.5 text-[#A64B3C]" />
-                        <span>Mark Read</span>
-                      </>
-                    ) : (
-                      <>
-                        <Mail className="w-3.5 h-3.5 text-[#A64B3C]" />
-                        <span>Mark Unread</span>
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => openReplyComposer(activeMessage)}
-                    className="px-3.5 py-2 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Reply</span>
-                  </button>
+                  {activeMessage.status !== 'replied' && (
+                    <button
+                      type="button"
+                      disabled={actionBusyId === activeMessage.id}
+                      onClick={() => { void handleStatusChange(activeMessage, 'replied'); }}
+                      className="px-3.5 py-2 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-60"
+                    >
+                      {actionBusyId === activeMessage.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <CheckCheck className="w-3.5 h-3.5" />
+                      )}
+                      <span>Mark as Replied</span>
+                    </button>
+                  )}
 
                   {confirmDeleteId === activeMessage.id ? (
                     <div className="flex items-center gap-1.5">
@@ -478,114 +508,87 @@ export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
                 {activeMessage.message}
               </div>
 
-              {/* Email Delivery / Reply Metadata */}
-              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#777777] px-1">
-                <span>
-                  {activeMessage.emailSent ? (
-                    <span className="text-emerald-800 font-semibold">
-                      Owner notification emailed to shop.sleepyshroom@gmail.com
-                    </span>
-                  ) : activeMessage.emailError ? (
-                    <span>Notification note: {activeMessage.emailError}</span>
-                  ) : (
-                    <span>Saved in Supabase inbox (ID: {activeMessage.id.slice(0, 8)})</span>
-                  )}
-                </span>
-                {activeMessage.repliedAt && (
-                  <span>Replied {new Date(activeMessage.repliedAt).toLocaleString()}</span>
-                )}
-              </div>
-
-              {/* Reply Composer */}
-              {replyOpenForId === activeMessage.id && (
-                <form
-                  onSubmit={e => { void handleReplySubmit(e, activeMessage); }}
-                  className="p-4 sm:p-5 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8] space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-heading font-bold text-sm text-[#292929]">
-                      Reply to {activeMessage.fullName} ({activeMessage.email})
+              {/* Manual Reply & Status Tracking Controls */}
+              <div className="bg-[#FFFCF7] p-4 sm:p-5 rounded-2xl border border-[#EADCC8] space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="font-heading font-bold text-xs sm:text-sm text-[#292929]">
+                      Reply via Gmail & Update Status
                     </h4>
-                    <button
-                      type="button"
-                      onClick={() => setReplyOpenForId(null)}
-                      className="text-xs font-bold text-[#777777] hover:text-[#292929] cursor-pointer"
-                    >
-                      Close
-                    </button>
+                    <p className="text-[11px] text-[#777777] font-medium mt-0.5">
+                      Open Gmail with pre-filled details, then mark this message as Replied.
+                    </p>
                   </div>
 
-                  {!emailConfigured && (
-                    <div className="p-3 bg-[#FCF3E2] border border-amber-300 rounded-xl text-[11px] text-amber-900 space-y-1.5">
-                      <p className="font-bold">
-                        Direct email provider ({emailProvider || 'none'}) is not configured on this server.
-                      </p>
-                      <p className="text-[#777777] font-medium">
-                        Configure <code className="font-mono text-[#292929]">RESEND_API_KEY</code> or SMTP credentials to send replies directly from the dashboard, or open your external email app:
-                      </p>
-                      <a
-                        href={`mailto:${activeMessage.email}?subject=${encodeURIComponent(replySubject || `Re: ${activeMessage.subject}`)}&body=${encodeURIComponent(replyBody)}`}
-                        className="inline-flex items-center gap-1 font-bold text-[#A64B3C] hover:underline"
-                      >
-                        <span>Open in Mail App</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#292929] mb-1">
-                      Subject
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      disabled={replySending}
-                      value={replySubject}
-                      onChange={e => setReplySubject(e.target.value)}
-                      className="w-full px-3.5 py-2 text-xs bg-white border border-[#EADCC8] rounded-xl text-[#292929] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#292929] mb-1">
-                      Message
-                    </label>
-                    <textarea
-                      required
-                      rows={4}
-                      disabled={replySending}
-                      placeholder={`Write your reply to ${activeMessage.fullName}...`}
-                      value={replyBody}
-                      onChange={e => setReplyBody(e.target.value)}
-                      className="w-full px-3.5 py-2 text-xs bg-white border border-[#EADCC8] rounded-xl text-[#292929] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40 resize-y"
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     <a
-                      href={`mailto:${activeMessage.email}?subject=${encodeURIComponent(replySubject || `Re: ${activeMessage.subject}`)}&body=${encodeURIComponent(replyBody)}`}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-[#777777] hover:text-[#A64B3C]"
+                      href={buildGmailComposeUrl(activeMessage)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-2 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-xs transition-colors"
                     >
-                      <span>Open external mail client instead</span>
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Reply in Gmail</span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
 
-                    <button
-                      type="submit"
-                      disabled={replySending || !replyBody.trim() || !emailConfigured}
-                      className="px-5 py-2 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] rounded-xl text-xs font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                    <a
+                      href={buildMailtoUrl(activeMessage)}
+                      className="px-3 py-2 bg-[#FCF3E2] hover:bg-[#EADCC8]/60 text-[#292929] border border-[#EADCC8] rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
                     >
-                      {replySending ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Send className="w-3.5 h-3.5" />
-                      )}
-                      <span>{replySending ? 'Sending Email...' : 'Send Email Reply'}</span>
-                    </button>
+                      <span>Mail App</span>
+                      <ExternalLink className="w-3 h-3 text-[#777777]" />
+                    </a>
                   </div>
-                </form>
-              )}
+                </div>
+
+                {/* Persistent 3-Status Selector */}
+                <div className="pt-3 border-t border-[#EADCC8] flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-xs font-bold text-[#292929]">
+                    Tracking Status:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {(
+                      [
+                        { value: 'new', label: 'New' },
+                        { value: 'in_progress', label: 'In Progress' },
+                        { value: 'replied', label: 'Replied' },
+                      ] as const
+                    ).map(opt => {
+                      const isCurrent = activeMessage.status === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          disabled={actionBusyId === activeMessage.id || isCurrent}
+                          onClick={() => { void handleStatusChange(activeMessage, opt.value); }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:cursor-default ${
+                            isCurrent
+                              ? opt.value === 'replied'
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : opt.value === 'in_progress'
+                                  ? 'bg-amber-500 text-white shadow-xs'
+                                  : 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                              : 'bg-[#FCF3E2] hover:bg-[#EADCC8]/70 text-[#292929] border border-[#EADCC8] disabled:opacity-60'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Metadata */}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#777777] px-1">
+                <span>Saved in Supabase inbox (ID: {activeMessage.id.slice(0, 8)})</span>
+                {activeMessage.status === 'replied' && activeMessage.repliedAt && (
+                  <span className="text-emerald-800 font-semibold">
+                    Marked as replied on {new Date(activeMessage.repliedAt).toLocaleString()}
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </div>

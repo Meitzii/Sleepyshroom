@@ -506,7 +506,7 @@ For any questions or assistance with your order, email us at shop.sleepyshroom@g
       subject: 'Custom ultrawide resolution request',
       message: 'I love your Sleepy Garden wallpapers so much! Will you be releasing dual 32:9 super ultrawide editions soon? Keep up the magical work!',
       consent: true,
-      status: 'unread',
+      status: 'new',
       createdAt: '2026-11-06T15:10:00.000Z',
     }
   ],
@@ -1258,7 +1258,9 @@ app.get('/api/admin/stats', async (req: Request, res: Response) => {
   try {
     const msgRes = await handleAdminListMessages(req);
     if (msgRes.status === 200 && Array.isArray(msgRes.body?.messages)) {
-      unreadMessages = msgRes.body.messages.filter((m: any) => m.status === 'unread').length;
+      unreadMessages = msgRes.body.messages.filter(
+        (m: any) => m.status === 'new' || m.status === 'unread'
+      ).length;
     }
   } catch {
     unreadMessages = 0;

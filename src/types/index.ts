@@ -122,6 +122,8 @@ export interface Order {
   createdAt: string;
 }
 
+export type ContactMessageStatus = 'new' | 'in_progress' | 'replied';
+
 export interface ContactMessage {
   id: string;
   submissionId?: string;
@@ -131,7 +133,7 @@ export interface ContactMessage {
   subject: string;
   message: string;
   consent: boolean;
-  status: 'unread' | 'read' | 'replied';
+  status: ContactMessageStatus;
   emailSent?: boolean;
   emailSentAt?: string | null;
   emailError?: string | null;

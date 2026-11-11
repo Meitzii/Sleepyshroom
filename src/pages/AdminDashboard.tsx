@@ -36,7 +36,8 @@ import type {
   Collection, 
   WebsiteSettings, 
   Order, 
-  ContactMessage 
+  ContactMessage,
+  ContactMessageStatus
 } from '../types/index.ts';
 
 export const AdminDashboard: React.FC = () => {
@@ -196,7 +197,7 @@ export const AdminDashboard: React.FC = () => {
 
   const handleUpdateMessageStatus = async (
     id: string,
-    status: 'unread' | 'read' | 'replied'
+    status: ContactMessageStatus
   ): Promise<{ success: boolean; error?: string }> => {
     const token = await getFreshAdminToken();
     if (!token) return { success: false, error: 'Administrator session expired.' };
@@ -515,7 +516,7 @@ export const AdminDashboard: React.FC = () => {
     );
   }
 
-  const unreadMessagesCount = messages.filter(m => m.status === 'unread').length;
+  const newMessagesCount = messages.filter(m => m.status === 'new').length;
 
   return (
     <div className="py-8 sm:py-12 bg-[#FFFCF7] min-h-screen">
@@ -640,7 +641,7 @@ export const AdminDashboard: React.FC = () => {
           >
             <MessageSquare className="w-4 h-4" />
             <span>Messages ({messages.length})</span>
-            {unreadMessagesCount > 0 && (
+            {newMessagesCount > 0 && (
               <span
                 className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold leading-none ${
                   activeTab === 'messages'
@@ -648,7 +649,7 @@ export const AdminDashboard: React.FC = () => {
                     : 'bg-[#A64B3C] text-[#FFFCF7]'
                 }`}
               >
-                {unreadMessagesCount}
+                {newMessagesCount}
               </span>
             )}
           </button>

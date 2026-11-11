@@ -6,7 +6,6 @@ import {
   AlertCircle,
   Loader2,
   ShieldCheck,
-  Info,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { supabase } from '../lib/supabase.ts';
@@ -208,43 +207,23 @@ export const ContactPage: React.FC = () => {
 
               <div className="space-y-2">
                 <h2 className="font-heading font-bold text-2xl text-[#292929]">
-                  {submittedState.emailDelivered
-                    ? 'Message sent with love!'
-                    : 'Your inquiry was saved!'}
+                  Message sent with love!
                 </h2>
 
                 {submittedState.emailDelivered ? (
                   <p className="text-xs sm:text-sm text-[#777777] font-medium leading-relaxed">
-                    Thank you so much for reaching out! Your message has been saved to our shop inbox and emailed to{' '}
+                    Thank you so much for reaching out! Your inquiry has been saved for our team and forwarded to{' '}
                     <strong className="text-[#292929] font-bold">{submittedState.recipientEmail}</strong>.
-                    We usually reply within 24–48 cozy hours.
+                    We usually reply to <strong className="text-[#292929]">{submittedState.customerEmail}</strong> within 24–48 cozy hours.
                   </p>
                 ) : (
                   <p className="text-xs sm:text-sm text-[#777777] font-medium leading-relaxed">
-                    Thank you! Your inquiry has been securely saved to our Admin inbox so we can review and reply to{' '}
-                    <strong className="text-[#292929]">{submittedState.customerEmail}</strong>.
+                    Thank you so much for reaching out! Your inquiry has been securely saved for{' '}
+                    <strong className="text-[#292929] font-bold">{submittedState.recipientEmail}</strong>.
+                    We usually reply to <strong className="text-[#292929]">{submittedState.customerEmail}</strong> within 24–48 cozy hours.
                   </p>
                 )}
               </div>
-
-              {!submittedState.emailDelivered && (
-                <div className="p-4 bg-[#FFFCF7] border border-amber-300 rounded-2xl text-left space-y-2 text-xs">
-                  <div className="flex items-start gap-2 text-amber-900 font-bold">
-                    <Info className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
-                    <span>Automated email notification could not be confirmed</span>
-                  </div>
-                  <p className="text-[#777777] font-medium leading-relaxed">
-                    {submittedState.emailError || 'Server email delivery is not configured yet.'} Your message is still saved for the shop owner in Admin Dashboard. If your request is urgent, you can also send a copy from your email app:
-                  </p>
-                  <a
-                    href={`mailto:${submittedState.recipientEmail}?subject=${encodeURIComponent(submittedState.inquirySubject)}&body=${encodeURIComponent(`Name: ${submittedState.customerName}\nEmail: ${submittedState.customerEmail}\n\n${submittedState.customerMessage}`)}`}
-                    className="inline-flex items-center gap-1.5 font-bold text-[#A64B3C] hover:underline"
-                  >
-                    <Mail className="w-3.5 h-3.5" />
-                    <span>Email {submittedState.recipientEmail} directly</span>
-                  </a>
-                </div>
-              )}
 
               <p className="text-[11px] font-mono text-[#777777]">
                 Reference: {submittedState.submissionId.slice(0, 8)}
