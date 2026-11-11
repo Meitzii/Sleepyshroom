@@ -24,6 +24,7 @@ interface ContactMessagesPanelProps {
   setupError: string | null;
   emailConfigured: boolean;
   emailProvider: string | null;
+  emailUsingSandbox?: boolean;
   onRefresh: () => Promise<void>;
   onUpdateStatus: (id: string, status: 'unread' | 'read' | 'replied') => Promise<{ success: boolean; error?: string }>;
   onDelete: (id: string) => Promise<{ success: boolean; error?: string }>;
@@ -42,6 +43,7 @@ export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
   setupError,
   emailConfigured,
   emailProvider,
+  emailUsingSandbox = false,
   onRefresh,
   onUpdateStatus,
   onDelete,
@@ -249,18 +251,35 @@ export const ContactMessagesPanel: React.FC<ContactMessagesPanelProps> = ({
         </div>
 
         {/* Email Provider Configuration Notice */}
-        {!emailConfigured && !setupError && (
+        {!emailConfigured ? (
           <div className="p-3.5 bg-[#FFFCF7] border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-900">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
             <div>
               <span className="font-bold">Server email sending is not configured yet.</span>{' '}
               <span className="text-[#777777] font-medium">
-                Set <code className="font-mono text-[#292929]">RESEND_API_KEY</code> or{' '}
-                <code className="font-mono text-[#292929]">GMAIL_APP_PASSWORD</code> /{' '}
-                <code className="font-mono text-[#292929]">SMTP_*</code> environment variables to enable automated email alerts to{' '}
-                <strong className="text-[#292929]">shop.sleepyshroom@gmail.com</strong> and in-dashboard replies.
+                Add <code className="font-mono text-[#292929]">RESEND_API_KEY</code> (and{' '}
+                <code className="font-mono text-[#292929]">RESEND_FROM_EMAIL</code> from a verified domain) to your server / Vercel environment variables to notify{' '}
+                <strong className="text-[#292929]">shop.sleepyshroom@gmail.com</strong> and reply from this inbox.
               </span>
             </div>
+          </div>
+        ) : emailProvider === 'resend' && emailUsingSandbox ? (
+          <div className="p-3.5 bg-[#FFFCF7] border border-[#EADCC8] rounded-2xl flex items-start gap-2.5 text-xs text-[#292929]">
+            <CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-emerald-700" />
+            <div>
+              <span className="font-bold text-emerald-900">Resend connected</span>{' '}
+              <span className="text-[#777777] font-medium">
+                (using <code className="font-mono text-[#292929]">onboarding@resend.dev</code> test sender). Set{' '}
+                <code className="font-mono text-[#292929]">RESEND_FROM_EMAIL</code> to a verified Resend domain sender to email external customer addresses directly.
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="p-3 bg-[#FFFCF7] border border-emerald-200 rounded-2xl flex items-center gap-2 text-xs text-emerald-900 font-semibold">
+            <CheckCircle className="w-4 h-4 shrink-0 text-emerald-700" />
+            <span>
+              Email delivery active ({emailProvider === 'resend' ? 'Resend' : emailProvider || 'configured'}) · Alerts sent to shop.sleepyshroom@gmail.com
+            </span>
           </div>
         )}
       </div>

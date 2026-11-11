@@ -59,6 +59,7 @@ export const AdminDashboard: React.FC = () => {
   const [messagesSetupError, setMessagesSetupError] = useState<string | null>(null);
   const [emailConfigured, setEmailConfigured] = useState(false);
   const [emailProvider, setEmailProvider] = useState<string | null>(null);
+  const [emailUsingSandbox, setEmailUsingSandbox] = useState(false);
 
   // Feedback notifications
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -106,6 +107,11 @@ export const AdminDashboard: React.FC = () => {
         },
       });
       const msgsData = await msgsRes.json().catch(() => null);
+      if (msgsData) {
+        setEmailConfigured(Boolean(msgsData.emailConfigured));
+        setEmailProvider(msgsData.emailProvider || null);
+        setEmailUsingSandbox(Boolean(msgsData.emailUsingSandbox));
+      }
       if (!msgsRes.ok || !msgsData?.success) {
         setMessages([]);
         setMessagesSetupError(
@@ -115,8 +121,6 @@ export const AdminDashboard: React.FC = () => {
       }
 
       setMessages(Array.isArray(msgsData.messages) ? msgsData.messages : []);
-      setEmailConfigured(Boolean(msgsData.emailConfigured));
-      setEmailProvider(msgsData.emailProvider || null);
     } catch (err: any) {
       setMessagesSetupError(err?.message || 'Unable to load contact messages.');
     } finally {
@@ -1237,6 +1241,7 @@ export const AdminDashboard: React.FC = () => {
             setupError={messagesSetupError}
             emailConfigured={emailConfigured}
             emailProvider={emailProvider}
+            emailUsingSandbox={emailUsingSandbox}
             onRefresh={() => fetchAdminMessages()}
             onUpdateStatus={handleUpdateMessageStatus}
             onDelete={handleDeleteMessage}

@@ -14,7 +14,10 @@ as $$
     select 1
     from public.profiles p
     where p.id = auth.uid()
-      and lower(coalesce(p.role, '')) = 'admin'
+      and (
+        lower(coalesce(p.role, '')) = 'admin'
+        or lower(coalesce(p.email, '')) = 'shop.sleepyshroom@gmail.com'
+      )
   );
 $$;
 
