@@ -1,53 +1,96 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  CheckCircle, 
-  Download, 
-  Sparkles, 
-  Mail, 
-  ExternalLink, 
-  ArrowRight, 
-  ShieldCheck,
-  FileCheck,
+import {
+  CheckCircle,
+  Download,
+  Sparkles,
   Smartphone,
-  Monitor
+  Monitor,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import type { Order } from '../types/index.ts';
 import { downloadWallpaperFile } from '../utils/downloadHelper.ts';
+import { parseJsonResponse, getOptionalSupabaseAuthHeader } from '../utils/apiClient.ts';
+import { findOrderInLocalCache, saveOrderToLocalCache } from '../utils/orderCache.ts';
 
 interface OrderConfirmationPageProps {
   token: string;
 }
 
 export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ token }) => {
-  const { latestOrder, navigateTo } = useShop();
-  const [order, setOrder] = useState<Order | null>(latestOrder);
-  const [loading, setLoading] = useState(!latestOrder);
+  const { latestOrder, navigateTo, products } = useShop();
+  const [order, setOrder] = useState<Order | null>(() => {
+    if (latestOrder && (!token || latestOrder.downloadToken === token || latestOrder.orderNumber === token)) {
+      return latestOrder;
+    }
+    return token ? findOrderInLocalCache(token) : null;
+  });
+  const [loading, setLoading] = useState(!order && Boolean(token));
   const [downloadSuccessMessage, setDownloadSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!latestOrder && token) {
-      // Fetch order by token
-      fetch(`/api/orders/${token}`)
-        .then(res => res.json())
-        .then(data => {
-          if (!data.error) {
-            setOrder(data);
-          }
-        })
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    } else {
+    if (
+      latestOrder &&
+      (!token || latestOrder.downloadToken === token || latestOrder.orderNumber === token)
+    ) {
+      saveOrderToLocalCache(latestOrder);
+      setOrder(latestOrder);
       setLoading(false);
+      return;
     }
+
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    const cached = findOrderInLocalCache(token);
+    if (cached) {
+      setOrder(cached);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+
+    (async () => {
+      try {
+        const authHeaders = await getOptionalSupabaseAuthHeader();
+        const res = await fetch(`/api/orders/${encodeURIComponent(token)}`, {
+          headers: authHeaders,
+        });
+        const parsed = await parseJsonResponse<Order & { error?: string }>(res);
+        if (!cancelled && parsed.ok && parsed.isJson && parsed.data && !parsed.data.error) {
+          saveOrderToLocalCache(parsed.data);
+          setOrder(parsed.data);
+        }
+      } catch (err) {
+        console.error('Order confirmation lookup error:', err);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [token, latestOrder]);
 
   const handleDownloadFile = async (productId: string, title: string) => {
     const item = order?.items.find(i => i.productId === productId);
-    const imageSrc = item?.image || `/wallpapers/${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
-    const filename = `${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
+    const catalogProd = products.find(p => p.id === productId);
+    const imageSrc =
+      item?.image ||
+      catalogProd?.images?.[0] ||
+      `/wallpapers/${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
+    const baseName =
+      item?.downloadFileName ||
+      catalogProd?.downloadFileName ||
+      `${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
 
-    await downloadWallpaperFile(imageSrc, filename);
+    await downloadWallpaperFile(imageSrc, baseName);
 
     setDownloadSuccessMessage(`Download started for "${title}"! Check your downloads folder.`);
     setTimeout(() => setDownloadSuccessMessage(null), 5000);
@@ -67,10 +110,10 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
     return (
       <div className="py-20 text-center max-w-md mx-auto px-4">
         <h2 className="font-heading font-bold text-2xl text-[#292929] mb-2">
-          Order Access Token Expired
+          Order Access Token Unavailable
         </h2>
         <p className="text-sm text-[#777777] font-medium mb-6">
-          Could not locate this order. Please sign in to view your purchased downloads.
+          Could not locate this order on this device. Please sign in to view your purchased downloads.
         </p>
         <button
           onClick={() => navigateTo('account')}
@@ -82,10 +125,18 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
     );
   }
 
+  const billingLocation = [
+    order.billingDetails?.city,
+    order.billingDetails?.postalCode,
+    order.billingDetails?.country,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
   return (
     <div className="py-10 sm:py-16 bg-[#FFFCF7]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Celebration Header */}
         <div className="text-center max-w-xl mx-auto mb-10 space-y-3">
           <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto shadow-sm">
@@ -97,7 +148,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
           </h1>
 
           <p className="text-sm sm:text-base text-[#777777] font-medium">
-            Your digital wallpapers are ready. An order receipt and permanent access token have also been sent to{' '}
+            Your digital wallpapers are ready for{' '}
             <strong className="text-[#292929] font-bold">{order.customerEmail}</strong>.
           </p>
         </div>
@@ -112,7 +163,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
 
         {/* Main Digital Downloads Card */}
         <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs mb-8 space-y-6">
-          
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EADCC8] pb-4">
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-[#777777]">
@@ -138,6 +189,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
                   <img
                     src={item.image}
                     alt={item.title}
+                    referrerPolicy="no-referrer"
                     className="w-16 h-16 object-cover rounded-xl shrink-0 border border-[#EADCC8]"
                   />
                   <div>
@@ -155,7 +207,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
                 {/* Direct Download Button */}
                 <button
                   onClick={() => handleDownloadFile(item.productId, item.title)}
-                  className="px-5 py-3 bg-[#A64B3C] hover:bg-[#8E3E30] active:scale-98 text-[#FFFCF7] text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                  className="px-5 py-3 bg-[#A64B3C] hover:bg-[#8E3E30] active:scale-98 text-[#FFFCF7] text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer whitespace-nowrap"
                 >
                   <Download className="w-4 h-4" />
                   <span>Download Files</span>
@@ -174,31 +226,47 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
               <div className="space-y-1">
                 <p className="font-bold text-[#292929] flex items-center gap-1.5">
                   <Monitor className="w-3.5 h-3.5 text-[#A64B3C]" />
-                  <span>Mac & Windows Desktop</span>
+                  <span>Mac &amp; Windows Desktop</span>
                 </p>
                 <p className="leading-relaxed text-[11px] font-medium">
-                  Unpack your download file. Open System Settings &gt; Wallpaper / Personalization, and select your preferred high-resolution version.
+                  Save your wallpaper file, then open System Settings &gt; Wallpaper / Personalization to set your preferred background.
                 </p>
               </div>
               <div className="space-y-1">
                 <p className="font-bold text-[#292929] flex items-center gap-1.5">
                   <Smartphone className="w-3.5 h-3.5 text-[#A64B3C]" />
-                  <span>iPhone & Android</span>
+                  <span>iPhone &amp; Android</span>
                 </p>
                 <p className="leading-relaxed text-[11px] font-medium">
-                  Save to Photos/Gallery. Set as Lock Screen with wallpaper depth effect enabled, and use the clean home screen variant for clean app icons.
+                  Save to Photos/Gallery. Set as Lock Screen with wallpaper depth effect enabled, and match with clean app icons.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Receipt details */}
-          <div className="border-t border-[#EADCC8] pt-4 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-[#777777] font-medium gap-2">
-            <span>Payment: <strong className="text-[#292929]">{order.paymentMethod}</strong></span>
-            <span>Transaction ID: <strong className="text-[#292929]">{order.transactionId}</strong></span>
-            <span className="text-xs font-bold text-[#292929]">
-              Total Paid: <span className="text-base font-extrabold text-[#A64B3C] tabular-nums">${order.total.toFixed(2)}</span>
-            </span>
+          {/* Receipt & Billing Details */}
+          <div className="border-t border-[#EADCC8] pt-4 space-y-2 text-xs text-[#777777] font-medium">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span>
+                Billed to: <strong className="text-[#292929]">{order.customerName}</strong>
+                {billingLocation ? ` (${billingLocation})` : ''}
+              </span>
+              <span>
+                Transaction ID: <strong className="text-[#292929] font-mono">{order.transactionId}</strong>
+              </span>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span>
+                Payment: <strong className="text-[#292929]">{order.paymentMethod}</strong>
+                {order.isTestOrder ? ' · Demo Test Order' : ''}
+              </span>
+              <span className="text-xs font-bold text-[#292929]">
+                Total Paid:{' '}
+                <span className="text-base font-extrabold text-[#A64B3C] tabular-nums">
+                  ${order.total.toFixed(2)}
+                </span>
+              </span>
+            </div>
           </div>
 
         </div>

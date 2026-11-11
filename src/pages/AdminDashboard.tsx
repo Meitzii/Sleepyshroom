@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { supabase } from '../lib/supabase.ts';
+import { parseJsonResponse } from '../utils/apiClient.ts';
 import { ContactMessagesPanel } from '../components/admin/ContactMessagesPanel.tsx';
 import type { 
   Product, 
@@ -145,18 +146,25 @@ export const AdminDashboard: React.FC = () => {
         fetch('/api/admin/content', { headers: authHeaders }),
         fetch('/api/products?includeDrafts=true'),
         fetch('/api/collections'),
-        fetch('/api/orders'),
+        fetch('/api/orders', { headers: authHeaders }),
       ]);
 
-      if (statsRes.ok) setStats(await statsRes.json());
-      if (contentRes.ok) {
-        const content = await contentRes.json();
-        setSettings(content.settings);
-        setSlides(content.carouselSlides);
+      const [statsParsed, contentParsed, prodsParsed, colsParsed, ordersParsed] = await Promise.all([
+        parseJsonResponse(statsRes),
+        parseJsonResponse(contentRes),
+        parseJsonResponse(prodsRes),
+        parseJsonResponse(colsRes),
+        parseJsonResponse(ordersRes),
+      ]);
+
+      if (statsParsed.ok && statsParsed.isJson && statsParsed.data) setStats(statsParsed.data);
+      if (contentParsed.ok && contentParsed.isJson && contentParsed.data) {
+        if (contentParsed.data.settings) setSettings(contentParsed.data.settings);
+        if (Array.isArray(contentParsed.data.carouselSlides)) setSlides(contentParsed.data.carouselSlides);
       }
-      if (prodsRes.ok) setAllProducts(await prodsRes.json());
-      if (colsRes.ok) setAllCollections(await colsRes.json());
-      if (ordersRes.ok) setOrders(await ordersRes.json());
+      if (prodsParsed.ok && prodsParsed.isJson && Array.isArray(prodsParsed.data)) setAllProducts(prodsParsed.data);
+      if (colsParsed.ok && colsParsed.isJson && Array.isArray(colsParsed.data)) setAllCollections(colsParsed.data);
+      if (ordersParsed.ok && ordersParsed.isJson && Array.isArray(ordersParsed.data)) setOrders(ordersParsed.data);
 
       await fetchAdminMessages(token);
     } catch (err: any) {
@@ -347,10 +355,12 @@ export const AdminDashboard: React.FC = () => {
             filename: file.name,
           }),
         });
-        const data = await res.json();
-        if (data.url) {
-          handleSlideChange(slideId, 'imageUrl', data.url);
+        const parsed = await parseJsonResponse<{ url?: string; error?: string }>(res);
+        if (parsed.ok && parsed.isJson && parsed.data?.url) {
+          handleSlideChange(slideId, 'imageUrl', parsed.data.url);
           triggerSaveNotification('Image uploaded! Click "Publish Changes" to make it live.');
+        } else {
+          setErrorMessage(parsed.data?.error || 'Failed to upload image.');
         }
       } catch (err) {
         setErrorMessage('Failed to upload image.');
@@ -459,10 +469,12 @@ export const AdminDashboard: React.FC = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ dataUrl: reader.result, filename: file.name }),
         });
-        const data = await res.json();
-        if (data.url) {
-          setSettings({ ...settings, heroImage: data.url });
+        const parsed = await parseJsonResponse<{ url?: string; error?: string }>(res);
+        if (parsed.ok && parsed.isJson && parsed.data?.url) {
+          setSettings({ ...settings, heroImage: parsed.data.url });
           triggerSaveNotification('Hero image uploaded! Click Save to apply.');
+        } else {
+          setErrorMessage(parsed.data?.error || 'Failed to upload image.');
         }
       } catch {
         setErrorMessage('Failed to upload image.');
@@ -1320,16 +1332,30 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Payment Providers Configuration */}
             <div className="border-t border-[#E8C9C1]/50 pt-6 space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B6F7A]">
-                Payment Providers Configuration
-              </h3>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B6F7A]">
+                  Payment Providers &amp; Billing Configuration
+                </h3>
+                <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-[#E8C9C1]">
+                  <input
+                    type="checkbox"
+                    checked={settings.paymentProviders.testMode}
+                    onChange={e => setSettings({
+                      ...settings,
+                      paymentProviders: { ...settings.paymentProviders, testMode: e.target.checked }
+                    })}
+                    className="accent-[#8B6F7A]"
+                  />
+                  <span className="text-xs text-[#1E1419] font-bold">Sandbox / Demo Test Mode</span>
+                </label>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                
+
                 {/* Stripe */}
                 <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-[#1E1419]">Stripe (Cards)</span>
+                    <span className="font-bold text-xs text-[#1E1419]">Credit / Debit Card</span>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -1375,13 +1401,14 @@ export const AdminDashboard: React.FC = () => {
                     </label>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[#8B6F7A] mb-0.5">PayPal Client ID</label>
+                    <label className="block text-[10px] font-bold text-[#8B6F7A] mb-0.5">Receiving PayPal Email (Optional)</label>
                     <input
-                      type="text"
-                      value={settings.paymentProviders.paypalClientId}
+                      type="email"
+                      placeholder="shop.sleepyshroom@gmail.com"
+                      value={settings.paymentProviders.paypalEmail || ''}
                       onChange={e => setSettings({
                         ...settings,
-                        paymentProviders: { ...settings.paymentProviders, paypalClientId: e.target.value }
+                        paymentProviders: { ...settings.paymentProviders, paypalEmail: e.target.value }
                       })}
                       className="w-full px-2.5 py-1.5 text-xs bg-[#F9F6F0] border border-[#E8C9C1] rounded-lg"
                     />
@@ -1389,37 +1416,97 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* GCash */}
-                <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] flex items-center justify-between">
-                  <span className="font-bold text-xs text-[#1E1419]">GCash Mobile Payment</span>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.paymentProviders.gcashEnabled}
-                      onChange={e => setSettings({
-                        ...settings,
-                        paymentProviders: { ...settings.paymentProviders, gcashEnabled: e.target.checked }
-                      })}
-                      className="accent-[#8B6F7A]"
-                    />
-                    <span className="text-xs text-[#8B6F7A] font-semibold">Enabled</span>
-                  </label>
+                <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-[#1E1419]">GCash Mobile Payment</span>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={settings.paymentProviders.gcashEnabled}
+                        onChange={e => setSettings({
+                          ...settings,
+                          paymentProviders: { ...settings.paymentProviders, gcashEnabled: e.target.checked }
+                        })}
+                        className="accent-[#8B6F7A]"
+                      />
+                      <span className="text-xs text-[#8B6F7A] font-semibold">Enabled</span>
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#8B6F7A] mb-0.5">Account Name</label>
+                      <input
+                        type="text"
+                        placeholder="Merchant Name"
+                        value={settings.paymentProviders.gcashAccountName || ''}
+                        onChange={e => setSettings({
+                          ...settings,
+                          paymentProviders: { ...settings.paymentProviders, gcashAccountName: e.target.value }
+                        })}
+                        className="w-full px-2.5 py-1.5 text-xs bg-[#F9F6F0] border border-[#E8C9C1] rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#8B6F7A] mb-0.5">GCash Number</label>
+                      <input
+                        type="text"
+                        placeholder="09XX XXX XXXX"
+                        value={settings.paymentProviders.gcashNumber || ''}
+                        onChange={e => setSettings({
+                          ...settings,
+                          paymentProviders: { ...settings.paymentProviders, gcashNumber: e.target.value }
+                        })}
+                        className="w-full px-2.5 py-1.5 text-xs bg-[#F9F6F0] border border-[#E8C9C1] rounded-lg"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Maya */}
-                <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] flex items-center justify-between">
-                  <span className="font-bold text-xs text-[#1E1419]">Maya Digital Payment</span>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.paymentProviders.mayaEnabled}
-                      onChange={e => setSettings({
-                        ...settings,
-                        paymentProviders: { ...settings.paymentProviders, mayaEnabled: e.target.checked }
-                      })}
-                      className="accent-[#8B6F7A]"
-                    />
-                    <span className="text-xs text-[#8B6F7A] font-semibold">Enabled</span>
-                  </label>
+                <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-[#1E1419]">Maya Digital Payment</span>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={settings.paymentProviders.mayaEnabled}
+                        onChange={e => setSettings({
+                          ...settings,
+                          paymentProviders: { ...settings.paymentProviders, mayaEnabled: e.target.checked }
+                        })}
+                        className="accent-[#8B6F7A]"
+                      />
+                      <span className="text-xs text-[#8B6F7A] font-semibold">Enabled</span>
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#8B6F7A] mb-0.5">Account Name</label>
+                      <input
+                        type="text"
+                        placeholder="Merchant Name"
+                        value={settings.paymentProviders.mayaAccountName || ''}
+                        onChange={e => setSettings({
+                          ...settings,
+                          paymentProviders: { ...settings.paymentProviders, mayaAccountName: e.target.value }
+                        })}
+                        className="w-full px-2.5 py-1.5 text-xs bg-[#F9F6F0] border border-[#E8C9C1] rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#8B6F7A] mb-0.5">Maya Number</label>
+                      <input
+                        type="text"
+                        placeholder="09XX XXX XXXX"
+                        value={settings.paymentProviders.mayaNumber || ''}
+                        onChange={e => setSettings({
+                          ...settings,
+                          paymentProviders: { ...settings.paymentProviders, mayaNumber: e.target.value }
+                        })}
+                        className="w-full px-2.5 py-1.5 text-xs bg-[#F9F6F0] border border-[#E8C9C1] rounded-lg"
+                      />
+                    </div>
+                  </div>
                 </div>
 
               </div>

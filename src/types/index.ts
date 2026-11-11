@@ -73,8 +73,13 @@ export interface WebsiteSettings {
     stripeSecretKeyConfigured: boolean;
     paypalEnabled: boolean;
     paypalClientId: string;
+    paypalEmail?: string;
     gcashEnabled: boolean;
+    gcashAccountName?: string;
+    gcashNumber?: string;
     mayaEnabled: boolean;
+    mayaAccountName?: string;
+    mayaNumber?: string;
     testMode: boolean;
   };
   socialLinks: {
@@ -96,26 +101,41 @@ export interface WebsiteSettings {
   };
 }
 
+export type PaymentProviderKey = 'stripe' | 'paypal' | 'gcash' | 'maya' | 'free';
+
+export interface BillingDetails {
+  country: string;
+  city?: string;
+  postalCode?: string;
+  addressLine1?: string;
+}
+
 export interface OrderItem {
   productId: string;
   title: string;
   price: number;
+  quantity?: number;
   image: string;
   deviceTypes: DeviceType[];
+  downloadFileName?: string;
 }
 
 export interface Order {
   id: string;
+  userId?: string | null;
   orderNumber: string;
   customerEmail: string;
   customerName: string;
+  billingDetails?: BillingDetails;
   items: OrderItem[];
   subtotal: number;
   discount: number;
   discountCode?: string;
   total: number;
+  paymentProvider?: PaymentProviderKey;
   paymentMethod: string;
   paymentStatus: 'completed' | 'pending' | 'refunded';
+  isTestOrder?: boolean;
   transactionId: string;
   downloadToken: string;
   downloadCount: number;

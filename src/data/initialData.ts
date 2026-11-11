@@ -24,8 +24,13 @@ export const initialSettings: WebsiteSettings = {
     "stripeSecretKeyConfigured": false,
     "paypalEnabled": true,
     "paypalClientId": "client_id_sample",
+    "paypalEmail": "",
     "gcashEnabled": true,
+    "gcashAccountName": "",
+    "gcashNumber": "",
     "mayaEnabled": true,
+    "mayaAccountName": "",
+    "mayaNumber": "",
     "testMode": true
   },
   "socialLinks": {

@@ -62,7 +62,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
   };
 
   const handleBuyNow = () => {
-    addToCart(product, 1);
+    addToCart(product, 1, false);
     navigateTo('checkout');
   };
 

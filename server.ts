@@ -22,6 +22,12 @@ import {
   handleAdminDeleteMessage,
   handleAdminReplyMessage,
 } from './lib/contact-service.js';
+import {
+  handleDiscountValidation,
+  handleCheckoutSubmission,
+  handleListOrders,
+  handleGetOrderByToken,
+} from './lib/checkout-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -79,8 +85,13 @@ const defaultStore: AppStore = {
       stripeSecretKeyConfigured: false,
       paypalEnabled: true,
       paypalClientId: 'client_id_sample',
+      paypalEmail: '',
       gcashEnabled: true,
+      gcashAccountName: '',
+      gcashNumber: '',
       mayaEnabled: true,
+      mayaAccountName: '',
+      mayaNumber: '',
       testMode: true,
     },
     socialLinks: {
@@ -825,155 +836,48 @@ app.get('/api/discounts', (_req: Request, res: Response) => {
   res.json(store.discountCodes);
 });
 
-app.post('/api/discounts/validate', (req: Request, res: Response) => {
-  const store = readStore();
-  const { code, subtotal } = req.body;
-  if (!code) {
-    res.status(400).json({ valid: false, message: 'Please provide a promo code' });
-    return;
+app.post('/api/discounts/validate', async (req: Request, res: Response) => {
+  try {
+    const result = await handleDiscountValidation(req);
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('[Discount Validate Error]', err);
+    res.status(500).json({ valid: false, message: 'Could not validate promo code.' });
   }
-  const match = store.discountCodes.find(d => d.code.toUpperCase() === String(code).toUpperCase().trim() && d.active);
-  if (!match) {
-    res.status(404).json({ valid: false, message: 'Invalid or expired code' });
-    return;
-  }
-  if (subtotal < match.minSpend) {
-    res.status(400).json({ valid: false, message: `Minimum spend of $${match.minSpend.toFixed(2)} required for this code` });
-    return;
-  }
-  let discountAmount = 0;
-  if (match.type === 'percentage') {
-    discountAmount = (subtotal * match.value) / 100;
-  } else {
-    discountAmount = Math.min(subtotal, match.value);
-  }
-  res.json({
-    valid: true,
-    discountCode: match.code,
-    type: match.type,
-    value: match.value,
-    discountAmount: Number(discountAmount.toFixed(2)),
-    message: match.type === 'percentage' ? `${match.value}% off applied!` : `$${match.value.toFixed(2)} off applied!`,
-  });
 });
 
 // 6. Checkout & Orders
-app.post('/api/checkout', (req: Request, res: Response) => {
-  const store = readStore();
-  const { customerEmail, customerName, items, discountCode, paymentMethod } = req.body;
-
-  if (!customerEmail || !items || !items.length) {
-    res.status(400).json({ error: 'Missing required order fields' });
-    return;
-  }
-
-  // Calculate real server-side subtotal
-  let subtotal = 0;
-  const verifiedItems: any[] = [];
-
-  for (const item of items) {
-    const prod = store.products.find(p => p.id === item.productId);
-    if (prod) {
-      const price = prod.price;
-      subtotal += price * (item.quantity || 1);
-      verifiedItems.push({
-        productId: prod.id,
-        title: prod.title,
-        price: prod.price,
-        image: prod.images[0] || '',
-        deviceTypes: prod.deviceTypes,
-      });
-    }
-  }
-
-  let discount = 0;
-  if (discountCode) {
-    const disc = store.discountCodes.find(d => d.code.toUpperCase() === String(discountCode).toUpperCase().trim() && d.active);
-    if (disc && subtotal >= disc.minSpend) {
-      if (disc.type === 'percentage') {
-        discount = (subtotal * disc.value) / 100;
-      } else {
-        discount = Math.min(subtotal, disc.value);
-      }
-    }
-  }
-
-  const total = Number((subtotal - discount).toFixed(2));
-  const orderNum = `SHROOM-${1000 + store.orders.length + 1}`;
-  const downloadToken = `shroom_dl_${Math.random().toString(36).substring(2, 12)}_${Date.now()}`;
-  const transactionId = `txn_${(paymentMethod || 'card').toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`;
-
-  const newOrder: Order = {
-    id: `ord-${Date.now()}`,
-    orderNumber: orderNum,
-    customerEmail,
-    customerName: customerName || 'Valued Customer',
-    items: verifiedItems,
-    subtotal: Number(subtotal.toFixed(2)),
-    discount: Number(discount.toFixed(2)),
-    discountCode: discountCode || undefined,
-    total,
-    paymentMethod: paymentMethod || 'Secure Card Checkout',
-    paymentStatus: 'completed',
-    transactionId,
-    downloadToken,
-    downloadCount: 0,
-    createdAt: new Date().toISOString(),
-  };
-
-  store.orders.unshift(newOrder);
-
-  // Bump download count and set live indicator for purchased items
-  for (const itm of verifiedItems) {
-    const prod = store.products.find(p => p.id === itm.productId);
-    if (prod) {
-      prod.downloadCount = (prod.downloadCount || 0) + 1;
-      prod.recentDownloadTime = 'just now';
-    }
-  }
-
-  // If user exists, connect order; if new guest, add to users list
-  if (!store.users.some(u => u.email.toLowerCase() === customerEmail.toLowerCase())) {
-    store.users.push({
-      id: `usr-${Date.now()}`,
-      name: customerName || 'Valued Customer',
-      email: customerEmail,
-      createdAt: new Date().toISOString(),
+app.post('/api/checkout', async (req: Request, res: Response) => {
+  try {
+    const result = await handleCheckoutSubmission(req);
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('[Checkout API Error]', err);
+    res.status(500).json({
+      success: false,
+      error: err?.message || 'Unexpected error processing checkout.',
     });
   }
-
-  saveStore(store);
-
-  // Log confirmation notification (simulating real server mail dispatch to customer and owner)
-  console.log(`[Order Confirmed] Order ${orderNum} created for ${customerEmail}. Digital token: ${downloadToken}`);
-
-  res.json({
-    success: true,
-    order: newOrder,
-    downloadUrl: `/downloads/${downloadToken}`,
-  });
 });
 
-app.get('/api/orders', (req: Request, res: Response) => {
-  const store = readStore();
-  const email = req.query.email as string;
-  if (email) {
-    const userOrders = store.orders.filter(o => o.customerEmail.toLowerCase() === email.toLowerCase());
-    res.json(userOrders);
-    return;
+app.get('/api/orders', async (req: Request, res: Response) => {
+  try {
+    const result = await handleListOrders(req);
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('[Orders List Error]', err);
+    res.status(500).json({ error: 'Unable to load orders.' });
   }
-  res.json(store.orders);
 });
 
-app.get('/api/orders/:idOrToken', (req: Request, res: Response) => {
-  const store = readStore();
-  const param = req.params.idOrToken;
-  const order = store.orders.find(o => o.id === param || o.orderNumber === param || o.downloadToken === param);
-  if (!order) {
-    res.status(404).json({ error: 'Order not found' });
-    return;
+app.get('/api/orders/:idOrToken', async (req: Request, res: Response) => {
+  try {
+    const result = await handleGetOrderByToken(req, String(req.params.idOrToken || ''));
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('[Order Lookup Error]', err);
+    res.status(500).json({ error: 'Unable to load order.' });
   }
-  res.json(order);
 });
 
 // 7. Secure Digital Download Simulator & High-res asset delivery

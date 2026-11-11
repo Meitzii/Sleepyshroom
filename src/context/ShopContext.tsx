@@ -14,9 +14,11 @@ import {
   initialSettings, 
   initialCarouselSlides, 
   initialProducts, 
-  initialCollections 
+  initialCollections,
+  initialDiscountCodes 
 } from '../data/initialData.ts';
 import { downloadWallpaperFile } from '../utils/downloadHelper.ts';
+import { parseJsonResponse } from '../utils/apiClient.ts';
 import { supabase, isSupabaseConfigured } from '../lib/supabase.ts';
 
 export interface GoogleSignInResult {
@@ -47,7 +49,7 @@ interface ShopContextType {
   total: number;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
-  addToCart: (product: Product, quantity?: number) => void;
+  addToCart: (product: Product, quantity?: number, openDrawer?: boolean) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -189,26 +191,25 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetch('/api/collections'),
       ]);
 
-      if (contentRes.ok) {
-        const contentData = await contentRes.json();
-        if (contentData.settings) setSettings(contentData.settings);
-        if (Array.isArray(contentData.carouselSlides) && contentData.carouselSlides.length > 0) {
-          setCarouselSlides(contentData.carouselSlides);
+      const [contentParsed, prodsParsed, colsParsed] = await Promise.all([
+        parseJsonResponse(contentRes),
+        parseJsonResponse(prodsRes),
+        parseJsonResponse(colsRes),
+      ]);
+
+      if (contentParsed.ok && contentParsed.isJson && contentParsed.data) {
+        if (contentParsed.data.settings) setSettings(contentParsed.data.settings);
+        if (Array.isArray(contentParsed.data.carouselSlides) && contentParsed.data.carouselSlides.length > 0) {
+          setCarouselSlides(contentParsed.data.carouselSlides);
         }
       }
-      if (prodsRes.ok) {
-        const prodData = await prodsRes.json();
-        if (Array.isArray(prodData) && prodData.length > 0) {
-          setProducts(prodData);
-        }
+      if (prodsParsed.ok && prodsParsed.isJson && Array.isArray(prodsParsed.data) && prodsParsed.data.length > 0) {
+        setProducts(prodsParsed.data);
       }
-      if (colsRes.ok) {
-        const colData = await colsRes.json();
-        if (Array.isArray(colData) && colData.length > 0) {
-          setCollections(colData);
-        }
+      if (colsParsed.ok && colsParsed.isJson && Array.isArray(colsParsed.data) && colsParsed.data.length > 0) {
+        setCollections(colsParsed.data);
       }
-    } catch (err) {
+    } catch {
       // Running statically (e.g. Vercel, GitHub Pages) - initial state is already loaded!
     } finally {
       setLoading(false);
@@ -220,7 +221,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Cart actions
-  const addToCart = (product: Product, quantity = 1) => {
+  const addToCart = (product: Product, quantity = 1, openDrawer = true) => {
     setCart(prev => {
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
@@ -232,7 +233,11 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return [...prev, { product, quantity }];
     });
-    setIsCartOpen(true);
+    if (openDrawer) {
+      setIsCartOpen(true);
+    } else {
+      setIsCartOpen(false);
+    }
   };
 
   const removeFromCart = (productId: string) => {
@@ -279,27 +284,72 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [subtotal, appliedDiscount]);
 
   const applyDiscount = async (code: string) => {
+    const cleanCode = String(code || '').trim().toUpperCase();
+    if (!cleanCode) {
+      return { success: false, message: 'Please enter a promo code.' };
+    }
+
+    const validateLocally = () => {
+      const match = initialDiscountCodes.find(
+        d => d.code.toUpperCase() === cleanCode && d.active
+      );
+      if (!match) {
+        return { success: false, message: 'Invalid or expired promo code.' };
+      }
+      if (subtotal < match.minSpend) {
+        return {
+          success: false,
+          message: `Minimum spend of $${match.minSpend.toFixed(2)} required for ${match.code}.`,
+        };
+      }
+      const rawDisc =
+        match.type === 'percentage'
+          ? (subtotal * match.value) / 100
+          : Math.min(subtotal, match.value);
+      const calcDisc = Number(Math.max(0, Math.min(subtotal, rawDisc)).toFixed(2));
+      setAppliedDiscount(match);
+      setDiscountAmount(calcDisc);
+      return {
+        success: true,
+        message:
+          match.type === 'percentage'
+            ? `${match.value}% off applied!`
+            : `$${match.value.toFixed(2)} off applied!`,
+      };
+    };
+
     try {
       const res = await fetch('/api/discounts/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, subtotal }),
+        body: JSON.stringify({
+          code: cleanCode,
+          subtotal,
+          items: cart.map(item => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+          })),
+        }),
       });
-      const data = await res.json();
-      if (data.valid) {
+      const parsed = await parseJsonResponse(res);
+      if (!parsed.isJson) {
+        return validateLocally();
+      }
+      const data = parsed.data;
+      if (parsed.ok && data?.valid) {
         setAppliedDiscount({
           code: data.discountCode,
           type: data.type,
           value: data.value,
-          minSpend: 0,
+          minSpend: Number(data.minSpend ?? 0),
           active: true,
         });
-        setDiscountAmount(data.discountAmount);
-        return { success: true, message: data.message };
+        setDiscountAmount(Number(data.discountAmount ?? 0));
+        return { success: true, message: data.message || 'Promo code applied!' };
       }
-      return { success: false, message: data.message || 'Invalid code' };
+      return { success: false, message: data?.message || 'Invalid promo code.' };
     } catch {
-      return { success: false, message: 'Could not validate promo code' };
+      return validateLocally();
     }
   };
 

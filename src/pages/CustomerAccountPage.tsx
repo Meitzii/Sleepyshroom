@@ -16,6 +16,8 @@ import {
 import { useShop } from '../context/ShopContext.tsx';
 import type { Order } from '../types/index.ts';
 import { downloadWallpaperFile } from '../utils/downloadHelper.ts';
+import { parseJsonResponse, getOptionalSupabaseAuthHeader } from '../utils/apiClient.ts';
+import { getOrdersForCustomerEmail, mergeAndDeduplicateOrders } from '../utils/orderCache.ts';
 
 export const CustomerAccountPage: React.FC = () => {
   const {
@@ -69,24 +71,42 @@ export const CustomerAccountPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (user?.email) {
-      setLoadingOrders(true);
-      fetch(`/api/orders?email=${encodeURIComponent(user.email)}`)
-        .then(res =>
-          res.ok && res.headers.get('content-type')?.includes('application/json')
-            ? res.json()
-            : []
-        )
-        .then(data => {
-          if (Array.isArray(data)) {
-            setUserOrders(data);
-          }
-        })
-        .catch(console.error)
-        .finally(() => setLoadingOrders(false));
-    } else {
+    if (!user?.email) {
       setUserOrders([]);
+      return;
     }
+
+    let cancelled = false;
+    setLoadingOrders(true);
+    const localCached = getOrdersForCustomerEmail(user.email);
+
+    (async () => {
+      try {
+        const authHeaders = await getOptionalSupabaseAuthHeader();
+        const res = await fetch(`/api/orders?email=${encodeURIComponent(user.email)}`, {
+          headers: authHeaders,
+        });
+        const parsed = await parseJsonResponse<Order[]>(res);
+        const serverOrders =
+          parsed.ok && parsed.isJson && Array.isArray(parsed.data) ? parsed.data : [];
+        if (!cancelled) {
+          setUserOrders(mergeAndDeduplicateOrders(serverOrders, localCached));
+        }
+      } catch (err) {
+        console.error('Error loading customer orders:', err);
+        if (!cancelled) {
+          setUserOrders(localCached);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingOrders(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
@@ -206,7 +226,7 @@ export const CustomerAccountPage: React.FC = () => {
   const handleDownloadFile = async (_token: string, productId: string, title: string) => {
     const prod = products.find(p => p.id === productId);
     const imageSrc = prod?.images[0] || `/wallpapers/${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
-    const filename = `${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
+    const filename = prod?.downloadFileName || `${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
     await downloadWallpaperFile(imageSrc, filename);
   };
 
