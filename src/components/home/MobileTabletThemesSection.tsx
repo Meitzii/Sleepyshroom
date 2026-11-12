@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowRight, Smartphone } from 'lucide-react';
 import { useShop } from '../../context/ShopContext.tsx';
 import { ProductCard } from '../common/ProductCard.tsx';
+import { ScrollReveal } from '../common/ScrollReveal.tsx';
 
 export const MobileTabletThemesSection: React.FC = () => {
   const { products, navigateTo } = useShop();
@@ -40,8 +41,16 @@ export const MobileTabletThemesSection: React.FC = () => {
 
         {/* Product Grid with Portrait Orientation */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {mobileProducts.map(product => (
-            <ProductCard key={product.id} product={product} orientation="portrait" />
+          {mobileProducts.map((product, idx) => (
+            <ScrollReveal
+              key={product.id}
+              direction="up"
+              distance={18}
+              delayMs={idx * 75}
+              durationMs={600}
+            >
+              <ProductCard product={product} orientation="portrait" />
+            </ScrollReveal>
           ))}
         </div>
 

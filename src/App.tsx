@@ -10,6 +10,7 @@ import { FreeWallpapersSection } from './components/home/FreeWallpapersSection.t
 import { MobileTabletThemesSection } from './components/home/MobileTabletThemesSection.tsx';
 import { BrandIntroSection } from './components/home/BrandIntroSection.tsx';
 import { LiveActivityToast } from './components/common/LiveActivityToast.tsx';
+import { ScrollReveal } from './components/common/ScrollReveal.tsx';
 import { Footer } from './components/Footer.tsx';
 
 // Page components
@@ -65,20 +66,32 @@ const MainLayout: React.FC = () => {
         {activeView === 'home' && (
           <>
             {settings?.showHero !== false && (
-              <HeroSection onScrollToThemes={scrollToThemes} />
+              <ScrollReveal direction="up" distance={14} durationMs={600} initialVisible={true}>
+                <HeroSection onScrollToThemes={scrollToThemes} />
+              </ScrollReveal>
             )}
             {settings?.showCarousel !== false && (
-              <ThemeCarousel />
+              <ScrollReveal direction="up" distance={24} durationMs={700} threshold={0.08}>
+                <ThemeCarousel />
+              </ScrollReveal>
             )}
             {settings?.showDesktopSection !== false && (
-              <DesktopThemesSection />
+              <ScrollReveal direction="up" distance={24} durationMs={700} threshold={0.08}>
+                <DesktopThemesSection />
+              </ScrollReveal>
             )}
-            <FreeWallpapersSection />
+            <ScrollReveal direction="up" distance={24} durationMs={700} threshold={0.08}>
+              <FreeWallpapersSection />
+            </ScrollReveal>
             {settings?.showMobileSection !== false && (
-              <MobileTabletThemesSection />
+              <ScrollReveal direction="up" distance={24} durationMs={700} threshold={0.08}>
+                <MobileTabletThemesSection />
+              </ScrollReveal>
             )}
             {settings?.showBrandIntro !== false && (
-              <BrandIntroSection />
+              <ScrollReveal direction="up" distance={24} durationMs={700} threshold={0.08}>
+                <BrandIntroSection />
+              </ScrollReveal>
             )}
           </>
         )}

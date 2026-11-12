@@ -2,6 +2,7 @@ import React from 'react';
 import { Gift, Sparkles, Download, ArrowRight, ShieldCheck, Heart } from 'lucide-react';
 import { useShop } from '../../context/ShopContext.tsx';
 import { ProductCard } from '../common/ProductCard.tsx';
+import { ScrollReveal } from '../common/ScrollReveal.tsx';
 
 export const FreeWallpapersSection: React.FC = () => {
   const { products, navigateTo } = useShop();
@@ -54,12 +55,19 @@ export const FreeWallpapersSection: React.FC = () => {
 
           {/* Product Cards Grid for Freebies */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-            {freeProducts.map(product => (
-              <ProductCard
+            {freeProducts.map((product, idx) => (
+              <ScrollReveal
                 key={product.id}
-                product={product}
-                orientation={product.deviceTypes.includes('desktop') ? 'landscape' : 'portrait'}
-              />
+                direction="up"
+                distance={18}
+                delayMs={idx * 100}
+                durationMs={600}
+              >
+                <ProductCard
+                  product={product}
+                  orientation={product.deviceTypes.includes('desktop') ? 'landscape' : 'portrait'}
+                />
+              </ScrollReveal>
             ))}
           </div>
 

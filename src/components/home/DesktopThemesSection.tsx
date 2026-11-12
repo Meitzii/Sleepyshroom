@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowRight, Monitor } from 'lucide-react';
 import { useShop } from '../../context/ShopContext.tsx';
 import { ProductCard } from '../common/ProductCard.tsx';
+import { ScrollReveal } from '../common/ScrollReveal.tsx';
 
 export const DesktopThemesSection: React.FC = () => {
   const { products, navigateTo } = useShop();
@@ -40,8 +41,16 @@ export const DesktopThemesSection: React.FC = () => {
 
         {/* Product Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {desktopProducts.map(product => (
-            <ProductCard key={product.id} product={product} orientation="landscape" />
+          {desktopProducts.map((product, idx) => (
+            <ScrollReveal
+              key={product.id}
+              direction="up"
+              distance={18}
+              delayMs={idx * 75}
+              durationMs={600}
+            >
+              <ProductCard product={product} orientation="landscape" />
+            </ScrollReveal>
           ))}
         </div>
 
