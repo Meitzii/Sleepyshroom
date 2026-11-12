@@ -1,4 +1,7 @@
-import { handleGetOrderByToken } from '../../lib/checkout-service.js';
+import {
+  handleGetOrderByToken,
+  handleOrderAction,
+} from '../../lib/checkout-service.js';
 
 function getOrderParam(req) {
   const raw = req.query?.idOrToken;
@@ -10,13 +13,27 @@ function getOrderParam(req) {
 }
 
 export default async function handler(req, res) {
+  const idOrToken = getOrderParam(req);
+
+  if (req.method === 'POST') {
+    try {
+      const result = await handleOrderAction(req, idOrToken);
+      return res.status(result.status).json(result.body);
+    } catch (err) {
+      console.error('Order action error:', err);
+      return res.status(500).json({
+        success: false,
+        error: err?.message || 'Unable to process order action.',
+      });
+    }
+  }
+
   if (req.method !== 'GET') {
-    res.setHeader('Allow', 'GET');
+    res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const idOrToken = getOrderParam(req);
     const result = await handleGetOrderByToken(req, idOrToken);
     return res.status(result.status).json(result.body);
   } catch (err) {

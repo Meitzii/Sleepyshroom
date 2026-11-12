@@ -25,11 +25,13 @@ import {
   Users,
   ImagePlus,
   Lock,
-  Loader2
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { supabase } from '../lib/supabase.ts';
 import { parseJsonResponse } from '../utils/apiClient.ts';
+import { formatOrderMoney, formatPhp } from '../utils/currency.ts';
 import { ContactMessagesPanel } from '../components/admin/ContactMessagesPanel.tsx';
 import type { 
   Product, 
@@ -38,8 +40,21 @@ import type {
   WebsiteSettings, 
   Order, 
   ContactMessage,
-  ContactMessageStatus
+  ContactMessageStatus,
+  PaymongoPaymentMethodKey,
 } from '../types/index.ts';
+
+const PAYMONGO_METHOD_OPTIONS: {
+  key: PaymongoPaymentMethodKey;
+  label: string;
+  hint: string;
+}[] = [
+  { key: 'card', label: 'Credit / Debit Card', hint: 'Visa & Mastercard (min ₱20.00)' },
+  { key: 'gcash', label: 'GCash', hint: 'GCash e-wallet via PayMongo' },
+  { key: 'paymaya', label: 'Maya', hint: 'Maya wallet via PayMongo' },
+  { key: 'qrph', label: 'QR Ph', hint: 'InstaPay / PESONet banking QR' },
+  { key: 'grab_pay', label: 'GrabPay', hint: 'GrabPay wallet (min ₱20.00)' },
+];
 
 export const AdminDashboard: React.FC = () => {
   const { user, navigateTo, refreshData } = useShop();
@@ -66,6 +81,13 @@ export const AdminDashboard: React.FC = () => {
   // Feedback notifications
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [verifyingOrderId, setVerifyingOrderId] = useState<string | null>(null);
+  const [gatewayStatus, setGatewayStatus] = useState<{
+    configured: boolean;
+    testMode: boolean;
+    blockedLiveMode?: boolean;
+    webhookConfigured: boolean;
+  } | null>(null);
 
   // Product modal state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -141,20 +163,22 @@ export const AdminDashboard: React.FC = () => {
     try {
       setLoadingStats(true);
       const authHeaders = { Authorization: `Bearer ${token}` };
-      const [statsRes, contentRes, prodsRes, colsRes, ordersRes] = await Promise.all([
+      const [statsRes, contentRes, prodsRes, colsRes, ordersRes, checkoutCfgRes] = await Promise.all([
         fetch('/api/admin/stats', { headers: authHeaders }),
         fetch('/api/admin/content', { headers: authHeaders }),
         fetch('/api/products?includeDrafts=true'),
         fetch('/api/collections'),
         fetch('/api/orders', { headers: authHeaders }),
+        fetch('/api/checkout'),
       ]);
 
-      const [statsParsed, contentParsed, prodsParsed, colsParsed, ordersParsed] = await Promise.all([
+      const [statsParsed, contentParsed, prodsParsed, colsParsed, ordersParsed, checkoutParsed] = await Promise.all([
         parseJsonResponse(statsRes),
         parseJsonResponse(contentRes),
         parseJsonResponse(prodsRes),
         parseJsonResponse(colsRes),
         parseJsonResponse(ordersRes),
+        parseJsonResponse(checkoutCfgRes),
       ]);
 
       if (statsParsed.ok && statsParsed.isJson && statsParsed.data) setStats(statsParsed.data);
@@ -165,6 +189,7 @@ export const AdminDashboard: React.FC = () => {
       if (prodsParsed.ok && prodsParsed.isJson && Array.isArray(prodsParsed.data)) setAllProducts(prodsParsed.data);
       if (colsParsed.ok && colsParsed.isJson && Array.isArray(colsParsed.data)) setAllCollections(colsParsed.data);
       if (ordersParsed.ok && ordersParsed.isJson && Array.isArray(ordersParsed.data)) setOrders(ordersParsed.data);
+      if (checkoutParsed.ok && checkoutParsed.isJson && checkoutParsed.data) setGatewayStatus(checkoutParsed.data);
 
       await fetchAdminMessages(token);
     } catch (err: any) {
@@ -442,17 +467,67 @@ export const AdminDashboard: React.FC = () => {
   const handleSaveSettings = async () => {
     if (!settings) return;
     try {
+      const token = await getFreshAdminToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(settings),
       });
       if (res.ok) {
-        triggerSaveNotification('Settings and homepage content saved to database!');
+        const parsed = await res.json().catch(() => null);
+        if (parsed?.settings) {
+          setSettings(parsed.settings);
+        }
+        triggerSaveNotification('Settings and PayMongo checkout preferences saved!');
         refreshData();
+      } else {
+        setErrorMessage('Error updating settings');
       }
     } catch {
       setErrorMessage('Error updating settings');
+    }
+  };
+
+  const handleVerifyOrderWithPaymongo = async (order: Order) => {
+    const key = order.id || order.downloadToken || order.orderNumber;
+    if (!key) return;
+    setVerifyingOrderId(key);
+    setErrorMessage(null);
+    try {
+      const token = await getFreshAdminToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const res = await fetch(`/api/orders/${encodeURIComponent(key)}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ action: 'verify' }),
+      });
+      const parsed = await parseJsonResponse<{
+        success?: boolean;
+        verifiedPaid?: boolean;
+        order?: Order;
+        error?: string;
+      }>(res);
+
+      if (!parsed.ok || !parsed.isJson || !parsed.data?.order) {
+        setErrorMessage(parsed.data?.error || 'Could not reconcile order with PayMongo.');
+        return;
+      }
+
+      const updated = parsed.data.order;
+      setOrders(prev => prev.map(item => (item.id === updated.id ? updated : item)));
+      triggerSaveNotification(
+        `Order ${updated.orderNumber} checked: status is now ${String(updated.paymentStatus).toUpperCase()}.`
+      );
+      void loadAdminData();
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Error verifying order status with PayMongo.');
+    } finally {
+      setVerifyingOrderId(null);
     }
   };
 
@@ -686,12 +761,12 @@ export const AdminDashboard: React.FC = () => {
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-[#F9F6F0] p-5 rounded-3xl border border-[#E8C9C1] shadow-xs">
-                <span className="text-xs text-[#1E1419] font-bold">Total Revenue</span>
+                <span className="text-xs text-[#1E1419] font-bold">Total Revenue (PHP)</span>
                 {/* Distinctive Revenue Value */}
                 <p className="font-heading font-extrabold text-2xl sm:text-3xl text-[#945367] mt-1 tabular-nums">
-                  ${stats ? stats.totalRevenue.toFixed(2) : '0.00'}
+                  {formatPhp(stats ? Number(stats.totalRevenue || 0) : 0, false)}
                 </p>
-                <span className="text-[11px] text-emerald-900 font-bold mt-1 block">Verified Digital Sales</span>
+                <span className="text-[11px] text-emerald-900 font-bold mt-1 block">Verified PayMongo Sales</span>
               </div>
 
               <div className="bg-[#F9F6F0] p-5 rounded-3xl border border-[#E8C9C1] shadow-xs">
@@ -699,7 +774,9 @@ export const AdminDashboard: React.FC = () => {
                 <p className="font-heading font-bold text-2xl text-[#1E1419] mt-1 tabular-nums">
                   {stats ? stats.totalOrders : 0}
                 </p>
-                <span className="text-[11px] text-[#45313D] font-semibold mt-1 block">Lifetime Purchases</span>
+                <span className="text-[11px] text-[#45313D] font-semibold mt-1 block">
+                  {stats?.paidOrdersCount ?? 0} verified paid
+                </span>
               </div>
 
               <div className="bg-[#F9F6F0] p-5 rounded-3xl border border-[#E8C9C1] shadow-xs">
@@ -715,7 +792,7 @@ export const AdminDashboard: React.FC = () => {
                 <p className="font-heading font-bold text-2xl text-[#1E1419] mt-1 tabular-nums">
                   {stats ? stats.totalCustomers : 0}
                 </p>
-                <span className="text-[11px] text-[#45313D] font-semibold mt-1 block">Registered & Guests</span>
+                <span className="text-[11px] text-[#45313D] font-semibold mt-1 block">Registered &amp; Guests</span>
               </div>
             </div>
 
@@ -735,22 +812,33 @@ export const AdminDashboard: React.FC = () => {
 
               {orders.length > 0 ? (
                 <div className="divide-y divide-[#E8C9C1]/70">
-                  {orders.slice(0, 5).map(o => (
-                    <div key={o.id} className="py-3 flex items-center justify-between text-xs">
-                      <div>
-                        <span className="font-bold text-[#1E1419]">{o.orderNumber}</span>
-                        <span className="text-[#33222C] font-medium ml-2">{o.customerEmail}</span>
-                        <p className="text-[11px] text-[#33222C] font-medium">
-                          {o.items.length} wallpaper{o.items.length > 1 ? 's' : ''} · {o.paymentMethod}
-                        </p>
+                  {orders.slice(0, 5).map(o => {
+                    const st = String(o.paymentStatus || 'pending').toLowerCase();
+                    const isPaid = st === 'paid' || st === 'completed';
+                    return (
+                      <div key={o.id} className="py-3 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="font-bold text-[#1E1419]">{o.orderNumber}</span>
+                          <span className="text-[#33222C] font-medium ml-2">{o.customerEmail}</span>
+                          <p className="text-[11px] text-[#33222C] font-medium">
+                            {o.items.length} wallpaper{o.items.length > 1 ? 's' : ''} · {o.paymentMethod}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-extrabold text-[#945367] tabular-nums text-sm">
+                            {formatOrderMoney(o.total, o.currency)}
+                          </span>
+                          <span
+                            className={`block text-[10px] font-bold uppercase ${
+                              isPaid ? 'text-emerald-900' : st === 'pending' ? 'text-amber-800' : 'text-red-700'
+                            }`}
+                          >
+                            {isPaid ? 'Paid' : st}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        {/* Distinctive order price */}
-                        <span className="font-extrabold text-[#945367] tabular-nums text-sm">${o.total.toFixed(2)}</span>
-                        <span className="block text-[10px] text-emerald-900 font-bold">Completed</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-xs text-[#33222C] font-medium">No orders placed yet.</p>
@@ -1207,42 +1295,93 @@ export const AdminDashboard: React.FC = () => {
           <div className="space-y-6">
             <div className="bg-[#F9F6F0] p-5 rounded-3xl border border-[#E8C9C1]">
               <h2 className="font-heading font-bold text-lg text-[#1E1419]">
-                Customer Orders & Digital Deliveries
+                Customer Orders &amp; PayMongo Verification
               </h2>
               <p className="text-xs text-[#33222C]">
-                All completed orders, customer emails, transactions, and download tokens.
+                Server-verified PayMongo PHP orders, payment references, transaction dates, and download access status.
               </p>
             </div>
 
-            <div className="bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] divide-y divide-[#E8C9C1]/70 overflow-hidden">
-              {orders.map(o => (
-                <div key={o.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-heading font-bold text-sm text-[#1E1419]">{o.orderNumber}</span>
-                      <span className="text-xs text-[#33222C] font-semibold">{o.customerName}</span>
-                    </div>
-                    <p className="text-xs text-[#33222C] font-medium mt-0.5">
-                      Email: <strong className="text-[#1E1419] font-bold">{o.customerEmail}</strong> · Download Token: <span className="font-mono text-[11px] bg-white text-[#1E1419] px-1.5 py-0.5 rounded border border-[#D5C2BB]">{o.downloadToken}</span>
-                    </p>
-                    <p className="text-[11px] text-[#45313D] font-medium mt-1">
-                      {o.items.map(i => i.title).join(', ')}
-                    </p>
-                  </div>
+            {orders.length === 0 ? (
+              <div className="bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] p-8 text-center text-xs text-[#33222C] font-medium">
+                No orders recorded yet. New PayMongo checkouts will appear here automatically.
+              </div>
+            ) : (
+              <div className="bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] divide-y divide-[#E8C9C1]/70 overflow-hidden">
+                {orders.map(o => {
+                  const st = String(o.paymentStatus || 'pending').toLowerCase();
+                  const isPaid = st === 'paid' || st === 'completed';
+                  const badgeClass = isPaid
+                    ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                    : st === 'pending'
+                    ? 'bg-amber-100 text-amber-900 border-amber-300'
+                    : 'bg-red-50 text-red-700 border-red-200';
+                  const orderKey = o.id || o.downloadToken || o.orderNumber;
+                  const isVerifyingThis = verifyingOrderId === orderKey;
+                  const payRef = o.paymongoPaymentId || o.paymongoCheckoutSessionId || o.transactionId;
+                  const txDate = o.paidAt || o.createdAt;
 
-                  <div className="text-right">
-                    {/* Distinctive Order Total Price */}
-                    <span className="text-base font-extrabold text-[#945367] tabular-nums">${o.total.toFixed(2)}</span>
-                    <button
-                      onClick={() => navigateTo('confirmation', o.downloadToken)}
-                      className="block text-xs font-bold text-[#1E1419] hover:underline mt-1 cursor-pointer"
-                    >
-                      View Customer Download Page
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  return (
+                    <div key={orderKey} className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-heading font-bold text-sm text-[#1E1419]">{o.orderNumber}</span>
+                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${badgeClass}`}>
+                            {isPaid ? 'Paid' : st}
+                          </span>
+                          <span className="text-xs text-[#33222C] font-semibold">{o.customerName}</span>
+                          <span className="text-[11px] text-[#45313D] font-medium">
+                            · {new Date(txDate).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#33222C] font-medium">
+                          Email: <strong className="text-[#1E1419] font-bold">{o.customerEmail}</strong>
+                          {' · '}Provider: <strong className="uppercase">{o.paymentProvider || 'paymongo'}</strong> ({o.paymentMethod})
+                        </p>
+                        <p className="text-xs text-[#33222C] font-medium">
+                          PayMongo Ref:{' '}
+                          <span className="font-mono text-[11px] bg-white text-[#1E1419] px-1.5 py-0.5 rounded border border-[#D5C2BB]">
+                            {payRef || 'n/a'}
+                          </span>
+                          {' · '}Token:{' '}
+                          <span className="font-mono text-[11px] bg-white text-[#1E1419] px-1.5 py-0.5 rounded border border-[#D5C2BB]">
+                            {o.downloadToken}
+                          </span>
+                        </p>
+                        <p className="text-[11px] text-[#45313D] font-medium">
+                          Items: {o.items.map(i => i.title).join(', ')}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col lg:items-end gap-2 shrink-0">
+                        <span className="text-base font-extrabold text-[#945367] tabular-nums">
+                          {formatOrderMoney(o.total, o.currency)}
+                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {!isPaid && o.paymongoCheckoutSessionId && (
+                            <button
+                              type="button"
+                              disabled={isVerifyingThis}
+                              onClick={() => handleVerifyOrderWithPaymongo(o)}
+                              className="px-3 py-1.5 bg-white hover:bg-[#F4EAE6] text-[#1E1419] border border-[#D5C2BB] rounded-xl text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                            >
+                              <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingThis ? 'animate-spin' : ''}`} />
+                              <span>{isVerifyingThis ? 'Checking...' : 'Verify with PayMongo'}</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => navigateTo('confirmation', o.downloadToken)}
+                            className="px-3 py-1.5 bg-[#8B6F7A] hover:bg-[#785E69] text-[#F7F3E9] rounded-xl text-[11px] font-bold cursor-pointer"
+                          >
+                            View Customer Order Page
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -1330,185 +1469,141 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Payment Providers Configuration */}
+            {/* PayMongo Payment Gateway Configuration */}
             <div className="border-t border-[#E8C9C1]/50 pt-6 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B6F7A]">
-                  Payment Providers &amp; Billing Configuration
-                </h3>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B6F7A]">
+                    PayMongo Hosted Checkout &amp; PHP Currency Settings
+                  </h3>
+                  <p className="text-[11px] text-[#45313D] mt-0.5">
+                    Payments process strictly via official PayMongo Hosted Checkout Sessions in PHP. Secret keys and webhook signing secrets live in server environment variables.
+                  </p>
+                </div>
+
                 <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-[#E8C9C1]">
                   <input
                     type="checkbox"
-                    checked={settings.paymentProviders.testMode}
+                    checked={settings.paymentProviders.testMode !== false}
                     onChange={e => setSettings({
                       ...settings,
                       paymentProviders: { ...settings.paymentProviders, testMode: e.target.checked }
                     })}
                     className="accent-[#8B6F7A]"
                   />
-                  <span className="text-xs text-[#1E1419] font-bold">Sandbox / Demo Test Mode</span>
+                  <span className="text-xs text-[#1E1419] font-bold">PayMongo Sandbox Mode</span>
                 </label>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-                {/* Stripe */}
-                <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-[#1E1419]">Credit / Debit Card</span>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={settings.paymentProviders.stripeEnabled}
-                        onChange={e => setSettings({
-                          ...settings,
-                          paymentProviders: { ...settings.paymentProviders, stripeEnabled: e.target.checked }
-                        })}
-                        className="accent-[#8B6F7A]"
-                      />
-                      <span className="text-xs text-[#8B6F7A] font-semibold">Enabled</span>
-                    </label>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#8B6F7A] mb-0.5">Publishable Key</label>
+              {/* Live Server Environment Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="p-3 bg-white rounded-2xl border border-[#E8C9C1]">
+                  <span className="text-[10px] font-bold uppercase text-[#8B6F7A] block">PayMongo Secret Key</span>
+                  <span className={`font-bold ${gatewayStatus?.configured ? 'text-emerald-800' : 'text-amber-800'}`}>
+                    {gatewayStatus
+                      ? gatewayStatus.configured
+                        ? 'Configured (Server Env)'
+                        : gatewayStatus.blockedLiveMode
+                        ? 'Live Key Blocked (Use Sandbox Key)'
+                        : 'Not Set (PAYMONGO_SECRET_KEY)'
+                      : 'Checking...'}
+                  </span>
+                </div>
+                <div className="p-3 bg-white rounded-2xl border border-[#E8C9C1]">
+                  <span className="text-[10px] font-bold uppercase text-[#8B6F7A] block">Webhook Signature Secret</span>
+                  <span className={`font-bold ${gatewayStatus?.webhookConfigured ? 'text-emerald-800' : 'text-amber-800'}`}>
+                    {gatewayStatus
+                      ? gatewayStatus.webhookConfigured
+                        ? 'Configured (PAYMONGO_WEBHOOK_SECRET)'
+                        : 'Not Set (PAYMONGO_WEBHOOK_SECRET)'
+                      : 'Checking...'}
+                  </span>
+                </div>
+                <div className="p-3 bg-white rounded-2xl border border-[#E8C9C1]">
+                  <span className="text-[10px] font-bold uppercase text-[#8B6F7A] block">Checkout Currency Rate</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="font-bold text-[#1E1419]">1 USD = ₱</span>
                     <input
-                      type="text"
-                      value={settings.paymentProviders.stripePublishableKey}
+                      type="number"
+                      min={1}
+                      step={0.5}
+                      value={settings.paymentProviders.phpPerUsdRate ?? 58}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        setSettings({
+                          ...settings,
+                          paymentProviders: {
+                            ...settings.paymentProviders,
+                            phpPerUsdRate: Number.isFinite(val) && val > 0 ? val : 58,
+                          },
+                        });
+                      }}
+                      className="w-20 px-2 py-1 text-xs font-bold bg-[#F9F6F0] border border-[#E8C9C1] rounded-lg text-[#1E1419]"
+                    />
+                    <span className="font-bold text-[#1E1419]">PHP</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Allowed PayMongo Channels */}
+              <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-[#1E1419]">
+                    Enabled PayMongo Payment Methods
+                  </span>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.paymentProviders.paymongoEnabled !== false}
                       onChange={e => setSettings({
                         ...settings,
-                        paymentProviders: { ...settings.paymentProviders, stripePublishableKey: e.target.value }
+                        paymentProviders: {
+                          ...settings.paymentProviders,
+                          paymongoEnabled: e.target.checked,
+                        },
                       })}
-                      className="w-full px-2.5 py-1.5 text-xs bg-[#F9F6F0] border border-[#E8C9C1] rounded-lg"
+                      className="accent-[#8B6F7A]"
                     />
-                  </div>
+                    <span className="text-xs text-[#8B6F7A] font-semibold">PayMongo Checkout Active</span>
+                  </label>
                 </div>
 
-                {/* PayPal */}
-                <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-[#1E1419]">PayPal</span>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={settings.paymentProviders.paypalEnabled}
-                        onChange={e => setSettings({
-                          ...settings,
-                          paymentProviders: { ...settings.paymentProviders, paypalEnabled: e.target.checked }
-                        })}
-                        className="accent-[#8B6F7A]"
-                      />
-                      <span className="text-xs text-[#8B6F7A] font-semibold">Enabled</span>
-                    </label>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#8B6F7A] mb-0.5">Receiving PayPal Email (Optional)</label>
-                    <input
-                      type="email"
-                      placeholder="shop.sleepyshroom@gmail.com"
-                      value={settings.paymentProviders.paypalEmail || ''}
-                      onChange={e => setSettings({
-                        ...settings,
-                        paymentProviders: { ...settings.paymentProviders, paypalEmail: e.target.value }
-                      })}
-                      className="w-full px-2.5 py-1.5 text-xs bg-[#F9F6F0] border border-[#E8C9C1] rounded-lg"
-                    />
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {PAYMONGO_METHOD_OPTIONS.map(option => {
+                    const current =
+                      settings.paymentProviders.paymongoEnabledMethods ||
+                      PAYMONGO_METHOD_OPTIONS.map(m => m.key);
+                    const checked = current.includes(option.key);
+                    return (
+                      <label
+                        key={option.key}
+                        className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F9F6F0] border border-[#E8C9C1] cursor-pointer text-xs"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={e => {
+                            const next = e.target.checked
+                              ? Array.from(new Set([...current, option.key]))
+                              : current.filter(k => k !== option.key);
+                            setSettings({
+                              ...settings,
+                              paymentProviders: {
+                                ...settings.paymentProviders,
+                                paymongoEnabledMethods: next.length > 0 ? next : [option.key],
+                              },
+                            });
+                          }}
+                          className="accent-[#8B6F7A] mt-0.5"
+                        />
+                        <div>
+                          <span className="font-bold text-[#1E1419] block">{option.label}</span>
+                          <span className="text-[11px] text-[#45313D]">{option.hint}</span>
+                        </div>
+                      </label>
+                    );
+                  })}
                 </div>
-
-                {/* GCash */}
-                <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-[#1E1419]">GCash Mobile Payment</span>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={settings.paymentProviders.gcashEnabled}
-                        onChange={e => setSettings({
-                          ...settings,
-                          paymentProviders: { ...settings.paymentProviders, gcashEnabled: e.target.checked }
-                        })}
-                        className="accent-[#8B6F7A]"
-                      />
-                      <span className="text-xs text-[#8B6F7A] font-semibold">Enabled</span>
-                    </label>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-bold text-[#8B6F7A] mb-0.5">Account Name</label>
-                      <input
-                        type="text"
-                        placeholder="Merchant Name"
-                        value={settings.paymentProviders.gcashAccountName || ''}
-                        onChange={e => setSettings({
-                          ...settings,
-                          paymentProviders: { ...settings.paymentProviders, gcashAccountName: e.target.value }
-                        })}
-                        className="w-full px-2.5 py-1.5 text-xs bg-[#F9F6F0] border border-[#E8C9C1] rounded-lg"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-[#8B6F7A] mb-0.5">GCash Number</label>
-                      <input
-                        type="text"
-                        placeholder="09XX XXX XXXX"
-                        value={settings.paymentProviders.gcashNumber || ''}
-                        onChange={e => setSettings({
-                          ...settings,
-                          paymentProviders: { ...settings.paymentProviders, gcashNumber: e.target.value }
-                        })}
-                        className="w-full px-2.5 py-1.5 text-xs bg-[#F9F6F0] border border-[#E8C9C1] rounded-lg"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Maya */}
-                <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-[#1E1419]">Maya Digital Payment</span>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={settings.paymentProviders.mayaEnabled}
-                        onChange={e => setSettings({
-                          ...settings,
-                          paymentProviders: { ...settings.paymentProviders, mayaEnabled: e.target.checked }
-                        })}
-                        className="accent-[#8B6F7A]"
-                      />
-                      <span className="text-xs text-[#8B6F7A] font-semibold">Enabled</span>
-                    </label>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-bold text-[#8B6F7A] mb-0.5">Account Name</label>
-                      <input
-                        type="text"
-                        placeholder="Merchant Name"
-                        value={settings.paymentProviders.mayaAccountName || ''}
-                        onChange={e => setSettings({
-                          ...settings,
-                          paymentProviders: { ...settings.paymentProviders, mayaAccountName: e.target.value }
-                        })}
-                        className="w-full px-2.5 py-1.5 text-xs bg-[#F9F6F0] border border-[#E8C9C1] rounded-lg"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-[#8B6F7A] mb-0.5">Maya Number</label>
-                      <input
-                        type="text"
-                        placeholder="09XX XXX XXXX"
-                        value={settings.paymentProviders.mayaNumber || ''}
-                        onChange={e => setSettings({
-                          ...settings,
-                          paymentProviders: { ...settings.paymentProviders, mayaNumber: e.target.value }
-                        })}
-                        className="w-full px-2.5 py-1.5 text-xs bg-[#F9F6F0] border border-[#E8C9C1] rounded-lg"
-                      />
-                    </div>
-                  </div>
-                </div>
-
               </div>
             </div>
 

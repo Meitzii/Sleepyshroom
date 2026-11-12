@@ -15,9 +15,9 @@ import {
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import type { Order } from '../types/index.ts';
-import { downloadWallpaperFile } from '../utils/downloadHelper.ts';
+import { downloadAuthorizedOrderFile } from '../utils/downloadHelper.ts';
 import { parseJsonResponse, getOptionalSupabaseAuthHeader } from '../utils/apiClient.ts';
-import { getOrdersForCustomerEmail, mergeAndDeduplicateOrders } from '../utils/orderCache.ts';
+import { formatOrderMoney } from '../utils/currency.ts';
 
 export const CustomerAccountPage: React.FC = () => {
   const {
@@ -54,6 +54,8 @@ export const CustomerAccountPage: React.FC = () => {
   // User orders state
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [downloadNotice, setDownloadNotice] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
 
   useEffect(() => {
     setAvatarFailed(false);
@@ -78,7 +80,6 @@ export const CustomerAccountPage: React.FC = () => {
 
     let cancelled = false;
     setLoadingOrders(true);
-    const localCached = getOrdersForCustomerEmail(user.email);
 
     (async () => {
       try {
@@ -90,12 +91,12 @@ export const CustomerAccountPage: React.FC = () => {
         const serverOrders =
           parsed.ok && parsed.isJson && Array.isArray(parsed.data) ? parsed.data : [];
         if (!cancelled) {
-          setUserOrders(mergeAndDeduplicateOrders(serverOrders, localCached));
+          setUserOrders(serverOrders);
         }
       } catch (err) {
         console.error('Error loading customer orders:', err);
         if (!cancelled) {
-          setUserOrders(localCached);
+          setUserOrders([]);
         }
       } finally {
         if (!cancelled) {
@@ -223,11 +224,25 @@ export const CustomerAccountPage: React.FC = () => {
     }
   };
 
-  const handleDownloadFile = async (_token: string, productId: string, title: string) => {
+  const handleDownloadFile = async (token: string, productId: string, title: string) => {
     const prod = products.find(p => p.id === productId);
-    const imageSrc = prod?.images[0] || `/wallpapers/${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
     const filename = prod?.downloadFileName || `${title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
-    await downloadWallpaperFile(imageSrc, filename);
+    const key = `${token}:${productId}`;
+    setDownloadingKey(key);
+    setDownloadNotice(null);
+
+    const result = await downloadAuthorizedOrderFile(token, productId, filename);
+    setDownloadingKey(null);
+
+    if (result.ok) {
+      setDownloadNotice({ text: `Download started for "${title}"!` });
+      setTimeout(() => setDownloadNotice(null), 5000);
+    } else {
+      setDownloadNotice({
+        text: result.error || 'Download is locked until payment is confirmed.',
+        isError: true,
+      });
+    }
   };
 
   // If user is NOT logged in: Show Auth Form
@@ -575,7 +590,7 @@ export const CustomerAccountPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Purchased Downloads Section */}
+        {/* Purchased Downloads Section (Strictly Verified Paid Orders) */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-heading font-bold text-xl text-[#292929] flex items-center gap-2">
@@ -590,60 +605,105 @@ export const CustomerAccountPage: React.FC = () => {
             </button>
           </div>
 
-          {loadingOrders ? (
-            <div className="p-8 bg-[#FCF3E2] rounded-3xl border border-[#EADCC8] text-center text-xs text-[#777777] font-medium">
-              Loading your purchased files...
-            </div>
-          ) : userOrders.length > 0 ? (
-            <div className="space-y-4">
-              {userOrders.flatMap(o => o.items.map(item => ({ ...item, order: o }))).map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8]"
-                >
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-16 h-16 object-cover rounded-xl shrink-0 border border-[#EADCC8]"
-                    />
-                    <div>
-                      <h3 className="font-heading font-bold text-sm sm:text-base text-[#292929]">
-                        {item.title}
-                      </h3>
-                      <p className="text-xs text-[#777777] font-medium mt-0.5">
-                        From Order {item.order.orderNumber} · {new Date(item.order.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleDownloadFile(item.order.downloadToken, item.productId, item.title)}
-                    className="px-4 py-2.5 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 self-start sm:self-auto shrink-0 cursor-pointer"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Download Files</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-8 bg-[#FCF3E2] rounded-3xl border border-[#EADCC8] text-center space-y-3">
-              <p className="text-3xl">🍄</p>
-              <h3 className="font-heading font-bold text-base text-[#292929]">
-                No downloads yet
-              </h3>
-              <p className="text-xs text-[#777777] font-medium max-w-sm mx-auto">
-                Any wallpapers you purchase with this email will automatically appear here with lifetime download access.
-              </p>
-              <button
-                onClick={() => navigateTo('collections')}
-                className="px-5 py-2.5 bg-[#A64B3C] text-[#FFFCF7] text-xs font-bold rounded-xl hover:bg-[#8E3E30] cursor-pointer"
-              >
-                Browse Collections
-              </button>
+          {downloadNotice && (
+            <div
+              className={`p-3.5 rounded-2xl border text-xs font-medium flex items-center gap-2 ${
+                downloadNotice.isError
+                  ? 'bg-red-50 border-red-200 text-red-700'
+                  : 'bg-emerald-50 border-emerald-300 text-emerald-900'
+              }`}
+            >
+              {downloadNotice.isError ? (
+                <AlertCircle className="w-4 h-4 shrink-0" />
+              ) : (
+                <CheckCircle className="w-4 h-4 shrink-0" />
+              )}
+              <span>{downloadNotice.text}</span>
             </div>
           )}
+
+          {(() => {
+            const paidOrders = userOrders.filter(o => {
+              const st = String(o.paymentStatus || '').toLowerCase();
+              return st === 'paid' || st === 'completed';
+            });
+
+            if (loadingOrders) {
+              return (
+                <div className="p-8 bg-[#FCF3E2] rounded-3xl border border-[#EADCC8] text-center text-xs text-[#777777] font-medium">
+                  Loading your purchased files...
+                </div>
+              );
+            }
+
+            if (paidOrders.length === 0) {
+              return (
+                <div className="p-8 bg-[#FCF3E2] rounded-3xl border border-[#EADCC8] text-center space-y-3">
+                  <p className="text-3xl">🍄</p>
+                  <h3 className="font-heading font-bold text-base text-[#292929]">
+                    No verified paid downloads yet
+                  </h3>
+                  <p className="text-xs text-[#777777] font-medium max-w-sm mx-auto">
+                    Wallpapers you purchase with this email unlock here automatically once PayMongo confirms payment.
+                  </p>
+                  <button
+                    onClick={() => navigateTo('collections')}
+                    className="px-5 py-2.5 bg-[#A64B3C] text-[#FFFCF7] text-xs font-bold rounded-xl hover:bg-[#8E3E30] cursor-pointer"
+                  >
+                    Browse Collections
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-4">
+                {paidOrders
+                  .flatMap(o => o.items.map(item => ({ ...item, order: o })))
+                  .map(item => {
+                    const key = `${item.order.downloadToken}:${item.productId}`;
+                    const isDownloading = downloadingKey === key;
+                    return (
+                      <div
+                        key={key}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8]"
+                      >
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            className="w-16 h-16 object-cover rounded-xl shrink-0 border border-[#EADCC8]"
+                          />
+                          <div>
+                            <h3 className="font-heading font-bold text-sm sm:text-base text-[#292929]">
+                              {item.title}
+                            </h3>
+                            <p className="text-xs text-[#777777] font-medium mt-0.5">
+                              From Order {item.order.orderNumber} · Verified {new Date(item.order.paidAt || item.order.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          disabled={isDownloading}
+                          onClick={() =>
+                            handleDownloadFile(item.order.downloadToken, item.productId, item.title)
+                          }
+                          className="px-4 py-2.5 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 self-start sm:self-auto shrink-0 disabled:opacity-60 cursor-pointer"
+                        >
+                          {isDownloading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Download className="w-4 h-4" />
+                          )}
+                          <span>{isDownloading ? 'Preparing...' : 'Download Files'}</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+            );
+          })()}
         </section>
 
         {/* Order History */}
@@ -655,32 +715,46 @@ export const CustomerAccountPage: React.FC = () => {
 
           {userOrders.length > 0 ? (
             <div className="bg-[#FCF3E2] rounded-3xl border border-[#EADCC8] divide-y divide-[#EADCC8] overflow-hidden">
-              {userOrders.map(ord => (
-                <div key={ord.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <span className="font-bold text-sm text-[#292929]">
-                      {ord.orderNumber}
-                    </span>
-                    <span className="text-xs text-[#777777] font-medium ml-2">
-                      {new Date(ord.createdAt).toLocaleDateString()}
-                    </span>
-                    <p className="text-xs text-[#777777] font-medium mt-0.5">
-                      {ord.items.length} item{ord.items.length > 1 ? 's' : ''} · {ord.paymentMethod}
-                    </p>
+              {userOrders.map(ord => {
+                const st = String(ord.paymentStatus || 'pending').toLowerCase();
+                const isPaid = st === 'paid' || st === 'completed';
+                const badgeClass = isPaid
+                  ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                  : st === 'pending'
+                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                  : 'bg-red-50 text-red-700 border-red-200';
+                return (
+                  <div key={ord.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-sm text-[#292929]">
+                          {ord.orderNumber}
+                        </span>
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${badgeClass}`}>
+                          {isPaid ? 'Paid' : st}
+                        </span>
+                        <span className="text-xs text-[#777777] font-medium">
+                          {new Date(ord.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#777777] font-medium mt-0.5">
+                        {ord.items.length} item{ord.items.length > 1 ? 's' : ''} · {ord.paymentMethod}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-base font-extrabold text-[#A64B3C] tabular-nums">
+                        {formatOrderMoney(ord.total, ord.currency)}
+                      </span>
+                      <button
+                        onClick={() => navigateTo('confirmation', ord.downloadToken)}
+                        className="text-xs font-bold text-[#292929] hover:underline cursor-pointer"
+                      >
+                        {isPaid ? 'View Receipt' : 'Verify Status'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-base font-extrabold text-[#A64B3C] tabular-nums">
-                      ${ord.total.toFixed(2)}
-                    </span>
-                    <button
-                      onClick={() => navigateTo('confirmation', ord.downloadToken)}
-                      className="text-xs font-bold text-[#292929] hover:underline cursor-pointer"
-                    >
-                      View Receipt
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-xs text-[#777777] font-medium">No orders recorded for this account.</p>

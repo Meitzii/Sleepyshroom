@@ -1,5 +1,6 @@
+import http from 'http';
 import express from 'express';
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
@@ -23,20 +24,77 @@ import {
   handleAdminReplyMessage,
 } from './lib/contact-service.js';
 import {
+  handleGetPaymentConfig,
   handleDiscountValidation,
   handleCheckoutSubmission,
+  handlePaymongoWebhook,
   handleListOrders,
   handleGetOrderByToken,
+  handleOrderAction,
+  handleAuthorizedDownload,
 } from './lib/checkout-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.join(__dirname, '.env.local') });
-dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '.env.local'), quiet: true });
+dotenv.config({ path: path.join(__dirname, '.env'), quiet: true });
+
+function parsePortValue(raw: string | undefined): number | undefined {
+  if (!raw) return undefined;
+  const parsed = Number(String(raw).trim());
+  if (Number.isInteger(parsed) && parsed > 0 && parsed <= 65535) {
+    return parsed;
+  }
+  return undefined;
+}
+
+function resolveListenConfig(): { port: number; host?: string } {
+  const args = process.argv.slice(2);
+  let cliPort: number | undefined;
+  let cliHost: string | undefined;
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === '--port' || arg === '-p') {
+      const nextVal = args[i + 1];
+      const parsed = parsePortValue(nextVal);
+      if (parsed !== undefined) {
+        cliPort = parsed;
+        i += 1;
+      }
+    } else if (arg.startsWith('--port=')) {
+      const parsed = parsePortValue(arg.slice('--port='.length));
+      if (parsed !== undefined) cliPort = parsed;
+    } else if (arg.startsWith('-p') && arg.length > 2) {
+      const parsed = parsePortValue(arg.slice(2));
+      if (parsed !== undefined) cliPort = parsed;
+    } else if (arg === '--host' || arg === '-H') {
+      const nextVal = args[i + 1];
+      if (nextVal && !nextVal.startsWith('-')) {
+        cliHost = nextVal.trim();
+        i += 1;
+      } else {
+        cliHost = '0.0.0.0';
+      }
+    } else if (arg.startsWith('--host=')) {
+      const val = arg.slice('--host='.length).trim();
+      cliHost = val || '0.0.0.0';
+    }
+  }
+
+  const nginxPort = parsePortValue(process.env.NGINX_PORT);
+  const envPort = parsePortValue(process.env.PORT);
+  const defaultAppPort = parsePortValue(process.env.DEFAULT_APP_PORT) ?? 3000;
+  const safeEnvPort = envPort !== undefined && envPort !== nginxPort ? envPort : undefined;
+
+  const port = cliPort ?? safeEnvPort ?? defaultAppPort;
+  const host = cliHost || process.env.HOST?.trim() || undefined;
+  return { port, host };
+}
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const { port: PORT, host: HOST } = resolveListenConfig();
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'store.json');
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
@@ -80,18 +138,9 @@ const defaultStore: AppStore = {
     showMobileSection: true,
     showBrandIntro: true,
     paymentProviders: {
-      stripeEnabled: true,
-      stripePublishableKey: 'pk_test_sample_sleepyshroom',
-      stripeSecretKeyConfigured: false,
-      paypalEnabled: true,
-      paypalClientId: 'client_id_sample',
-      paypalEmail: '',
-      gcashEnabled: true,
-      gcashAccountName: '',
-      gcashNumber: '',
-      mayaEnabled: true,
-      mayaAccountName: '',
-      mayaNumber: '',
+      paymongoEnabled: true,
+      paymongoEnabledMethods: ['card', 'gcash', 'paymaya', 'qrph', 'grab_pay'],
+      phpPerUsdRate: 58,
       testMode: true,
     },
     socialLinks: {
@@ -475,40 +524,7 @@ For any questions or assistance with your order, email us at shop.sleepyshroom@g
       productCount: 2,
     }
   ],
-  orders: [
-    {
-      id: 'ord-1041',
-      orderNumber: 'SHROOM-1041',
-      customerEmail: 'clara.woodland@example.com',
-      customerName: 'Clara Woodland',
-      items: [
-        {
-          productId: 'prod-desktop-1',
-          title: 'Sleepy Garden Sanctuary Wallpaper',
-          price: 4.50,
-          image: '/src/assets/images/theme_sleepy_garden_1794020165839.jpg',
-          deviceTypes: ['desktop'],
-        },
-        {
-          productId: 'prod-mobile-1',
-          title: 'Midnight Firefly Forest Mobile & Tablet',
-          price: 3.50,
-          image: '/src/assets/images/theme_mobile_forest_1794020166376.jpg',
-          deviceTypes: ['mobile', 'tablet'],
-        }
-      ],
-      subtotal: 8.00,
-      discount: 0.80,
-      discountCode: 'COZY10',
-      total: 7.20,
-      paymentMethod: 'Stripe (Visa •••• 4242)',
-      paymentStatus: 'completed',
-      transactionId: 'txn_str_9831478234',
-      downloadToken: 'tok_shroom_demo_1041',
-      downloadCount: 3,
-      createdAt: '2026-11-05T14:22:00.000Z',
-    }
-  ],
+  orders: [],
   messages: [
     {
       id: 'msg-1',
@@ -562,12 +578,40 @@ For any questions or assistance with your order, email us at shop.sleepyshroom@g
   ],
 };
 
+const VALID_PAYMONGO_METHODS = ['card', 'gcash', 'paymaya', 'qrph', 'grab_pay'] as const;
+
+function sanitizePaymentProviders(raw: any) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const rawMethods = Array.isArray(src.paymongoEnabledMethods)
+    ? src.paymongoEnabledMethods.filter((m: any) => VALID_PAYMONGO_METHODS.includes(m))
+    : [];
+  const rateNum = Number(src.phpPerUsdRate);
+  return {
+    paymongoEnabled: src.paymongoEnabled !== false,
+    paymongoEnabledMethods:
+      rawMethods.length > 0 ? rawMethods : [...defaultStore.settings.paymentProviders.paymongoEnabledMethods],
+    phpPerUsdRate: Number.isFinite(rateNum) && rateNum > 0 ? Number(rateNum.toFixed(2)) : 58,
+    testMode: src.testMode !== false,
+  };
+}
+
 // Initialize or read store
 function readStore(): AppStore {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const data = fs.readFileSync(DATA_FILE, 'utf-8');
-      return JSON.parse(data) as AppStore;
+      const parsed = JSON.parse(data) as AppStore;
+      if (parsed && typeof parsed === 'object') {
+        parsed.settings = {
+          ...defaultStore.settings,
+          ...(parsed.settings || {}),
+          paymentProviders: sanitizePaymentProviders(parsed.settings?.paymentProviders),
+        };
+        if (!Array.isArray(parsed.orders)) {
+          parsed.orders = [];
+        }
+        return parsed;
+      }
     }
   } catch (err) {
     console.error('Error reading store file, falling back to default:', err);
@@ -583,6 +627,20 @@ function saveStore(store: AppStore) {
     console.error('Error writing store file:', err);
   }
 }
+
+// PayMongo Webhook MUST receive exact unparsed raw request bytes BEFORE express.json() for HMAC-SHA256 verification
+app.post('/api/webhooks/paymongo', express.raw({ type: '*/*', limit: '2mb' }), async (req: Request, res: Response) => {
+  try {
+    const result = await handlePaymongoWebhook(req, req.body);
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('[PayMongo Webhook Error]', err);
+    res.status(500).json({
+      received: false,
+      error: err?.message || 'Unexpected error processing PayMongo webhook.',
+    });
+  }
+});
 
 // Middleware
 app.use(express.json({ limit: '50mb' }));
@@ -613,7 +671,15 @@ app.get('/api/admin/content', (_req: Request, res: Response) => {
 
 app.put('/api/admin/settings', (req: Request, res: Response) => {
   const store = readStore();
-  store.settings = { ...store.settings, ...req.body };
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const nextSettings: WebsiteSettings = {
+    ...store.settings,
+    ...body,
+    paymentProviders: sanitizePaymentProviders(
+      body.paymentProviders ?? store.settings.paymentProviders
+    ),
+  };
+  store.settings = nextSettings;
   saveStore(store);
   res.json({ success: true, settings: store.settings });
 });
@@ -846,7 +912,17 @@ app.post('/api/discounts/validate', async (req: Request, res: Response) => {
   }
 });
 
-// 6. Checkout & Orders
+// 6. Checkout & Orders (PayMongo PHP Checkout + Webhooks)
+app.get('/api/checkout', async (_req: Request, res: Response) => {
+  try {
+    const result = await handleGetPaymentConfig();
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('[Payment Config Error]', err);
+    res.status(500).json({ error: 'Unable to load payment configuration.' });
+  }
+});
+
 app.post('/api/checkout', async (req: Request, res: Response) => {
   try {
     const result = await handleCheckoutSubmission(req);
@@ -880,44 +956,38 @@ app.get('/api/orders/:idOrToken', async (req: Request, res: Response) => {
   }
 });
 
-// 7. Secure Digital Download Simulator & High-res asset delivery
-app.get('/api/downloads/:token', (req: Request, res: Response) => {
-  const store = readStore();
-  const token = req.params.token;
-  const order = store.orders.find(o => o.downloadToken === token);
-
-  if (!order) {
-    res.status(404).json({ error: 'Invalid or expired download link' });
-    return;
+app.post('/api/orders/:idOrToken', async (req: Request, res: Response) => {
+  try {
+    const result = await handleOrderAction(req, String(req.params.idOrToken || ''));
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('[Order Action Error]', err);
+    res.status(500).json({ success: false, error: 'Unable to update order.' });
   }
-
-  // Increment download count
-  order.downloadCount += 1;
-  saveStore(store);
-
-  // Return download package meta with items
-  const downloadPackage = {
-    orderNumber: order.orderNumber,
-    purchasedAt: order.createdAt,
-    customerEmail: order.customerEmail,
-    items: order.items.map(item => {
-      const prod = store.products.find(p => p.id === item.productId);
-      return {
-        ...item,
-        resolutions: prod?.resolutions || ['4K UHD', 'Retina'],
-        fileFormat: prod?.fileFormat || 'PNG (Lossless 300 DPI)',
-        fileSize: prod?.fileSize || '25 MB',
-        whatsIncluded: prod?.whatsIncluded || ['Digital Wallpaper', 'Guide'],
-        downloadFileName: prod?.downloadFileName || `${item.title.toLowerCase().replace(/\s+/g, '_')}.zip`,
-        directImageUrl: prod?.images[0] || '/src/assets/images/hero_mushroom_cottage_1794020164209.jpg',
-      };
-    }),
-  };
-
-  res.json(downloadPackage);
 });
 
-// Direct Freebie Wallpaper Download
+// 7. Server-Enforced Digital Download Authorization & High-Res Asset Delivery
+app.get('/api/downloads/:token', async (req: Request, res: Response) => {
+  try {
+    const result = await handleAuthorizedDownload(req, String(req.params.token || ''));
+    res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+    if (result.kind === 'binary') {
+      res.setHeader('Content-Type', result.contentType || 'application/octet-stream');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${String(result.filename || 'wallpaper.jpg').replace(/"/g, '')}"`
+      );
+      res.status(result.status).send(result.buffer);
+      return;
+    }
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('[Download Auth Error]', err);
+    res.status(500).json({ authorized: false, error: 'Unable to verify digital download authorization.' });
+  }
+});
+
+// Direct Freebie Wallpaper Download (strictly enforced to genuinely free wallpapers)
 app.get('/api/free-download/:productId', (req: Request, res: Response) => {
   const store = readStore();
   const { productId } = req.params;
@@ -928,14 +998,19 @@ app.get('/api/free-download/:productId', (req: Request, res: Response) => {
     return;
   }
 
+  if (!prod.isFree && Number(prod.price) > 0) {
+    res.status(403).json({ error: 'Paid wallpapers require verified payment before downloading.' });
+    return;
+  }
+
   // Increment download count and set live download text
   prod.downloadCount = (prod.downloadCount || 0) + 1;
   prod.recentDownloadTime = 'just now';
   saveStore(store);
 
   const imagePath = prod.images[0];
-  if (imagePath && imagePath.startsWith('/src/assets/images/')) {
-    const fullPath = path.join(__dirname, imagePath);
+  if (imagePath && imagePath.startsWith('/')) {
+    const fullPath = path.join(__dirname, 'public', imagePath.replace(/^\/+/, ''));
     if (fs.existsSync(fullPath)) {
       res.setHeader('Content-Disposition', `attachment; filename="${prod.downloadFileName.replace('.zip', '.jpg')}"`);
       res.setHeader('Content-Type', 'image/jpeg');
@@ -963,44 +1038,29 @@ app.post('/api/products/:id/download-event', (req: Request, res: Response) => {
   }
 });
 
-// Trigger file download stream for an item
-app.get('/api/downloads/:token/file/:productId', (req: Request, res: Response) => {
-  const store = readStore();
-  const { token, productId } = req.params;
-  const order = store.orders.find(o => o.downloadToken === token);
-
-  if (!order) {
-    res.status(404).send('Invalid download token');
-    return;
-  }
-
-  const prod = store.products.find(p => p.id === productId);
-  if (!prod) {
-    res.status(404).send('Product not found in this package');
-    return;
-  }
-
-  // Increment product download count as well
-  prod.downloadCount = (prod.downloadCount || 0) + 1;
-  prod.recentDownloadTime = 'just now';
-  saveStore(store);
-
-  // Stream the wallpaper image as an attachment so browser actually downloads it!
-  const imagePath = prod.images[0];
-  if (imagePath && imagePath.startsWith('/src/assets/images/')) {
-    const fullPath = path.join(__dirname, imagePath);
-    if (fs.existsSync(fullPath)) {
-      res.setHeader('Content-Disposition', `attachment; filename="${prod.downloadFileName.replace('.zip', '.jpg')}"`);
-      res.setHeader('Content-Type', 'image/jpeg');
-      fs.createReadStream(fullPath).pipe(res);
+// Trigger file download stream for an item (strictly delegates to paid order verification)
+app.get('/api/downloads/:token/file/:productId', async (req: Request, res: Response) => {
+  try {
+    const result = await handleAuthorizedDownload(
+      req,
+      String(req.params.token || ''),
+      String(req.params.productId || '')
+    );
+    res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+    if (result.kind === 'binary') {
+      res.setHeader('Content-Type', result.contentType || 'application/octet-stream');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${String(result.filename || 'wallpaper.jpg').replace(/"/g, '')}"`
+      );
+      res.status(result.status).send(result.buffer);
       return;
     }
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('[Download Stream Error]', err);
+    res.status(500).json({ authorized: false, error: 'Unable to authorize file download.' });
   }
-
-  // Fallback text bundle readme
-  res.setHeader('Content-Disposition', `attachment; filename="${prod.downloadFileName.replace('.zip', '_readme.txt')}"`);
-  res.setHeader('Content-Type', 'text/plain');
-  res.send(`=== SLEEPYSHROOM DIGITAL WALLPAPER BUNDLE ===\n\nTitle: ${prod.title}\nTheme: ${prod.theme}\nSupported Devices: ${prod.deviceTypes.join(', ')}\nResolutions: ${prod.resolutions.join(', ')}\nFile Format: ${prod.fileFormat}\n\nThank you so much for supporting sleepyshroom!\n"Little screens, sweeter dreams."`);
 });
 
 // 8. Contact Form & Admin Contact Messages (Supabase + Email Delivery)
@@ -1151,12 +1211,35 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
 // 11. Admin Statistics Overview
 app.get('/api/admin/stats', async (req: Request, res: Response) => {
   const store = readStore();
-  const totalRevenue = store.orders.reduce((sum, o) => sum + (o.paymentStatus === 'completed' ? o.total : 0), 0);
-  const totalOrders = store.orders.length;
+  let ordersSource = store.orders;
+
+  try {
+    const ordersRes = await handleListOrders(req);
+    if (ordersRes.status === 200 && Array.isArray(ordersRes.body)) {
+      ordersSource = ordersRes.body;
+    }
+  } catch {
+    // Fallback to local store orders cleanly
+  }
+
+  const phpRate = Number(store.settings?.paymentProviders?.phpPerUsdRate) || 58;
+  const totalRevenue = ordersSource.reduce((sum, o: any) => {
+    const st = String(o.paymentStatus || '').toLowerCase();
+    if (st !== 'paid' && st !== 'completed') return sum;
+    const isPhp = String(o.currency || 'PHP').toUpperCase() === 'PHP';
+    const amtPhp = isPhp ? Number(o.total || 0) : Number(o.total || 0) * phpRate;
+    return sum + amtPhp;
+  }, 0);
+
+  const paidOrdersCount = ordersSource.filter((o: any) => {
+    const st = String(o.paymentStatus || '').toLowerCase();
+    return st === 'paid' || st === 'completed';
+  }).length;
+
   const publishedProducts = store.products.filter(p => p.status === 'published').length;
   const draftProducts = store.products.filter(p => p.status === 'draft').length;
   const totalCustomers = store.users.length;
-  const recentOrders = store.orders.slice(0, 5);
+  const recentOrders = ordersSource.slice(0, 5);
 
   let unreadMessages = 0;
   try {
@@ -1171,8 +1254,10 @@ app.get('/api/admin/stats', async (req: Request, res: Response) => {
   }
 
   res.json({
-    totalRevenue,
-    totalOrders,
+    totalRevenue: Number(totalRevenue.toFixed(2)),
+    revenueCurrency: 'PHP',
+    totalOrders: ordersSource.length,
+    paidOrdersCount,
     totalProducts: store.products.length,
     publishedProducts,
     draftProducts,
@@ -1379,21 +1464,88 @@ app.get(['/api/runtime-config', '/api/runtime-config.js'], (_req: Request, res: 
 
 // Integrate with Vite Dev Server or Production Static Files
 async function startServer() {
+  const httpServer = http.createServer(app);
+  const disableHmr = process.env.DISABLE_HMR === 'true';
+  let viteServer: Awaited<ReturnType<typeof createViteServer>> | null = null;
+
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(__dirname, 'dist')));
     app.get('*', (_req: Request, res: Response) => {
       res.sendFile(path.join(__dirname, 'dist', 'index.html'));
     });
   } else {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
+    const vitePromise = createViteServer({
+      server: {
+        middlewareMode: true,
+        allowedHosts: true,
+        hmr: !disableHmr,
+        ...(disableHmr ? { ws: false as const } : { ws: { server: httpServer } }),
+        watch: disableHmr ? null : {},
+      },
       appType: 'spa',
+    }).then((vite) => {
+      viteServer = vite;
+      return vite;
     });
-    app.use(vite.middlewares);
+
+    vitePromise.catch((err) => {
+      console.error('Failed to initialize Vite dev middleware:', err);
+      process.exit(1);
+    });
+
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (viteServer) {
+        viteServer.middlewares(req, res, next);
+        return;
+      }
+      vitePromise.then((vite) => vite.middlewares(req, res, next), next);
+    });
   }
 
-  app.listen(PORT, () => {
-    console.log(`🌙 sleepyshroom cozy server listening on http://localhost:${PORT}`);
+  httpServer.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use. Please free port ${PORT} or pass --port.`);
+    } else {
+      console.error('Server failed to start:', err);
+    }
+    process.exit(1);
+  });
+
+  let isShuttingDown = false;
+  const shutdown = async (signal: string) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    try {
+      if (viteServer) {
+        await viteServer.close();
+      }
+    } catch (err) {
+      console.error(`Error closing Vite during ${signal}:`, err);
+    }
+    httpServer.close(() => {
+      process.exit(0);
+    });
+    if (typeof httpServer.closeAllConnections === 'function') {
+      httpServer.closeAllConnections();
+    }
+    setTimeout(() => process.exit(0), 1500).unref();
+  };
+
+  process.once('SIGINT', () => void shutdown('SIGINT'));
+  process.once('SIGTERM', () => void shutdown('SIGTERM'));
+
+  await new Promise<void>((resolve) => {
+    const onListening = () => {
+      const displayHost = HOST && HOST !== '0.0.0.0' ? HOST : 'localhost';
+      console.log(`🌙 sleepyshroom cozy server listening on http://${displayHost}:${PORT}`);
+      resolve();
+    };
+
+    if (HOST) {
+      httpServer.listen(PORT, HOST, onListening);
+    } else {
+      httpServer.listen(PORT, onListening);
+    }
   });
 }
 

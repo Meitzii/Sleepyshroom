@@ -20,6 +20,8 @@ import {
 import { downloadWallpaperFile } from '../utils/downloadHelper.ts';
 import { parseJsonResponse } from '../utils/apiClient.ts';
 import { supabase, isSupabaseConfigured } from '../lib/supabase.ts';
+import { clearLegacyOrderCache } from '../utils/orderCache.ts';
+import { DEFAULT_USD_TO_PHP_RATE, formatPhp, usdToPhp } from '../utils/currency.ts';
 
 export interface GoogleSignInResult {
   success: boolean;
@@ -75,6 +77,9 @@ interface ShopContextType {
   downloadFreebie: (product: Product) => void;
   liveToast: string | null;
   setLiveToast: (toast: string | null) => void;
+  cancelledCheckoutToken: string | null;
+  clearCancelledCheckoutNotice: () => void;
+  phpPerUsdRate: number;
 }
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
@@ -116,13 +121,45 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
+  const [cancelledCheckoutToken, setCancelledCheckoutToken] = useState<string | null>(null);
+  const clearCancelledCheckoutNotice = () => setCancelledCheckoutToken(null);
+  const isCheckoutReturnRef = useRef(false);
+
   // Navigation state (SPA routing via hash or internal state)
   const [activeView, setActiveView] = useState<string>('home');
   const [viewParam, setViewParam] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Handle URL hash changes
+  // Clear legacy localStorage order caches and handle PayMongo redirect query parameters on mount
   useEffect(() => {
+    clearLegacyOrderCache();
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const checkoutStatus = String(searchParams.get('checkout_status') || '').toLowerCase();
+    const orderTokenParam = String(searchParams.get('order') || '').trim();
+
+    if (checkoutStatus === 'success' && orderTokenParam) {
+      isCheckoutReturnRef.current = true;
+      const targetHash = `#confirmation/${encodeURIComponent(orderTokenParam)}`;
+      try {
+        window.history.replaceState(null, '', `${window.location.pathname}${targetHash}`);
+      } catch {
+        window.location.hash = targetHash;
+      }
+      setActiveView('confirmation');
+      setViewParam(orderTokenParam);
+    } else if (checkoutStatus === 'cancelled') {
+      isCheckoutReturnRef.current = true;
+      setCancelledCheckoutToken(orderTokenParam);
+      try {
+        window.history.replaceState(null, '', `${window.location.pathname}#checkout`);
+      } catch {
+        window.location.hash = '#checkout';
+      }
+      setActiveView('checkout');
+      setViewParam(null);
+    }
+
     const handleHashChange = () => {
       const hash = window.location.hash.replace(/^#\/?/, '');
       if (
@@ -147,7 +184,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setViewParam(param);
     };
 
-    handleHashChange();
+    if (!isCheckoutReturnRef.current) {
+      handleHashChange();
+    }
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
@@ -283,6 +322,11 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [subtotal, appliedDiscount]);
 
+  const phpPerUsdRate =
+    Number(settings?.paymentProviders?.phpPerUsdRate) > 0
+      ? Number(settings?.paymentProviders?.phpPerUsdRate)
+      : DEFAULT_USD_TO_PHP_RATE;
+
   const applyDiscount = async (code: string) => {
     const cleanCode = String(code || '').trim().toUpperCase();
     if (!cleanCode) {
@@ -299,7 +343,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (subtotal < match.minSpend) {
         return {
           success: false,
-          message: `Minimum spend of $${match.minSpend.toFixed(2)} required for ${match.code}.`,
+          message: `Minimum spend of ${formatPhp(usdToPhp(match.minSpend, phpPerUsdRate))} required for ${match.code}.`,
         };
       }
       const rawDisc =
@@ -314,7 +358,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         message:
           match.type === 'percentage'
             ? `${match.value}% off applied!`
-            : `$${match.value.toFixed(2)} off applied!`,
+            : `${formatPhp(usdToPhp(match.value, phpPerUsdRate))} off applied!`,
       };
     };
 
@@ -546,6 +590,10 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentSearch.has('state') ||
         currentHash.startsWith('access_token=') ||
         currentHash.includes('refresh_token=');
+
+      if (isCheckoutReturnRef.current && !hadAuthCallbackParams && !hasUrlTokens) {
+        return;
+      }
 
       if (shouldOpenAccount || hadAuthCallbackParams || hasUrlTokens || isSignInEvent) {
         handledPostAuthRedirect = true;
@@ -1190,8 +1238,11 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const downloadFreebie = async (product: Product) => {
+    if (!product.isFree && Number(product.price) > 0) {
+      return;
+    }
     try {
-      // 1. Download real image file directly as valid binary image (works offline & on Vercel)
+      // 1. Download real image file directly for genuinely complimentary freebies
       const imageSrc = product.images[0] || `/wallpapers/${product.downloadFileName.replace(/\.zip$/i, '.jpg')}`;
       await downloadWallpaperFile(imageSrc, product.downloadFileName);
 
@@ -1295,6 +1346,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         downloadFreebie,
         liveToast,
         setLiveToast,
+        cancelledCheckoutToken,
+        clearCancelledCheckoutNotice,
+        phpPerUsdRate,
       }}
     >
       {children}

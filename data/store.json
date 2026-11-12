@@ -18,13 +18,15 @@
     "showMobileSection": true,
     "showBrandIntro": true,
     "paymentProviders": {
-      "stripeEnabled": true,
-      "stripePublishableKey": "pk_test_sample_sleepyshroom",
-      "stripeSecretKeyConfigured": false,
-      "paypalEnabled": true,
-      "paypalClientId": "client_id_sample",
-      "gcashEnabled": true,
-      "mayaEnabled": true,
+      "paymongoEnabled": true,
+      "paymongoEnabledMethods": [
+        "card",
+        "gcash",
+        "paymaya",
+        "qrph",
+        "grab_pay"
+      ],
+      "phpPerUsdRate": 58,
       "testMode": true
     },
     "socialLinks": {
@@ -529,72 +531,7 @@
       "productCount": 2
     }
   ],
-  "orders": [
-    {
-      "id": "ord-1794020802987",
-      "orderNumber": "SHROOM-1002",
-      "customerEmail": "test@example.com",
-      "customerName": "Test User",
-      "items": [
-        {
-          "productId": "prod-mobile-1",
-          "title": "Midnight Firefly Forest Mobile & Tablet",
-          "price": 3.5,
-          "image": "/src/assets/images/theme_mobile_forest_1794020166376.jpg",
-          "deviceTypes": [
-            "mobile",
-            "tablet"
-          ]
-        }
-      ],
-      "subtotal": 3.5,
-      "discount": 0,
-      "total": 3.5,
-      "paymentMethod": "Stripe",
-      "paymentStatus": "completed",
-      "transactionId": "txn_stripe_1794020802987",
-      "downloadToken": "shroom_dl_abcqayd5y2_1794020802987",
-      "downloadCount": 0,
-      "createdAt": "2026-11-07T03:06:42.987Z"
-    },
-    {
-      "id": "ord-1041",
-      "orderNumber": "SHROOM-1041",
-      "customerEmail": "clara.woodland@example.com",
-      "customerName": "Clara Woodland",
-      "items": [
-        {
-          "productId": "prod-desktop-1",
-          "title": "Sleepy Garden Sanctuary Wallpaper",
-          "price": 4.5,
-          "image": "/src/assets/images/theme_sleepy_garden_1794020165839.jpg",
-          "deviceTypes": [
-            "desktop"
-          ]
-        },
-        {
-          "productId": "prod-mobile-1",
-          "title": "Midnight Firefly Forest Mobile & Tablet",
-          "price": 3.5,
-          "image": "/src/assets/images/theme_mobile_forest_1794020166376.jpg",
-          "deviceTypes": [
-            "mobile",
-            "tablet"
-          ]
-        }
-      ],
-      "subtotal": 8,
-      "discount": 0.8,
-      "discountCode": "COZY10",
-      "total": 7.2,
-      "paymentMethod": "Stripe (Visa •••• 4242)",
-      "paymentStatus": "completed",
-      "transactionId": "txn_str_9831478234",
-      "downloadToken": "tok_shroom_demo_1041",
-      "downloadCount": 3,
-      "createdAt": "2026-11-05T14:22:00.000Z"
-    }
-  ],
+  "orders": [],
   "messages": [
     {
       "id": "msg-1794020810141",

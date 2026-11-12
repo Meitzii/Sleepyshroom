@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Trash2, ArrowRight, Tag, Check, Sparkles } from 'lucide-react';
 import { useShop } from '../../context/ShopContext.tsx';
 import { EmptyCartShroom } from '../common/Icons.tsx';
+import { calculateCheckoutPhpBreakdown, formatPhp } from '../../utils/currency.ts';
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -17,7 +18,10 @@ export const CartDrawer: React.FC = () => {
     applyDiscount,
     removeDiscount,
     navigateTo,
+    phpPerUsdRate,
   } = useShop();
+
+  const phpBreakdown = calculateCheckoutPhpBreakdown(cart, appliedDiscount, phpPerUsdRate);
 
   const [promoInput, setPromoInput] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
@@ -222,6 +226,12 @@ export const CartDrawer: React.FC = () => {
               <div className="flex justify-between text-sm font-extrabold text-[#292929] pt-2 border-t border-[#EADCC8]">
                 <span>Total</span>
                 <span className="text-[#A64B3C] text-base font-extrabold tabular-nums tracking-tight">${total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-[11px] text-[#777777] font-semibold">
+                <span>PayMongo Checkout Total</span>
+                <span className="tabular-nums font-bold text-[#292929]">
+                  {formatPhp(phpBreakdown.totalPhp)}
+                </span>
               </div>
             </div>
 

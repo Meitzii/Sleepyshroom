@@ -1,5 +1,18 @@
 export type DeviceType = 'desktop' | 'mobile' | 'tablet';
 
+export type PaymongoPaymentMethodKey = 'card' | 'gcash' | 'paymaya' | 'qrph' | 'grab_pay';
+
+export type PaymentProviderKey = 'paymongo';
+
+export type OrderPaymentStatus =
+  | 'pending'
+  | 'paid'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'expired'
+  | 'refunded';
+
 export interface Product {
   id: string;
   title: string;
@@ -68,18 +81,9 @@ export interface WebsiteSettings {
   showMobileSection: boolean;
   showBrandIntro: boolean;
   paymentProviders: {
-    stripeEnabled: boolean;
-    stripePublishableKey: string;
-    stripeSecretKeyConfigured: boolean;
-    paypalEnabled: boolean;
-    paypalClientId: string;
-    paypalEmail?: string;
-    gcashEnabled: boolean;
-    gcashAccountName?: string;
-    gcashNumber?: string;
-    mayaEnabled: boolean;
-    mayaAccountName?: string;
-    mayaNumber?: string;
+    paymongoEnabled: boolean;
+    paymongoEnabledMethods: PaymongoPaymentMethodKey[];
+    phpPerUsdRate: number;
     testMode: boolean;
   };
   socialLinks: {
@@ -101,19 +105,20 @@ export interface WebsiteSettings {
   };
 }
 
-export type PaymentProviderKey = 'stripe' | 'paypal' | 'gcash' | 'maya' | 'free';
-
 export interface BillingDetails {
   country: string;
   city?: string;
   postalCode?: string;
   addressLine1?: string;
+  phone?: string;
 }
 
 export interface OrderItem {
   productId: string;
+  slug?: string;
   title: string;
   price: number;
+  unitUsd?: number;
   quantity?: number;
   image: string;
   deviceTypes: DeviceType[];
@@ -132,11 +137,19 @@ export interface Order {
   discount: number;
   discountCode?: string;
   total: number;
-  paymentProvider?: PaymentProviderKey;
+  currency?: string;
+  paymentProvider?: PaymentProviderKey | string;
   paymentMethod: string;
-  paymentStatus: 'completed' | 'pending' | 'refunded';
+  paymentStatus: OrderPaymentStatus;
   isTestOrder?: boolean;
   transactionId: string;
+  paymentReference?: string;
+  paymongoCheckoutSessionId?: string;
+  paymongoPaymentIntentId?: string;
+  paymongoPaymentId?: string;
+  paymongoEventId?: string;
+  paidAt?: string;
+  failureReason?: string;
   downloadToken: string;
   downloadCount: number;
   createdAt: string;

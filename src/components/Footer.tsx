@@ -18,11 +18,12 @@ export const Footer: React.FC = () => {
   };
 
   const providers = settings?.paymentProviders || {
-    stripeEnabled: true,
-    paypalEnabled: true,
-    gcashEnabled: true,
-    mayaEnabled: true,
+    paymongoEnabled: true,
+    paymongoEnabledMethods: ['card', 'gcash', 'paymaya', 'qrph', 'grab_pay'],
+    phpPerUsdRate: 58,
+    testMode: true,
   };
+  const enabledMethods = providers.paymongoEnabledMethods || ['card', 'gcash', 'paymaya', 'qrph', 'grab_pay'];
 
   return (
     <footer className="bg-[#FCF3E2] border-t border-[#EADCC8] text-[#292929] mt-auto">
@@ -172,10 +173,10 @@ export const Footer: React.FC = () => {
             {/* Payments We Accept */}
             <div className="pt-3">
               <p className="text-[11px] font-bold uppercase tracking-wider text-[#292929] mb-2">
-                Payments We Accept
+                Payments We Accept · PHP via PayMongo
               </p>
               <div className="flex flex-wrap items-center gap-1.5">
-                {providers.stripeEnabled && (
+                {enabledMethods.includes('card') && (
                   <>
                     <span className="px-2 py-1 bg-[#FFFCF7] text-[10px] font-bold text-[#292929] rounded-md border border-[#EADCC8] shadow-xs">
                       Visa
@@ -185,19 +186,24 @@ export const Footer: React.FC = () => {
                     </span>
                   </>
                 )}
-                {providers.paypalEnabled && (
-                  <span className="px-2 py-1 bg-[#FFFCF7] text-[10px] font-bold text-[#292929] rounded-md border border-[#EADCC8] shadow-xs">
-                    PayPal
-                  </span>
-                )}
-                {providers.gcashEnabled && (
+                {enabledMethods.includes('gcash') && (
                   <span className="px-2 py-1 bg-[#FFFCF7] text-[10px] font-bold text-[#292929] rounded-md border border-[#EADCC8] shadow-xs">
                     GCash
                   </span>
                 )}
-                {providers.mayaEnabled && (
+                {enabledMethods.includes('paymaya') && (
                   <span className="px-2 py-1 bg-[#FFFCF7] text-[10px] font-bold text-[#292929] rounded-md border border-[#EADCC8] shadow-xs">
                     Maya
+                  </span>
+                )}
+                {enabledMethods.includes('qrph') && (
+                  <span className="px-2 py-1 bg-[#FFFCF7] text-[10px] font-bold text-[#292929] rounded-md border border-[#EADCC8] shadow-xs">
+                    QR Ph
+                  </span>
+                )}
+                {enabledMethods.includes('grab_pay') && (
+                  <span className="px-2 py-1 bg-[#FFFCF7] text-[10px] font-bold text-[#292929] rounded-md border border-[#EADCC8] shadow-xs">
+                    GrabPay
                   </span>
                 )}
               </div>

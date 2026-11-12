@@ -1,54 +1,37 @@
 import type { Order } from '../types/index.ts';
 
-const ORDERS_CACHE_KEY = 'sleepyshroom_orders';
-const MAX_CACHED_ORDERS = 50;
+const LEGACY_ORDERS_CACHE_KEY = 'sleepyshroom_orders';
 
-function readCachedOrders(): Order[] {
+/**
+ * Payment verification and digital download authorization are strictly server-enforced
+ * via PayMongo webhooks, PayMongo session reconciliation, and Supabase records.
+ * Client-side localStorage must NEVER be treated as proof of payment or download entitlement.
+ */
+export function clearLegacyOrderCache(): void {
   try {
-    const raw = localStorage.getItem(ORDERS_CACHE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(LEGACY_ORDERS_CACHE_KEY);
+    }
   } catch {
-    return [];
+    // Ignore storage access errors
   }
 }
 
-export function saveOrderToLocalCache(order: Order): void {
-  if (!order) return;
-  try {
-    const existing = readCachedOrders();
-    const key = order.downloadToken || order.orderNumber || order.id;
-    const filtered = existing.filter(
-      (item) => (item.downloadToken || item.orderNumber || item.id) !== key
-    );
-    const updated = [order, ...filtered].slice(0, MAX_CACHED_ORDERS);
-    localStorage.setItem(ORDERS_CACHE_KEY, JSON.stringify(updated));
-  } catch {
-    // Ignore storage quota / privacy mode restrictions
-  }
+export function saveOrderToLocalCache(_order: Order): void {
+  clearLegacyOrderCache();
 }
 
-export function findOrderInLocalCache(idOrToken: string): Order | null {
-  const target = String(idOrToken || '').trim();
-  if (!target) return null;
-  const cached = readCachedOrders();
-  return (
-    cached.find(
-      (o) => o.downloadToken === target || o.orderNumber === target || o.id === target
-    ) || null
-  );
+export function findOrderInLocalCache(_idOrToken: string): Order | null {
+  clearLegacyOrderCache();
+  return null;
 }
 
-export function getOrdersForCustomerEmail(email: string): Order[] {
-  const normalized = String(email || '').trim().toLowerCase();
-  if (!normalized) return [];
-  return readCachedOrders().filter(
-    (o) => String(o.customerEmail || '').trim().toLowerCase() === normalized
-  );
+export function getOrdersForCustomerEmail(_email: string): Order[] {
+  clearLegacyOrderCache();
+  return [];
 }
 
-export function mergeAndDeduplicateOrders(primary: Order[], secondary: Order[]): Order[] {
+export function mergeAndDeduplicateOrders(primary: Order[], secondary: Order[] = []): Order[] {
   const map = new Map<string, Order>();
   for (const ord of [...primary, ...secondary]) {
     if (!ord) continue;

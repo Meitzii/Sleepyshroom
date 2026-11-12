@@ -19,18 +19,15 @@ export const initialSettings: WebsiteSettings = {
   "showMobileSection": true,
   "showBrandIntro": true,
   "paymentProviders": {
-    "stripeEnabled": true,
-    "stripePublishableKey": "pk_test_sample_sleepyshroom",
-    "stripeSecretKeyConfigured": false,
-    "paypalEnabled": true,
-    "paypalClientId": "client_id_sample",
-    "paypalEmail": "",
-    "gcashEnabled": true,
-    "gcashAccountName": "",
-    "gcashNumber": "",
-    "mayaEnabled": true,
-    "mayaAccountName": "",
-    "mayaNumber": "",
+    "paymongoEnabled": true,
+    "paymongoEnabledMethods": [
+      "card",
+      "gcash",
+      "paymaya",
+      "qrph",
+      "grab_pay"
+    ],
+    "phpPerUsdRate": 58,
     "testMode": true
   },
   "socialLinks": {
