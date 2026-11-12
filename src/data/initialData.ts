@@ -21,7 +21,7 @@ export const initialSettings: WebsiteSettings = {
   "paymentProviders": {
     "paypalEnabled": true,
     "paypalAllowCards": true,
-    "testMode": true
+    "testMode": false
   },
   "socialLinks": {
     "instagram": "https://instagram.com/sleepyshroom",
