@@ -127,20 +127,156 @@ export const EmptyCartShroom: React.FC<{ className?: string }> = ({ className = 
   </svg>
 );
 
+// Official Vector Payment Icons (crisp SVG for retina screens)
+export const PaypalIcon: React.FC<{ className?: string; size?: number }> = ({ className = '', size = 20 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 ${className}`}
+    aria-label="PayPal"
+  >
+    <path
+      d="M7.076 21.337H3.47a.78.78 0 0 1-.772-.894L5.614 3.42a.89.89 0 0 1 .878-.753h7.242c2.41 0 4.148.563 5.166 1.674.965 1.054 1.258 2.585.871 4.55-.776 3.938-3.414 5.942-7.842 5.942H9.012a.89.89 0 0 0-.877.754l-1.06 5.75z"
+      fill="#003087"
+    />
+    <path
+      d="M19.77 8.89c-.776 3.938-3.414 5.942-7.842 5.942H9.012a.89.89 0 0 0-.877.754l-1.06 5.75-.246 1.334a.78.78 0 0 0 .77.893h3.606a.89.89 0 0 0 .878-.753l.72-3.896.046-.245a.89.89 0 0 1 .878-.754h.55c3.87 0 6.896-1.572 7.781-6.071.37-1.88.163-3.447-.692-4.509a5.21 5.21 0 0 0-.67-.64z"
+      fill="#0079C1"
+    />
+    <path
+      d="M18.893 8.358c-.23-.058-.475-.1-.734-.127-.27-.027-.562-.04-.875-.04H10.96a.89.89 0 0 0-.878.754l-1.39 7.513-.393 2.128a.78.78 0 0 0 .77.893h3.197a.89.89 0 0 0 .878-.753l.72-3.896.046-.245a.89.89 0 0 1 .878-.754h.55c3.87 0 6.896-1.572 7.781-6.071.18-.912.185-1.745.024-2.474-.473 1.385-1.927 2.476-3.67 2.872z"
+      fill="#00457C"
+    />
+  </svg>
+);
+
+export const VisaIcon: React.FC<{ className?: string; width?: number; height?: number }> = ({
+  className = '',
+  width = 32,
+  height = 20,
+}) => (
+  <svg
+    width={width}
+    height={height}
+    viewBox="0 0 36 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 ${className}`}
+    aria-label="Visa"
+  >
+    <rect width="36" height="24" rx="4" fill="#FFFFFF" />
+    <path
+      d="M14.65 16.32h-2.14l1.34-8.25h2.14l-1.34 8.25zm8.1-8.08a5.2 5.2 0 0 0-1.87-.34c-2.06 0-3.51 1.07-3.52 2.6-.02 1.13 1.04 1.76 1.83 2.14.81.39 1.08.64 1.08.99 0 .54-.66.78-1.28.78-.85 0-1.31-.13-2-.43l-.28-.13-.3 1.82c.5.23 1.43.43 2.39.44 2.19 0 3.61-1.06 3.63-2.69.01-.9-.55-1.58-1.75-2.14-.73-.37-1.18-.62-1.18-.99 0-.34.39-.7 1.23-.7.7 0 1.22.15 1.62.32l.2.1.33-1.76zm4.84 5.34l.86-2.31c-.01.02.18-.48.29-.8l.15.72.5 2.39h-1.8zm2.74-5.51h-1.66c-.52 0-.9.15-1.13.7l-3.21 7.55h2.25l.45-1.23h2.75l.26 1.23h1.98l-1.69-8.25zm-17.72 0l-2.09 5.63-.23-1.12c-.39-1.32-1.6-2.75-2.96-3.46l1.92 7.2h2.26l3.36-8.25h-2.26z"
+      fill="#1A1F71"
+    />
+    <path
+      d="M6.55 8.07H3.1l-.04.19c2.65.66 4.4 2.27 5.13 4.2l-.74-3.69c-.13-.52-.51-.68-.9-.7z"
+      fill="#F7B600"
+    />
+  </svg>
+);
+
+export const MastercardIcon: React.FC<{ className?: string; width?: number; height?: number }> = ({
+  className = '',
+  width = 32,
+  height = 20,
+}) => (
+  <svg
+    width={width}
+    height={height}
+    viewBox="0 0 36 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 ${className}`}
+    aria-label="Mastercard"
+  >
+    <rect width="36" height="24" rx="4" fill="#FFFFFF" />
+    <circle cx="14" cy="12" r="7" fill="#EB001B" />
+    <circle cx="22" cy="12" r="7" fill="#F79E1B" fillOpacity="0.88" />
+  </svg>
+);
+
+export const AmexIcon: React.FC<{ className?: string; width?: number; height?: number }> = ({
+  className = '',
+  width = 32,
+  height = 20,
+}) => (
+  <svg
+    width={width}
+    height={height}
+    viewBox="0 0 36 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 ${className}`}
+    aria-label="American Express"
+  >
+    <rect width="36" height="24" rx="4" fill="#016FD0" />
+    <path
+      d="M8.2 16.5l2.1-4.8 2.1 4.8h2.3l-3.3-7.2h-2.2L6 16.5h2.2zm1.6-3.7l.6 1.5h-1.2l.6-1.5zm11.7 3.7v-7.2h-4.8v7.2h2v-2.3h1v2.3h1.8zm-2.8-3.9v-1.6h1v1.6h-1zm10.3 3.9v-1.7h-3.4v-1.2h3.2v-1.5h-3.2v-1.1h3.4v-1.7h-5.4v7.2h5.4zm-14.7 0l2-3.6-1.9-3.6h-2.1l2.8 4.6-2.9 2.6h2.1z"
+      fill="#FFFFFF"
+    />
+  </svg>
+);
+
+export const ShieldLockIcon: React.FC<{ className?: string; size?: number }> = ({
+  className = 'text-[#A64B3C]',
+  size = 18,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={`shrink-0 ${className}`}
+  >
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <path d="m9 12 2 2 4-4" />
+  </svg>
+);
+
 // Payment Badges
-export const PaymentBadges: React.FC<{ className?: string }> = ({ className = '' }) => (
-  <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-    <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-[#292929] bg-[#FCF3E2] rounded-md border border-[#EADCC8]">
-      PayPal
-    </span>
-    <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-[#292929] bg-[#FCF3E2] rounded-md border border-[#EADCC8]">
-      Visa
-    </span>
-    <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-[#292929] bg-[#FCF3E2] rounded-md border border-[#EADCC8]">
-      Mastercard
-    </span>
-    <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-[#292929] bg-[#FCF3E2] rounded-md border border-[#EADCC8]">
-      Debit &amp; Credit Cards
-    </span>
+export const PaymentBadges: React.FC<{ className?: string; showAllCards?: boolean }> = ({
+  className = '',
+  showAllCards = true,
+}) => (
+  <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
+    <div
+      title="PayPal Verified"
+      className="inline-flex items-center gap-1 px-2 py-1 bg-white rounded-lg border border-[#EADCC8] shadow-2xs hover:border-[#A64B3C]/50 transition-colors"
+    >
+      <PaypalIcon size={14} />
+      <span className="text-[11px] font-bold text-[#003087]">PayPal</span>
+    </div>
+
+    {showAllCards && (
+      <>
+        <div
+          title="Visa"
+          className="inline-flex items-center px-1.5 py-0.5 bg-white rounded-lg border border-[#EADCC8] shadow-2xs"
+        >
+          <VisaIcon width={28} height={18} />
+        </div>
+        <div
+          title="Mastercard"
+          className="inline-flex items-center px-1.5 py-0.5 bg-white rounded-lg border border-[#EADCC8] shadow-2xs"
+        >
+          <MastercardIcon width={28} height={18} />
+        </div>
+        <div
+          title="American Express"
+          className="inline-flex items-center px-1.5 py-0.5 bg-white rounded-lg border border-[#EADCC8] shadow-2xs"
+        >
+          <AmexIcon width={28} height={18} />
+        </div>
+      </>
+    )}
   </div>
 );
+

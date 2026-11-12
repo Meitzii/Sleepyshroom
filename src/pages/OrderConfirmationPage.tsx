@@ -12,12 +12,15 @@ import {
   Lock,
   Loader2,
   RotateCcw,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import type { Order } from '../types/index.ts';
 import { downloadAuthorizedOrderFile } from '../utils/downloadHelper.ts';
 import { parseJsonResponse, getOptionalSupabaseAuthHeader } from '../utils/apiClient.ts';
 import { formatOrderMoney } from '../utils/currency.ts';
+import { PaypalIcon, ShieldLockIcon } from '../components/common/Icons.tsx';
 
 interface OrderConfirmationPageProps {
   token: string;
@@ -37,6 +40,8 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
   const [verifying, setVerifying] = useState(false);
   const [downloadingProductId, setDownloadingProductId] = useState<string | null>(null);
   const [downloadFeedback, setDownloadFeedback] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [setupTab, setSetupTab] = useState<'iphone' | 'android' | 'mac' | 'windows'>('iphone');
+  const [copiedToken, setCopiedToken] = useState(false);
   const clearedCartForTokenRef = useRef<string | null>(null);
   const attemptedCaptureKeyRef = useRef<string | null>(null);
   const autoPollCountRef = useRef(0);
@@ -468,58 +473,206 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
             })}
           </div>
 
-          {/* Device Setup Tips */}
-          <div className="bg-[#FFFCF7] rounded-2xl p-5 border border-[#EADCC8] space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#292929] flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#A64B3C]" />
-              <span>Cozy Setup Guide</span>
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-[#777777]">
-              <div className="space-y-1">
-                <p className="font-bold text-[#292929] flex items-center gap-1.5">
-                  <Monitor className="w-3.5 h-3.5 text-[#A64B3C]" />
-                  <span>Mac &amp; Windows Desktop</span>
-                </p>
-                <p className="leading-relaxed text-[11px] font-medium">
-                  Save your wallpaper file, then open System Settings &gt; Wallpaper / Personalization to set your preferred background.
-                </p>
+          {/* Interactive Device Setup Guide */}
+          <div className="bg-[#FFFCF7] rounded-2xl p-5 border border-[#EADCC8] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#292929] flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#A64B3C]" />
+                <span>Cozy Wallpaper Setup Guide</span>
+              </h4>
+              <div className="flex items-center gap-1 bg-[#FCF3E2] p-1 rounded-xl border border-[#EADCC8] text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setSetupTab('iphone')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    setupTab === 'iphone'
+                      ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                      : 'text-[#777777] hover:text-[#292929]'
+                  }`}
+                >
+                  iPhone / iPad
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSetupTab('android')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    setupTab === 'android'
+                      ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                      : 'text-[#777777] hover:text-[#292929]'
+                  }`}
+                >
+                  Android
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSetupTab('mac')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    setupTab === 'mac'
+                      ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                      : 'text-[#777777] hover:text-[#292929]'
+                  }`}
+                >
+                  Mac
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSetupTab('windows')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    setupTab === 'windows'
+                      ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                      : 'text-[#777777] hover:text-[#292929]'
+                  }`}
+                >
+                  Windows
+                </button>
               </div>
-              <div className="space-y-1">
-                <p className="font-bold text-[#292929] flex items-center gap-1.5">
-                  <Smartphone className="w-3.5 h-3.5 text-[#A64B3C]" />
-                  <span>iPhone &amp; Android</span>
-                </p>
-                <p className="leading-relaxed text-[11px] font-medium">
-                  Save to Photos/Gallery. Set as Lock Screen with wallpaper depth effect enabled, and match with clean app icons.
-                </p>
-              </div>
+            </div>
+
+            <div className="text-xs text-[#555555] font-medium leading-relaxed bg-[#FCF3E2]/50 p-4 rounded-xl border border-[#EADCC8]/80">
+              {setupTab === 'iphone' && (
+                <div className="space-y-1.5">
+                  <p className="font-bold text-[#292929] flex items-center gap-1.5">
+                    <Smartphone className="w-3.5 h-3.5 text-[#A64B3C]" />
+                    <span>iOS Setup Steps</span>
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1 text-[11px] text-[#666666]">
+                    <li>Tap <strong>Download Files</strong> above and save to your Photos app.</li>
+                    <li>Open <strong>Settings &gt; Wallpaper &gt; Add New Wallpaper</strong>.</li>
+                    <li>Select Photos, pinch to crop or center, and tap <strong>Add</strong> to set Home &amp; Lock screens.</li>
+                  </ol>
+                </div>
+              )}
+
+              {setupTab === 'android' && (
+                <div className="space-y-1.5">
+                  <p className="font-bold text-[#292929] flex items-center gap-1.5">
+                    <Smartphone className="w-3.5 h-3.5 text-[#A64B3C]" />
+                    <span>Android Setup Steps</span>
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1 text-[11px] text-[#666666]">
+                    <li>Tap <strong>Download Files</strong> to save the high-resolution file to your Gallery or Files.</li>
+                    <li>Tap and hold any empty area on your home screen, then tap <strong>Wallpaper &amp; Style</strong>.</li>
+                    <li>Choose your downloaded Sleepyshroom wallpaper and apply to Home or Lock Screen.</li>
+                  </ol>
+                </div>
+              )}
+
+              {setupTab === 'mac' && (
+                <div className="space-y-1.5">
+                  <p className="font-bold text-[#292929] flex items-center gap-1.5">
+                    <Monitor className="w-3.5 h-3.5 text-[#A64B3C]" />
+                    <span>macOS Setup Steps</span>
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1 text-[11px] text-[#666666]">
+                    <li>Click <strong>Download Files</strong> and locate the image in your Downloads folder.</li>
+                    <li>Right-click (or Control-click) the image file and select <strong>Set Desktop Picture</strong>.</li>
+                    <li>Alternatively, open <strong>System Settings &gt; Wallpaper</strong> and add the folder.</li>
+                  </ol>
+                </div>
+              )}
+
+              {setupTab === 'windows' && (
+                <div className="space-y-1.5">
+                  <p className="font-bold text-[#292929] flex items-center gap-1.5">
+                    <Monitor className="w-3.5 h-3.5 text-[#A64B3C]" />
+                    <span>Windows 10 &amp; 11 Setup Steps</span>
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1 text-[11px] text-[#666666]">
+                    <li>Click <strong>Download Files</strong> and open the folder in File Explorer.</li>
+                    <li>Right-click the image and choose <strong>Set as desktop background</strong>.</li>
+                    <li>In Settings &gt; Personalization &gt; Background, set Choose a fit to <strong>Fill</strong> or <strong>Fit</strong>.</li>
+                  </ol>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Receipt & Billing Details */}
-          <div className="border-t border-[#EADCC8] pt-4 space-y-2 text-xs text-[#777777] font-medium">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span>
-                Billed to: <strong className="text-[#292929]">{order.customerName}</strong>
-                {billingLocation ? ` (${billingLocation})` : ''}
-              </span>
-              <span>
-                PayPal Reference:{' '}
-                <strong className="text-[#292929] font-mono">
-                  {order.paypalCaptureId || order.paypalOrderId || order.transactionId}
-                </strong>
-              </span>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span>
-                Payment: <strong className="text-[#292929]">{order.paymentMethod}</strong>
-                {order.isTestOrder ? ' · Sandbox' : ''}
-              </span>
-              <span className="text-xs font-bold text-[#292929]">
-                Total Paid:{' '}
-                <span className="text-base font-extrabold text-[#A64B3C] tabular-nums">
+          {/* Official PayPal Payment Receipt Card */}
+          <div className="bg-[#FFFCF7] rounded-2xl p-5 border border-[#EADCC8] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EADCC8]/80 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#003087]/10 flex items-center justify-center shrink-0 border border-[#003087]/20">
+                  <PaypalIcon className="w-4 h-4 text-[#003087]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-heading font-bold text-sm text-[#292929]">
+                      PayPal Official Receipt
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-300">
+                      <ShieldLockIcon className="w-3 h-3 text-emerald-700" />
+                      <span>Verified &amp; Captured</span>
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#777777] font-medium">
+                    Transaction processed via PayPal Checkout{order.isTestOrder ? ' (Sandbox)' : ''}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-left sm:text-right">
+                <span className="text-[11px] text-[#777777] font-semibold block">Total Paid</span>
+                <span className="text-lg font-extrabold text-[#A64B3C] tabular-nums">
                   {formatOrderMoney(order.total, order.currency)}
                 </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-[#555555]">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#777777] block">
+                  Customer Information
+                </span>
+                <p className="font-bold text-[#292929]">{order.customerName}</p>
+                <p className="text-[11px] text-[#777777]">{order.customerEmail}</p>
+                {billingLocation && (
+                  <p className="text-[11px] text-[#777777]">{billingLocation}</p>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#777777] block">
+                  Payment References
+                </span>
+                <p className="text-[11px]">
+                  <span className="text-[#777777]">Payment Method:</span>{' '}
+                  <strong className="text-[#292929] font-bold capitalize">{order.paymentMethod}</strong>
+                </p>
+                {(order.paypalCaptureId || order.paypalOrderId) && (
+                  <p className="text-[11px] flex items-center gap-1.5">
+                    <span className="text-[#777777]">PayPal ID:</span>{' '}
+                    <code className="font-mono text-[10px] bg-[#FCF3E2] text-[#292929] px-1.5 py-0.5 rounded border border-[#EADCC8]">
+                      {order.paypalCaptureId || order.paypalOrderId}
+                    </code>
+                  </p>
+                )}
+                <div className="flex items-center gap-1.5 text-[11px] pt-0.5">
+                  <span className="text-[#777777]">Download Token:</span>
+                  <code className="font-mono text-[10px] bg-[#FCF3E2] text-[#292929] px-1.5 py-0.5 rounded border border-[#EADCC8] truncate max-w-[140px]">
+                    {order.downloadToken}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(order.downloadToken);
+                      setCopiedToken(true);
+                      setTimeout(() => setCopiedToken(false), 2000);
+                    }}
+                    className="p-1 rounded-md text-[#777777] hover:text-[#A64B3C] hover:bg-[#FCF3E2] transition-colors cursor-pointer"
+                    title="Copy Download Token"
+                  >
+                    {copiedToken ? <Check className="w-3.5 h-3.5 text-emerald-700" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-[#EADCC8]/60 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#777777] font-medium">
+              <span>
+                Saved permanently in Sleepyshroom Supabase database.
+              </span>
+              <span>
+                14-day duplicate purchase guarantee active.
               </span>
             </div>
           </div>

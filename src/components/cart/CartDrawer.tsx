@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, Trash2, ArrowRight, Tag, Check, Sparkles } from 'lucide-react';
+import { X, Trash2, ArrowRight, Tag, Check, Sparkles, ShieldCheck } from 'lucide-react';
 import { useShop } from '../../context/ShopContext.tsx';
-import { EmptyCartShroom } from '../common/Icons.tsx';
+import { EmptyCartShroom, PaymentBadges } from '../common/Icons.tsx';
 import { calculateCheckoutBreakdown, formatUsd } from '../../utils/currency.ts';
 
 export const CartDrawer: React.FC = () => {
@@ -229,6 +229,16 @@ export const CartDrawer: React.FC = () => {
               </div>
             </div>
 
+            {/* Accepted Payments Preview */}
+            <div className="pt-2 pb-1 border-t border-[#EADCC8]/70">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#777777]">
+                  Accepted Payments
+                </span>
+                <PaymentBadges />
+              </div>
+            </div>
+
             {/* Checkout Button */}
             <button
               onClick={handleProceedToCheckout}
@@ -238,9 +248,10 @@ export const CartDrawer: React.FC = () => {
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </button>
 
-            <p className="text-[11px] text-center text-[#777777] font-medium">
-              Instant digital download delivery immediately after checkout.
-            </p>
+            <div className="flex items-center justify-center gap-2 text-[11px] text-[#777777] font-medium text-center">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Instant digital download · 256-Bit SSL PayPal encrypted</span>
+            </div>
 
           </div>
         )}

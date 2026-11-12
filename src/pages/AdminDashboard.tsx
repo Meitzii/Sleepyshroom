@@ -28,12 +28,14 @@ import {
   Loader2,
   RefreshCw,
   RotateCcw,
+  Search,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { supabase } from '../lib/supabase.ts';
 import { parseJsonResponse } from '../utils/apiClient.ts';
 import { formatOrderMoney, formatUsd } from '../utils/currency.ts';
 import { ContactMessagesPanel } from '../components/admin/ContactMessagesPanel.tsx';
+import { PaypalIcon } from '../components/common/Icons.tsx';
 import type { 
   Product, 
   CarouselSlide, 
@@ -65,6 +67,10 @@ export const AdminDashboard: React.FC = () => {
   const [emailConfigured, setEmailConfigured] = useState(false);
   const [emailProvider, setEmailProvider] = useState<string | null>(null);
   const [emailUsingSandbox, setEmailUsingSandbox] = useState(false);
+
+  // Orders section filter & search state
+  const [orderFilterStatus, setOrderFilterStatus] = useState<'all' | 'paid' | 'pending' | 'refunded'>('all');
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
 
   // Feedback notifications
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -1344,24 +1350,215 @@ export const AdminDashboard: React.FC = () => {
         )}
 
         {/* TAB 5: ORDERS & DOWNLOADS */}
-        {activeTab === 'orders' && (
-          <div className="space-y-6">
-            <div className="bg-[#F9F6F0] p-5 rounded-3xl border border-[#E8C9C1]">
-              <h2 className="font-heading font-bold text-lg text-[#1E1419]">
-                Customer Orders &amp; PayPal Verification
-              </h2>
-              <p className="text-xs text-[#33222C]">
-                Server-verified PayPal USD orders, capture references, refund management, and digital download access status.
-              </p>
-            </div>
+        {activeTab === 'orders' && (() => {
+          const totalPaidRevenue = orders
+            .filter(o => ['paid', 'completed'].includes(String(o.paymentStatus || '').toLowerCase()))
+            .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+          const paidOrdersCount = orders.filter(o => ['paid', 'completed'].includes(String(o.paymentStatus || '').toLowerCase())).length;
+          const pendingOrdersCount = orders.filter(o => String(o.paymentStatus || '').toLowerCase() === 'pending').length;
+          const refundedOrdersCount = orders.filter(o => String(o.paymentStatus || '').toLowerCase() === 'refunded').length;
 
-            {orders.length === 0 ? (
-              <div className="bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] p-8 text-center text-xs text-[#33222C] font-medium">
-                No orders recorded yet. New PayPal checkouts will appear here automatically.
+          const filteredOrders = orders.filter(o => {
+            const st = String(o.paymentStatus || 'pending').toLowerCase();
+            const isPaid = st === 'paid' || st === 'completed';
+            const isRefunded = st === 'refunded';
+            const isPending = st === 'pending';
+
+            if (orderFilterStatus === 'paid' && !isPaid) return false;
+            if (orderFilterStatus === 'pending' && !isPending) return false;
+            if (orderFilterStatus === 'refunded' && !isRefunded) return false;
+
+            if (orderSearchQuery.trim()) {
+              const q = orderSearchQuery.toLowerCase().trim();
+              const matchOrderNum = o.orderNumber?.toLowerCase().includes(q);
+              const matchEmail = o.customerEmail?.toLowerCase().includes(q);
+              const matchName = o.customerName?.toLowerCase().includes(q);
+              const matchCapture = o.paypalCaptureId?.toLowerCase().includes(q);
+              const matchPaypalOrder = o.paypalOrderId?.toLowerCase().includes(q);
+              const matchToken = o.downloadToken?.toLowerCase().includes(q);
+              return matchOrderNum || matchEmail || matchName || matchCapture || matchPaypalOrder || matchToken;
+            }
+            return true;
+          });
+
+          return (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="bg-[#F9F6F0] p-5 rounded-3xl border border-[#E8C9C1] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-heading font-bold text-lg text-[#1E1419]">
+                      Customer Orders &amp; PayPal Verification
+                    </h2>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#003087] bg-[#003087]/10 px-2 py-0.5 rounded-full border border-[#003087]/20">
+                      <PaypalIcon className="w-3 h-3" />
+                      <span>PayPal Exclusive</span>
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#33222C] mt-0.5">
+                    Server-verified PayPal USD orders, capture references, refund management, and digital download access status.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    void loadAdminData();
+                  }}
+                  className="px-3.5 py-2 bg-white hover:bg-[#F4EAE6] text-[#1E1419] border border-[#D5C2BB] rounded-xl text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Refresh Orders</span>
+                </button>
               </div>
-            ) : (
-              <div className="bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] divide-y divide-[#E8C9C1]/70 overflow-hidden">
-                {orders.map(o => {
+
+              {/* KPI Cards Strip */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-[#F9F6F0] p-4 rounded-2xl border border-[#E8C9C1]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#8B6F7A] block">
+                    Verified Revenue (USD)
+                  </span>
+                  <span className="text-xl font-extrabold text-[#945367] tabular-nums mt-1 block">
+                    {formatUsd(totalPaidRevenue)}
+                  </span>
+                  <span className="text-[11px] text-[#45313D] font-medium mt-0.5 block">
+                    From {paidOrdersCount} completed orders
+                  </span>
+                </div>
+
+                <div className="bg-[#F9F6F0] p-4 rounded-2xl border border-[#E8C9C1]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#8B6F7A] block">
+                    Total Orders
+                  </span>
+                  <span className="text-xl font-extrabold text-[#1E1419] tabular-nums mt-1 block">
+                    {orders.length}
+                  </span>
+                  <span className="text-[11px] text-[#45313D] font-medium mt-0.5 block">
+                    Stored in Supabase
+                  </span>
+                </div>
+
+                <div className="bg-[#F9F6F0] p-4 rounded-2xl border border-[#E8C9C1]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
+                    Downloads Unlocked
+                  </span>
+                  <span className="text-xl font-extrabold text-emerald-800 tabular-nums mt-1 block">
+                    {paidOrdersCount}
+                  </span>
+                  <span className="text-[11px] text-[#45313D] font-medium mt-0.5 block">
+                    Instant delivery verified
+                  </span>
+                </div>
+
+                <div className="bg-[#F9F6F0] p-4 rounded-2xl border border-[#E8C9C1]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 block">
+                    Pending / Refunded
+                  </span>
+                  <span className="text-xl font-extrabold text-[#1E1419] tabular-nums mt-1 block">
+                    {pendingOrdersCount} <span className="text-xs font-normal text-[#8B6F7A]">/ {refundedOrdersCount}</span>
+                  </span>
+                  <span className="text-[11px] text-[#45313D] font-medium mt-0.5 block">
+                    {pendingOrdersCount} awaiting capture · {refundedOrdersCount} refunded
+                  </span>
+                </div>
+              </div>
+
+              {/* Filter Tabs & Search Bar */}
+              <div className="bg-[#F9F6F0] p-3.5 rounded-2xl border border-[#E8C9C1] flex flex-col md:flex-row md:items-center justify-between gap-3">
+                {/* Status Tabs */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+                  <button
+                    type="button"
+                    onClick={() => setOrderFilterStatus('all')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      orderFilterStatus === 'all'
+                        ? 'bg-[#8B6F7A] text-[#F7F3E9] shadow-xs'
+                        : 'bg-white text-[#1E1419] hover:bg-[#F4EAE6] border border-[#D5C2BB]'
+                    }`}
+                  >
+                    All Orders ({orders.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderFilterStatus('paid')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      orderFilterStatus === 'paid'
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'bg-white text-[#1E1419] hover:bg-[#F4EAE6] border border-[#D5C2BB]'
+                    }`}
+                  >
+                    Paid ({paidOrdersCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderFilterStatus('pending')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      orderFilterStatus === 'pending'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'bg-white text-[#1E1419] hover:bg-[#F4EAE6] border border-[#D5C2BB]'
+                    }`}
+                  >
+                    Pending ({pendingOrdersCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderFilterStatus('refunded')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      orderFilterStatus === 'refunded'
+                        ? 'bg-stone-700 text-white shadow-xs'
+                        : 'bg-white text-[#1E1419] hover:bg-[#F4EAE6] border border-[#D5C2BB]'
+                    }`}
+                  >
+                    Refunded ({refundedOrdersCount})
+                  </button>
+                </div>
+
+                {/* Search Box */}
+                <div className="relative min-w-[240px]">
+                  <Search className="w-3.5 h-3.5 text-[#8B6F7A] absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={orderSearchQuery}
+                    onChange={e => setOrderSearchQuery(e.target.value)}
+                    placeholder="Search by order #, email, name, or PayPal ID..."
+                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-[#D5C2BB] rounded-xl text-[#1E1419] placeholder-[#8B6F7A]/60 focus:outline-hidden focus:ring-1 focus:ring-[#8B6F7A]"
+                  />
+                  {orderSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setOrderSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#8B6F7A] hover:text-[#1E1419]"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Order List or Empty Feedback */}
+              {filteredOrders.length === 0 ? (
+                <div className="bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] p-8 text-center text-xs text-[#33222C] font-medium space-y-2">
+                  <p>
+                    {orders.length === 0
+                      ? 'No orders recorded yet. New PayPal checkouts will appear here automatically.'
+                      : 'No orders found matching the selected filter or search query.'}
+                  </p>
+                  {(orderFilterStatus !== 'all' || orderSearchQuery) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrderFilterStatus('all');
+                        setOrderSearchQuery('');
+                      }}
+                      className="text-xs font-bold text-[#8B6F7A] underline cursor-pointer"
+                    >
+                      Reset filters
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] divide-y divide-[#E8C9C1]/70 overflow-hidden">
+                  {filteredOrders.map(o => {
                   const st = String(o.paymentStatus || 'pending').toLowerCase();
                   const isPaid = st === 'paid' || st === 'completed';
                   const isRefunded = st === 'refunded';
@@ -1393,10 +1590,14 @@ export const AdminDashboard: React.FC = () => {
                               · {new Date(txDate).toLocaleString()}
                             </span>
                           </div>
-                          <p className="text-xs text-[#33222C] font-medium">
-                            Email: <strong className="text-[#1E1419] font-bold">{o.customerEmail}</strong>
-                            {' · '}Provider: <strong className="uppercase">{o.paymentProvider || 'paypal'}</strong> ({o.paymentMethod})
-                          </p>
+                          <div className="text-xs text-[#33222C] font-medium flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                            <span>Email: <strong className="text-[#1E1419] font-bold">{o.customerEmail}</strong></span>
+                            <span>·</span>
+                            <span className="inline-flex items-center gap-1 text-[#003087] font-bold">
+                              <PaypalIcon className="w-3.5 h-3.5" />
+                              <span>PayPal ({o.paymentMethod})</span>
+                            </span>
+                          </div>
                           <p className="text-xs text-[#33222C] font-medium flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span>
                               PayPal Ref:{' '}
@@ -1527,7 +1728,8 @@ export const AdminDashboard: React.FC = () => {
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* TAB 6: INCOMING MESSAGES */}
         {activeTab === 'messages' && (
