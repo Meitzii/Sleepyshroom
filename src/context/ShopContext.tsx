@@ -8,13 +8,15 @@ import type {
   CartItem, 
   DiscountCode, 
   UserAccount,
-  Order 
+  Order,
+  ThemeBundle
 } from '../types/index.ts';
 import { 
   initialSettings, 
   initialCarouselSlides, 
   initialProducts, 
   initialCollections,
+  initialBundles,
   initialDiscountCodes 
 } from '../data/initialData.ts';
 import { downloadWallpaperFile } from '../utils/downloadHelper.ts';
@@ -40,6 +42,7 @@ export interface AuthActionResult {
 interface ShopContextType {
   products: Product[];
   collections: Collection[];
+  bundles: ThemeBundle[];
   carouselSlides: CarouselSlide[];
   settings: WebsiteSettings | null;
   loading: boolean;
@@ -88,6 +91,7 @@ const ShopContext = createContext<ShopContextType | undefined>(undefined);
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [collections, setCollections] = useState<Collection[]>(initialCollections);
+  const [bundles, setBundles] = useState<ThemeBundle[]>(initialBundles);
   const [carouselSlides, setCarouselSlides] = useState<CarouselSlide[]>(initialCarouselSlides);
   const [settings, setSettings] = useState<WebsiteSettings | null>(initialSettings);
   const [loading, setLoading] = useState(false);
@@ -176,7 +180,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const handleHashChange = () => {
-      const hash = window.location.hash.replace(/^#\/?/, '');
+      let hash = window.location.hash.replace(/^#\/?/, '');
       if (
         hash.startsWith('access_token=') ||
         hash.startsWith('error=') ||
@@ -185,6 +189,15 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ) {
         return;
       }
+      
+      // If no hash present, inspect path name (e.g. /collections/ghost, /collection/cottagecore)
+      if (!hash) {
+        const rawPath = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
+        if (rawPath.startsWith('collections/') || rawPath.startsWith('collection/') || rawPath === 'collections') {
+          hash = rawPath;
+        }
+      }
+
       if (!hash) {
         setActiveView('home');
         setViewParam(null);
@@ -239,16 +252,18 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Fetch initial data
   const refreshData = async () => {
     try {
-      const [contentRes, prodsRes, colsRes] = await Promise.all([
+      const [contentRes, prodsRes, colsRes, bundlesRes] = await Promise.all([
         fetch('/api/content'),
         fetch('/api/products?includeDrafts=false'),
         fetch('/api/collections'),
+        fetch('/api/bundles'),
       ]);
 
-      const [contentParsed, prodsParsed, colsParsed] = await Promise.all([
+      const [contentParsed, prodsParsed, colsParsed, bundlesParsed] = await Promise.all([
         parseJsonResponse(contentRes),
         parseJsonResponse(prodsRes),
         parseJsonResponse(colsRes),
+        parseJsonResponse(bundlesRes),
       ]);
 
       if (contentParsed.ok && contentParsed.isJson && contentParsed.data) {
@@ -262,6 +277,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       if (colsParsed.ok && colsParsed.isJson && Array.isArray(colsParsed.data) && colsParsed.data.length > 0) {
         setCollections(colsParsed.data);
+      }
+      if (bundlesParsed.ok && bundlesParsed.isJson && Array.isArray(bundlesParsed.data) && bundlesParsed.data.length > 0) {
+        setBundles(bundlesParsed.data);
       }
     } catch {
       // Running statically (e.g. Vercel, GitHub Pages) - initial state is already loaded!
@@ -1319,6 +1337,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         products,
         collections,
+        bundles,
         carouselSlides,
         settings,
         loading,

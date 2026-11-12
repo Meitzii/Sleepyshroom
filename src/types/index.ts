@@ -11,6 +11,15 @@ export type OrderPaymentStatus =
   | 'expired'
   | 'refunded';
 
+export type ProductCategory =
+  | 'all'
+  | 'phone_tablet'
+  | 'desktop'
+  | 'icon_pack'
+  | 'bundle';
+
+export type ProductType = 'wallpaper' | 'icon_pack' | 'bundle' | 'stationery';
+
 export interface Product {
   id: string;
   title: string;
@@ -20,6 +29,9 @@ export interface Product {
   compareAtPrice?: number;
   theme: string;
   collection: string;
+  collectionId?: string;
+  category?: ProductCategory | string;
+  productType?: ProductType | string;
   deviceTypes: DeviceType[];
   resolutions: string[];
   fileFormat: string;
@@ -35,6 +47,11 @@ export interface Product {
   isFree?: boolean;
   downloadCount?: number;
   recentDownloadTime?: string;
+  // Bundle attributes
+  isBundle?: boolean;
+  bundleItemCount?: number;
+  bundleProductIds?: string[];
+  bundleSavingsPercent?: number;
 }
 
 export interface CarouselSlide {
@@ -55,9 +72,34 @@ export interface Collection {
   slug: string;
   description: string;
   coverImage: string;
+  bannerImage?: string;
   featured: boolean;
+  isNew?: boolean;
+  status?: 'published' | 'draft';
   order: number;
   productCount?: number;
+  createdAt?: string;
+  theme?: string;
+}
+
+export interface ThemeBundle {
+  id: string;
+  title: string;
+  slug: string;
+  collectionId: string;
+  collectionSlug: string;
+  collectionName: string;
+  description: string;
+  previewImage: string;
+  originalPrice: number;
+  bundlePrice: number;
+  savingsAmount: number;
+  savingsPercent: number;
+  productIds: string[];
+  includedItems: string[];
+  status: 'published' | 'draft';
+  featured?: boolean;
+  createdAt: string;
 }
 
 export interface WebsiteSettings {

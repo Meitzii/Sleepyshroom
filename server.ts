@@ -14,7 +14,8 @@ import type {
   Order, 
   ContactMessage, 
   DiscountCode, 
-  UserAccount 
+  UserAccount,
+  ThemeBundle
 } from './src/types/index.ts';
 import {
   handleContactSubmission,
@@ -112,6 +113,7 @@ interface AppStore {
   carouselSlides: CarouselSlide[];
   products: Product[];
   collections: Collection[];
+  bundles: ThemeBundle[];
   orders: Order[];
   messages: ContactMessage[];
   discountCodes: DiscountCode[];
@@ -575,6 +577,7 @@ For any questions or assistance with your order, email us at shop.sleepyshroom@g
       createdAt: '2026-11-01T08:00:00.000Z',
     }
   ],
+  bundles: [],
 };
 
 function sanitizePaymentProviders(raw: any) {
@@ -600,6 +603,9 @@ function readStore(): AppStore {
         };
         if (!Array.isArray(parsed.orders)) {
           parsed.orders = [];
+        }
+        if (!Array.isArray(parsed.bundles)) {
+          parsed.bundles = [];
         }
         return parsed;
       }
@@ -840,14 +846,59 @@ app.delete('/api/admin/products/:id', (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
-// 4. Collections
+// 4. Collections & Theme Bundles
 app.get('/api/collections', (_req: Request, res: Response) => {
   const store = readStore();
   const list = store.collections.map(c => {
-    const count = store.products.filter(p => p.collection.toLowerCase() === c.name.toLowerCase() && p.status === 'published').length;
+    const count = store.products.filter(
+      p => (p.collectionId === c.id || p.collection.toLowerCase() === c.name.toLowerCase() || p.theme?.toLowerCase() === c.name.toLowerCase()) && p.status === 'published'
+    ).length;
     return { ...c, productCount: count };
   });
   res.json(list);
+});
+
+app.get('/api/collections/:slugOrId', (req: Request, res: Response) => {
+  const store = readStore();
+  const rawParam = String(req.params.slugOrId || '').trim();
+  const lowerParam = rawParam.toLowerCase();
+  
+  const collection = store.collections.find(
+    c => c.slug.toLowerCase() === lowerParam || c.id.toLowerCase() === lowerParam || c.name.toLowerCase() === lowerParam
+  );
+  
+  if (!collection) {
+    res.status(404).json({ error: 'Collection not found' });
+    return;
+  }
+  
+  const matchingProducts = store.products.filter(
+    p => (p.collectionId === collection.id || p.collection.toLowerCase() === collection.name.toLowerCase() || p.theme?.toLowerCase() === collection.name.toLowerCase()) && p.status === 'published'
+  );
+  
+  const matchingBundles = (store.bundles || []).filter(
+    b => (b.collectionId === collection.id || b.collectionSlug === collection.slug) && (b.status === undefined || b.status === 'published')
+  );
+  
+  const relatedCollections = store.collections
+    .filter(c => c.id !== collection.id && (c.status === undefined || c.status === 'published'))
+    .slice(0, 4)
+    .map(c => {
+      const count = store.products.filter(
+        p => (p.collectionId === c.id || p.collection.toLowerCase() === c.name.toLowerCase() || p.theme?.toLowerCase() === c.name.toLowerCase()) && p.status === 'published'
+      ).length;
+      return { ...c, productCount: count };
+    });
+
+  res.json({
+    collection: {
+      ...collection,
+      productCount: matchingProducts.length,
+    },
+    products: matchingProducts,
+    bundles: matchingBundles,
+    relatedCollections,
+  });
 });
 
 app.post('/api/admin/collections', (req: Request, res: Response) => {
@@ -856,12 +907,17 @@ app.post('/api/admin/collections', (req: Request, res: Response) => {
   const newCol: Collection = {
     id: `col-${Date.now()}`,
     name: body.name || 'New Collection',
-    slug: (body.name || 'new').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    slug: (body.slug || body.name || 'new').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
     description: body.description || '',
     coverImage: body.coverImage || '/src/assets/images/hero_mushroom_cottage_1794020164209.jpg',
+    bannerImage: body.bannerImage || body.coverImage || '/src/assets/images/hero_mushroom_cottage_1794020164209.jpg',
     featured: Boolean(body.featured),
+    isNew: Boolean(body.isNew),
+    status: body.status || 'published',
     order: store.collections.length + 1,
     productCount: 0,
+    theme: body.theme || body.name,
+    createdAt: new Date().toISOString(),
   };
   store.collections.push(newCol);
   saveStore(store);
@@ -883,6 +939,135 @@ app.put('/api/admin/collections/:id', (req: Request, res: Response) => {
 app.delete('/api/admin/collections/:id', (req: Request, res: Response) => {
   const store = readStore();
   store.collections = store.collections.filter(c => c.id !== req.params.id);
+  saveStore(store);
+  res.json({ success: true });
+});
+
+// Bundles API
+app.get('/api/bundles', (_req: Request, res: Response) => {
+  const store = readStore();
+  const list = (store.bundles || []).filter(b => b.status === undefined || b.status === 'published');
+  res.json(list);
+});
+
+app.get('/api/bundles/:slugOrId', (req: Request, res: Response) => {
+  const store = readStore();
+  const param = String(req.params.slugOrId || '').toLowerCase().trim();
+  const bundle = (store.bundles || []).find(
+    b => b.slug.toLowerCase() === param || b.id.toLowerCase() === param
+  );
+  if (!bundle) {
+    res.status(404).json({ error: 'Bundle not found' });
+    return;
+  }
+  res.json(bundle);
+});
+
+app.post('/api/admin/bundles', (req: Request, res: Response) => {
+  const store = readStore();
+  if (!Array.isArray(store.bundles)) store.bundles = [];
+  const body = req.body;
+  const originalPrice = Number(body.originalPrice) || 0;
+  const bundlePrice = Number(body.bundlePrice) || 0;
+  const savingsAmount = originalPrice > bundlePrice ? Number((originalPrice - bundlePrice).toFixed(2)) : 0;
+  const savingsPercent = originalPrice > 0 ? Math.round((savingsAmount / originalPrice) * 100) : 0;
+
+  const newBundle: ThemeBundle = {
+    id: `bundle-${Date.now()}`,
+    title: body.title || 'New Theme Bundle',
+    slug: (body.slug || body.title || 'new-bundle').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+    collectionId: body.collectionId || '',
+    collectionSlug: body.collectionSlug || '',
+    description: body.description || '',
+    coverImage: body.coverImage || '/src/assets/images/hero_mushroom_cottage_1794020164209.jpg',
+    badgeText: body.badgeText || 'SPECIAL BUNDLE',
+    originalPrice,
+    bundlePrice,
+    savingsAmount,
+    savingsPercent,
+    includedProductIds: Array.isArray(body.includedProductIds) ? body.includedProductIds : [],
+    includedItemsSummary: Array.isArray(body.includedItemsSummary) ? body.includedItemsSummary : [],
+    status: body.status || 'published',
+    order: store.bundles.length + 1,
+    createdAt: new Date().toISOString(),
+  };
+
+  // Also create or sync corresponding product so bundle can be purchased directly via standard cart
+  const bundleProduct: Product = {
+    id: `prod-bundle-${newBundle.id}`,
+    title: newBundle.title,
+    slug: newBundle.slug,
+    description: newBundle.description,
+    price: newBundle.bundlePrice,
+    originalPrice: newBundle.originalPrice,
+    theme: body.theme || newBundle.title,
+    collection: body.collectionName || 'Theme Bundles',
+    collectionId: newBundle.collectionId,
+    category: 'bundle',
+    productType: 'bundle',
+    isBundle: true,
+    bundleItemCount: newBundle.includedProductIds.length,
+    bundleProductIds: newBundle.includedProductIds,
+    bundleSavingsPercent: newBundle.savingsPercent,
+    deviceTypes: ['desktop', 'mobile', 'tablet'],
+    resolutions: ['4K Desktop', 'Retina Mobile', 'High-Res Tablet', 'ZIP Archive'],
+    fileFormat: 'All formats included (ZIP containing PNG & HEIC)',
+    fileSize: '45.0 MB',
+    whatsIncluded: newBundle.includedItemsSummary.length > 0 ? newBundle.includedItemsSummary : ['Complete Theme Set', 'All Resolutions', 'Commercial/Personal Use'],
+    images: [newBundle.coverImage],
+    status: 'published',
+    downloadFileName: `${newBundle.slug}_complete_bundle.zip`,
+    popularity: 95,
+    createdAt: new Date().toISOString(),
+  };
+  store.products.push(bundleProduct);
+
+  store.bundles.push(newBundle);
+  saveStore(store);
+  res.json({ success: true, bundle: newBundle, product: bundleProduct });
+});
+
+app.put('/api/admin/bundles/:id', (req: Request, res: Response) => {
+  const store = readStore();
+  if (!Array.isArray(store.bundles)) store.bundles = [];
+  const idx = store.bundles.findIndex(b => b.id === req.params.id);
+  if (idx === -1) {
+    res.status(404).json({ error: 'Bundle not found' });
+    return;
+  }
+  const updated = { ...store.bundles[idx], ...req.body };
+  if (updated.originalPrice && updated.bundlePrice) {
+    const orig = Number(updated.originalPrice);
+    const bun = Number(updated.bundlePrice);
+    updated.savingsAmount = orig > bun ? Number((orig - bun).toFixed(2)) : 0;
+    updated.savingsPercent = orig > 0 ? Math.round((updated.savingsAmount / orig) * 100) : 0;
+  }
+  store.bundles[idx] = updated;
+
+  // Sync corresponding product if exists
+  const prodIdx = store.products.findIndex(p => p.id === `prod-bundle-${updated.id}` || p.slug === updated.slug);
+  if (prodIdx >= 0) {
+    store.products[prodIdx].title = updated.title;
+    store.products[prodIdx].price = updated.bundlePrice;
+    store.products[prodIdx].originalPrice = updated.originalPrice;
+    store.products[prodIdx].description = updated.description;
+    store.products[prodIdx].bundleSavingsPercent = updated.savingsPercent;
+    store.products[prodIdx].bundleItemCount = updated.includedProductIds?.length || 0;
+    if (updated.coverImage) store.products[prodIdx].images = [updated.coverImage];
+  }
+
+  saveStore(store);
+  res.json({ success: true, bundle: store.bundles[idx] });
+});
+
+app.delete('/api/admin/bundles/:id', (req: Request, res: Response) => {
+  const store = readStore();
+  if (!Array.isArray(store.bundles)) store.bundles = [];
+  const target = store.bundles.find(b => b.id === req.params.id);
+  store.bundles = store.bundles.filter(b => b.id !== req.params.id);
+  if (target) {
+    store.products = store.products.filter(p => p.id !== `prod-bundle-${target.id}` && p.slug !== target.slug);
+  }
   saveStore(store);
   res.json({ success: true });
 });
