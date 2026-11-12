@@ -110,7 +110,6 @@ export const CheckoutPage: React.FC = () => {
   const [hostedLoading, setHostedLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fallbackApproveUrl, setFallbackApproveUrl] = useState<string | null>(null);
-  const [paymentTab, setPaymentTab] = useState<'paypal' | 'card'>('paypal');
   const [showPolicyAccordion, setShowPolicyAccordion] = useState(false);
 
   const paypalContainerRef = useRef<HTMLDivElement | null>(null);
@@ -911,87 +910,43 @@ export const CheckoutPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Payment Method Switcher Tabs */}
+              {/* Accepted Payment Options Overview */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Tab 1: PayPal Account */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentTab('paypal')}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    paymentTab === 'paypal'
-                      ? 'bg-white border-[#A64B3C] ring-2 ring-[#A64B3C]/30 shadow-xs'
-                      : 'bg-[#FFFCF7] border-[#EADCC8] hover:border-[#D5C2BB]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <PaypalIcon size={20} />
-                      <span className="font-heading font-bold text-sm text-[#003087]">PayPal Account</span>
-                    </div>
-                    <span
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                        paymentTab === 'paypal'
-                          ? 'border-[#A64B3C] bg-[#A64B3C] text-white'
-                          : 'border-[#D5C2BB]'
-                      }`}
-                    >
-                      {paymentTab === 'paypal' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </span>
+                {/* Option 1: PayPal Account */}
+                <div className="p-4 rounded-2xl border border-[#EADCC8] bg-[#FFFCF7] flex flex-col justify-between shadow-2xs">
+                  <div className="flex items-center gap-2 mb-2">
+                    <PaypalIcon size={20} />
+                    <span className="font-heading font-bold text-sm text-[#003087]">PayPal Account</span>
                   </div>
                   <p className="text-[11px] text-[#777777] font-medium leading-relaxed">
-                    Pay with your PayPal balance, linked bank account, or Pay in 4 installments.
+                    Pay securely using your PayPal balance, linked bank account, or Pay in 4 installments.
                   </p>
-                </button>
+                </div>
 
-                {/* Tab 2: Debit & Credit Card */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentTab('card')}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    paymentTab === 'card'
-                      ? 'bg-white border-[#A64B3C] ring-2 ring-[#A64B3C]/30 shadow-xs'
-                      : 'bg-[#FFFCF7] border-[#EADCC8] hover:border-[#D5C2BB]'
-                  }`}
-                >
+                {/* Option 2: Debit & Credit Card */}
+                <div className="p-4 rounded-2xl border border-[#EADCC8] bg-[#FFFCF7] flex flex-col justify-between shadow-2xs">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5">
                       <CreditCard className="w-4 h-4 text-[#A64B3C]" />
                       <span className="font-heading font-bold text-sm text-[#292929]">Debit or Credit Card</span>
                     </div>
-                    <span
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                        paymentTab === 'card'
-                          ? 'border-[#A64B3C] bg-[#A64B3C] text-white'
-                          : 'border-[#D5C2BB]'
-                      }`}
-                    >
-                      {paymentTab === 'card' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <VisaIcon width={24} height={16} />
-                    <MastercardIcon width={24} height={16} />
-                    <AmexIcon width={24} height={16} />
+                    <div className="flex items-center gap-1">
+                      <VisaIcon width={24} height={16} />
+                      <MastercardIcon width={24} height={16} />
+                      <AmexIcon width={24} height={16} />
+                    </div>
                   </div>
                   <p className="text-[11px] text-[#777777] font-medium leading-relaxed">
-                    No PayPal account required! Encrypted securely through PayPal guest checkout.
+                    No PayPal account required! Check out directly as a guest using any major card.
                   </p>
-                </button>
+                </div>
               </div>
 
-              {/* Contextual Guidance Banner based on chosen Tab */}
+              {/* Security and Guidance Reassurance */}
               <div className="p-3.5 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8] flex items-center gap-2.5 text-xs text-[#292929]">
-                <ShieldCheck className="w-4 h-4 text-[#A64B3C] shrink-0" />
-                <p className="text-[11px] font-medium leading-relaxed">
-                  {paymentTab === 'paypal' ? (
-                    <>
-                      Click the yellow <strong>PayPal</strong> button below to log in or approve your order in a single click.
-                    </>
-                  ) : (
-                    <>
-                      Click the black <strong>Debit or Credit Card</strong> button below to enter your card details directly. No PayPal registration needed.
-                    </>
-                  )}
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <p className="text-[11px] font-medium leading-relaxed text-[#555555]">
+                  Select the gold <strong>PayPal</strong> button below for account checkout, or the black <strong>Debit or Credit Card</strong> button to pay directly by card.
                 </p>
               </div>
 
@@ -1085,32 +1040,27 @@ export const CheckoutPage: React.FC = () => {
                     className={capturing ? 'pointer-events-none opacity-40' : 'min-h-[48px]'}
                   />
 
+                  {/* Fallback button only if PayPal Smart Buttons SDK is blocked or encounters an error */}
                   {sdkError && (
-                    <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 font-medium space-y-2">
+                    <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-950 font-medium space-y-3">
                       <p className="font-bold">{sdkError}</p>
-                    </div>
-                  )}
-
-                  {/* Hosted PayPal Approval Redirect Fallback */}
-                  {(sdkError || sdkReady || fallbackApproveUrl) && (
-                    <div className="pt-2 border-t border-[#EADCC8] flex flex-col items-center gap-2">
                       <button
                         type="button"
                         disabled={hostedLoading || capturing || !meetsMinOrder}
                         onClick={() => {
                           void handleHostedPaypalRedirect();
                         }}
-                        className="w-full py-3.5 px-6 rounded-2xl text-xs sm:text-sm font-bold text-[#292929] bg-[#FFFCF7] hover:bg-[#EADCC8]/40 border border-[#EADCC8] transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer whitespace-nowrap shadow-2xs"
+                        className="w-full py-3.5 px-6 rounded-2xl text-xs sm:text-sm font-bold text-[#FFFCF7] bg-[#A64B3C] hover:bg-[#8E3E30] transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer whitespace-nowrap shadow-xs"
                       >
                         {hostedLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-[#A64B3C] shrink-0" />
+                          <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
                         ) : (
-                          <ExternalLink className="w-4 h-4 text-[#A64B3C] shrink-0" />
+                          <ExternalLink className="w-4 h-4 text-white shrink-0" />
                         )}
                         <span>
                           {hostedLoading
                             ? 'Connecting to PayPal...'
-                            : `Continue with PayPal Checkout · ${formatUsd(breakdown.totalUsd)}`}
+                            : `Continue to Hosted PayPal Checkout · ${formatUsd(breakdown.totalUsd)}`}
                         </span>
                       </button>
                     </div>
