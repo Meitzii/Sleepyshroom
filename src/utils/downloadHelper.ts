@@ -58,8 +58,8 @@ function parseFilenameFromContentDisposition(header: string | null, fallback: st
 }
 
 /**
- * Downloads a purchased digital wallpaper strictly through server-side PayMongo verification.
- * Unpaid, pending, cancelled, or failed orders are rejected with HTTP 403 and never bypassed.
+ * Downloads a purchased digital wallpaper strictly through server-side PayPal verification.
+ * Unpaid, pending, cancelled, failed, or refunded orders are rejected with HTTP 403 and never bypassed.
  */
 export async function downloadAuthorizedOrderFile(
   downloadToken: string,
@@ -91,7 +91,7 @@ export async function downloadAuthorizedOrderFile(
         ok: false,
         error:
           (parsed.isJson && parsed.data?.error) ||
-          'Payment has not been verified yet. Downloads unlock once PayMongo confirms payment.',
+          'Payment has not been verified yet. Downloads unlock once PayPal confirms payment.',
       };
     }
 

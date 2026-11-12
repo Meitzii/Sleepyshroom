@@ -27,7 +27,7 @@ import {
   handleGetPaymentConfig,
   handleDiscountValidation,
   handleCheckoutSubmission,
-  handlePaymongoWebhook,
+  handlePaypalWebhook,
   handleListOrders,
   handleGetOrderByToken,
   handleOrderAction,
@@ -138,9 +138,8 @@ const defaultStore: AppStore = {
     showMobileSection: true,
     showBrandIntro: true,
     paymentProviders: {
-      paymongoEnabled: true,
-      paymongoEnabledMethods: ['card', 'gcash', 'paymaya', 'qrph', 'grab_pay'],
-      phpPerUsdRate: 58,
+      paypalEnabled: true,
+      paypalAllowCards: true,
       testMode: true,
     },
     socialLinks: {
@@ -578,19 +577,11 @@ For any questions or assistance with your order, email us at shop.sleepyshroom@g
   ],
 };
 
-const VALID_PAYMONGO_METHODS = ['card', 'gcash', 'paymaya', 'qrph', 'grab_pay'] as const;
-
 function sanitizePaymentProviders(raw: any) {
   const src = raw && typeof raw === 'object' ? raw : {};
-  const rawMethods = Array.isArray(src.paymongoEnabledMethods)
-    ? src.paymongoEnabledMethods.filter((m: any) => VALID_PAYMONGO_METHODS.includes(m))
-    : [];
-  const rateNum = Number(src.phpPerUsdRate);
   return {
-    paymongoEnabled: src.paymongoEnabled !== false,
-    paymongoEnabledMethods:
-      rawMethods.length > 0 ? rawMethods : [...defaultStore.settings.paymentProviders.paymongoEnabledMethods],
-    phpPerUsdRate: Number.isFinite(rateNum) && rateNum > 0 ? Number(rateNum.toFixed(2)) : 58,
+    paypalEnabled: src.paypalEnabled !== false,
+    paypalAllowCards: src.paypalAllowCards !== false,
     testMode: src.testMode !== false,
   };
 }
@@ -628,16 +619,16 @@ function saveStore(store: AppStore) {
   }
 }
 
-// PayMongo Webhook MUST receive exact unparsed raw request bytes BEFORE express.json() for HMAC-SHA256 verification
-app.post('/api/webhooks/paymongo', express.raw({ type: '*/*', limit: '2mb' }), async (req: Request, res: Response) => {
+// PayPal Webhook receives raw unparsed request bytes BEFORE express.json() for signature verification
+app.post('/api/webhooks/paypal', express.raw({ type: '*/*', limit: '2mb' }), async (req: Request, res: Response) => {
   try {
-    const result = await handlePaymongoWebhook(req, req.body);
+    const result = await handlePaypalWebhook(req, req.body);
     res.status(result.status).json(result.body);
   } catch (err: any) {
-    console.error('[PayMongo Webhook Error]', err);
+    console.error('[PayPal Webhook Error]', err);
     res.status(500).json({
       received: false,
-      error: err?.message || 'Unexpected error processing PayMongo webhook.',
+      error: err?.message || 'Unexpected error processing PayPal webhook.',
     });
   }
 });
@@ -912,7 +903,7 @@ app.post('/api/discounts/validate', async (req: Request, res: Response) => {
   }
 });
 
-// 6. Checkout & Orders (PayMongo PHP Checkout + Webhooks)
+// 6. Checkout & Orders (PayPal USD Checkout + Webhooks)
 app.get('/api/checkout', async (_req: Request, res: Response) => {
   try {
     const result = await handleGetPaymentConfig();
@@ -1222,13 +1213,12 @@ app.get('/api/admin/stats', async (req: Request, res: Response) => {
     // Fallback to local store orders cleanly
   }
 
-  const phpRate = Number(store.settings?.paymentProviders?.phpPerUsdRate) || 58;
   const totalRevenue = ordersSource.reduce((sum, o: any) => {
     const st = String(o.paymentStatus || '').toLowerCase();
     if (st !== 'paid' && st !== 'completed') return sum;
-    const isPhp = String(o.currency || 'PHP').toUpperCase() === 'PHP';
-    const amtPhp = isPhp ? Number(o.total || 0) : Number(o.total || 0) * phpRate;
-    return sum + amtPhp;
+    const isPhp = String(o.currency || 'USD').toUpperCase() === 'PHP';
+    const amtUsd = isPhp ? Number(o.total || 0) / 58 : Number(o.total || 0);
+    return sum + amtUsd;
   }, 0);
 
   const paidOrdersCount = ordersSource.filter((o: any) => {
@@ -1255,7 +1245,7 @@ app.get('/api/admin/stats', async (req: Request, res: Response) => {
 
   res.json({
     totalRevenue: Number(totalRevenue.toFixed(2)),
-    revenueCurrency: 'PHP',
+    revenueCurrency: 'USD',
     totalOrders: ordersSource.length,
     paidOrdersCount,
     totalProducts: store.products.length,

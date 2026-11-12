@@ -644,7 +644,7 @@ export const CustomerAccountPage: React.FC = () => {
                     No verified paid downloads yet
                   </h3>
                   <p className="text-xs text-[#777777] font-medium max-w-sm mx-auto">
-                    Wallpapers you purchase with this email unlock here automatically once PayMongo confirms payment.
+                    Wallpapers you purchase with this email unlock here automatically once PayPal confirms payment.
                   </p>
                   <button
                     onClick={() => navigateTo('collections')}
@@ -722,6 +722,8 @@ export const CustomerAccountPage: React.FC = () => {
                   ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                   : st === 'pending'
                   ? 'bg-amber-100 text-amber-900 border-amber-300'
+                  : st === 'refunded'
+                  ? 'bg-stone-200 text-stone-800 border-stone-300'
                   : 'bg-red-50 text-red-700 border-red-200';
                 return (
                   <div key={ord.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -733,7 +735,7 @@ export const CustomerAccountPage: React.FC = () => {
                         <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${badgeClass}`}>
                           {isPaid ? 'Paid' : st}
                         </span>
-                        <span className="text-xs text-[#777777] font-medium">
+                        <span className="text-xs text-[#777777] font-medium tabular-nums">
                           {new Date(ord.createdAt).toLocaleDateString()}
                         </span>
                       </div>

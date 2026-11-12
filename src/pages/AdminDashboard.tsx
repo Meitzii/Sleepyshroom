@@ -27,11 +27,12 @@ import {
   Lock,
   Loader2,
   RefreshCw,
+  RotateCcw,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { supabase } from '../lib/supabase.ts';
 import { parseJsonResponse } from '../utils/apiClient.ts';
-import { formatOrderMoney, formatPhp } from '../utils/currency.ts';
+import { formatOrderMoney, formatUsd } from '../utils/currency.ts';
 import { ContactMessagesPanel } from '../components/admin/ContactMessagesPanel.tsx';
 import type { 
   Product, 
@@ -41,20 +42,7 @@ import type {
   Order, 
   ContactMessage,
   ContactMessageStatus,
-  PaymongoPaymentMethodKey,
 } from '../types/index.ts';
-
-const PAYMONGO_METHOD_OPTIONS: {
-  key: PaymongoPaymentMethodKey;
-  label: string;
-  hint: string;
-}[] = [
-  { key: 'card', label: 'Credit / Debit Card', hint: 'Visa & Mastercard (min ₱20.00)' },
-  { key: 'gcash', label: 'GCash', hint: 'GCash e-wallet via PayMongo' },
-  { key: 'paymaya', label: 'Maya', hint: 'Maya wallet via PayMongo' },
-  { key: 'qrph', label: 'QR Ph', hint: 'InstaPay / PESONet banking QR' },
-  { key: 'grab_pay', label: 'GrabPay', hint: 'GrabPay wallet (min ₱20.00)' },
-];
 
 export const AdminDashboard: React.FC = () => {
   const { user, navigateTo, refreshData } = useShop();
@@ -82,10 +70,14 @@ export const AdminDashboard: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [verifyingOrderId, setVerifyingOrderId] = useState<string | null>(null);
+  const [refundConfirmOrderKey, setRefundConfirmOrderKey] = useState<string | null>(null);
+  const [refundReasonInput, setRefundReasonInput] = useState<string>('');
+  const [refundingOrderId, setRefundingOrderId] = useState<string | null>(null);
   const [gatewayStatus, setGatewayStatus] = useState<{
     configured: boolean;
+    environment?: 'sandbox' | 'live';
     testMode: boolean;
-    blockedLiveMode?: boolean;
+    allowCards?: boolean;
     webhookConfigured: boolean;
   } | null>(null);
 
@@ -481,8 +473,13 @@ export const AdminDashboard: React.FC = () => {
         if (parsed?.settings) {
           setSettings(parsed.settings);
         }
-        triggerSaveNotification('Settings and PayMongo checkout preferences saved!');
+        triggerSaveNotification('Settings and PayPal checkout preferences saved!');
         refreshData();
+        const cfgRes = await fetch('/api/checkout');
+        const cfgParsed = await parseJsonResponse<typeof gatewayStatus>(cfgRes);
+        if (cfgParsed.ok && cfgParsed.isJson && cfgParsed.data) {
+          setGatewayStatus(cfgParsed.data);
+        }
       } else {
         setErrorMessage('Error updating settings');
       }
@@ -491,7 +488,7 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleVerifyOrderWithPaymongo = async (order: Order) => {
+  const handleVerifyOrderWithPaypal = async (order: Order) => {
     const key = order.id || order.downloadToken || order.orderNumber;
     if (!key) return;
     setVerifyingOrderId(key);
@@ -514,7 +511,7 @@ export const AdminDashboard: React.FC = () => {
       }>(res);
 
       if (!parsed.ok || !parsed.isJson || !parsed.data?.order) {
-        setErrorMessage(parsed.data?.error || 'Could not reconcile order with PayMongo.');
+        setErrorMessage(parsed.data?.error || 'Could not reconcile order with PayPal.');
         return;
       }
 
@@ -523,11 +520,61 @@ export const AdminDashboard: React.FC = () => {
       triggerSaveNotification(
         `Order ${updated.orderNumber} checked: status is now ${String(updated.paymentStatus).toUpperCase()}.`
       );
-      void loadAdminData();
+      void loadAdminData(token);
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Error verifying order status with PayMongo.');
+      setErrorMessage(err?.message || 'Error verifying order status with PayPal.');
     } finally {
       setVerifyingOrderId(null);
+    }
+  };
+
+  const handleRefundOrderWithPaypal = async (order: Order, reasonText: string) => {
+    const key = order.id || order.downloadToken || order.orderNumber;
+    if (!key) return;
+    setRefundingOrderId(key);
+    setErrorMessage(null);
+    try {
+      const token = await getFreshAdminToken();
+      if (!token) {
+        setErrorMessage('Administrator session expired. Please sign in again.');
+        return;
+      }
+
+      const res = await fetch(`/api/orders/${encodeURIComponent(key)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: 'refund',
+          reason: reasonText.trim() || 'Refunded by administrator via Sleepyshroom',
+        }),
+      });
+      const parsed = await parseJsonResponse<{
+        success?: boolean;
+        refundId?: string;
+        order?: Order;
+        error?: string;
+      }>(res);
+
+      if (!parsed.ok || !parsed.isJson || !parsed.data?.success || !parsed.data?.order) {
+        setErrorMessage(parsed.data?.error || 'Could not process PayPal refund.');
+        return;
+      }
+
+      const updated = parsed.data.order;
+      setOrders(prev => prev.map(item => (item.id === updated.id ? updated : item)));
+      setRefundConfirmOrderKey(null);
+      setRefundReasonInput('');
+      triggerSaveNotification(
+        `Order ${updated.orderNumber} refunded via PayPal${parsed.data.refundId ? ` (${parsed.data.refundId})` : ''}.`
+      );
+      void loadAdminData(token);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Error issuing PayPal refund.');
+    } finally {
+      setRefundingOrderId(null);
     }
   };
 
@@ -761,12 +808,12 @@ export const AdminDashboard: React.FC = () => {
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-[#F9F6F0] p-5 rounded-3xl border border-[#E8C9C1] shadow-xs">
-                <span className="text-xs text-[#1E1419] font-bold">Total Revenue (PHP)</span>
+                <span className="text-xs text-[#1E1419] font-bold">Total Revenue (USD)</span>
                 {/* Distinctive Revenue Value */}
                 <p className="font-heading font-extrabold text-2xl sm:text-3xl text-[#945367] mt-1 tabular-nums">
-                  {formatPhp(stats ? Number(stats.totalRevenue || 0) : 0, false)}
+                  {formatUsd(stats ? Number(stats.totalRevenue || 0) : 0, false)}
                 </p>
-                <span className="text-[11px] text-emerald-900 font-bold mt-1 block">Verified PayMongo Sales</span>
+                <span className="text-[11px] text-emerald-900 font-bold mt-1 block">Verified PayPal Sales</span>
               </div>
 
               <div className="bg-[#F9F6F0] p-5 rounded-3xl border border-[#E8C9C1] shadow-xs">
@@ -830,7 +877,13 @@ export const AdminDashboard: React.FC = () => {
                           </span>
                           <span
                             className={`block text-[10px] font-bold uppercase ${
-                              isPaid ? 'text-emerald-900' : st === 'pending' ? 'text-amber-800' : 'text-red-700'
+                              isPaid
+                                ? 'text-emerald-900'
+                                : st === 'pending'
+                                ? 'text-amber-800'
+                                : st === 'refunded'
+                                ? 'text-stone-600'
+                                : 'text-red-700'
                             }`}
                           >
                             {isPaid ? 'Paid' : st}
@@ -1295,88 +1348,179 @@ export const AdminDashboard: React.FC = () => {
           <div className="space-y-6">
             <div className="bg-[#F9F6F0] p-5 rounded-3xl border border-[#E8C9C1]">
               <h2 className="font-heading font-bold text-lg text-[#1E1419]">
-                Customer Orders &amp; PayMongo Verification
+                Customer Orders &amp; PayPal Verification
               </h2>
               <p className="text-xs text-[#33222C]">
-                Server-verified PayMongo PHP orders, payment references, transaction dates, and download access status.
+                Server-verified PayPal USD orders, capture references, refund management, and digital download access status.
               </p>
             </div>
 
             {orders.length === 0 ? (
               <div className="bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] p-8 text-center text-xs text-[#33222C] font-medium">
-                No orders recorded yet. New PayMongo checkouts will appear here automatically.
+                No orders recorded yet. New PayPal checkouts will appear here automatically.
               </div>
             ) : (
               <div className="bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] divide-y divide-[#E8C9C1]/70 overflow-hidden">
                 {orders.map(o => {
                   const st = String(o.paymentStatus || 'pending').toLowerCase();
                   const isPaid = st === 'paid' || st === 'completed';
+                  const isRefunded = st === 'refunded';
                   const badgeClass = isPaid
                     ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                     : st === 'pending'
                     ? 'bg-amber-100 text-amber-900 border-amber-300'
+                    : isRefunded
+                    ? 'bg-stone-200 text-stone-800 border-stone-300'
                     : 'bg-red-50 text-red-700 border-red-200';
                   const orderKey = o.id || o.downloadToken || o.orderNumber;
                   const isVerifyingThis = verifyingOrderId === orderKey;
-                  const payRef = o.paymongoPaymentId || o.paymongoCheckoutSessionId || o.transactionId;
+                  const isRefundingThis = refundingOrderId === orderKey;
+                  const showRefundConfirm = refundConfirmOrderKey === orderKey;
+                  const payRef = o.paypalCaptureId || o.paypalOrderId || o.transactionId;
                   const txDate = o.paidAt || o.createdAt;
 
                   return (
-                    <div key={orderKey} className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-heading font-bold text-sm text-[#1E1419]">{o.orderNumber}</span>
-                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${badgeClass}`}>
-                            {isPaid ? 'Paid' : st}
-                          </span>
-                          <span className="text-xs text-[#33222C] font-semibold">{o.customerName}</span>
-                          <span className="text-[11px] text-[#45313D] font-medium">
-                            · {new Date(txDate).toLocaleString()}
-                          </span>
+                    <div key={orderKey} className="p-5 space-y-3">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-heading font-bold text-sm text-[#1E1419]">{o.orderNumber}</span>
+                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${badgeClass}`}>
+                              {isPaid ? 'Paid' : st}
+                            </span>
+                            <span className="text-xs text-[#33222C] font-semibold">{o.customerName}</span>
+                            <span className="text-[11px] text-[#45313D] font-medium tabular-nums">
+                              · {new Date(txDate).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#33222C] font-medium">
+                            Email: <strong className="text-[#1E1419] font-bold">{o.customerEmail}</strong>
+                            {' · '}Provider: <strong className="uppercase">{o.paymentProvider || 'paypal'}</strong> ({o.paymentMethod})
+                          </p>
+                          <p className="text-xs text-[#33222C] font-medium flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span>
+                              PayPal Ref:{' '}
+                              <span className="font-mono text-[11px] bg-white text-[#1E1419] px-1.5 py-0.5 rounded border border-[#D5C2BB]">
+                                {payRef || 'n/a'}
+                              </span>
+                            </span>
+                            {o.paypalOrderId && o.paypalCaptureId && (
+                              <span>
+                                · Order ID:{' '}
+                                <span className="font-mono text-[11px] bg-white text-[#1E1419] px-1.5 py-0.5 rounded border border-[#D5C2BB]">
+                                  {o.paypalOrderId}
+                                </span>
+                              </span>
+                            )}
+                            <span>
+                              · Token:{' '}
+                              <span className="font-mono text-[11px] bg-white text-[#1E1419] px-1.5 py-0.5 rounded border border-[#D5C2BB]">
+                                {o.downloadToken}
+                              </span>
+                            </span>
+                          </p>
+                          {isRefunded && (
+                            <p className="text-[11px] text-stone-700 font-medium">
+                              Refunded{o.refundedAt ? ` on ${new Date(o.refundedAt).toLocaleString()}` : ''}
+                              {o.paypalRefundId ? ` · Refund ID: ${o.paypalRefundId}` : ''}
+                              {o.refundReason ? ` · Reason: ${o.refundReason}` : ''}
+                            </p>
+                          )}
+                          <p className="text-[11px] text-[#45313D] font-medium">
+                            Items: {o.items.map(i => i.title).join(', ')}
+                          </p>
                         </div>
-                        <p className="text-xs text-[#33222C] font-medium">
-                          Email: <strong className="text-[#1E1419] font-bold">{o.customerEmail}</strong>
-                          {' · '}Provider: <strong className="uppercase">{o.paymentProvider || 'paymongo'}</strong> ({o.paymentMethod})
-                        </p>
-                        <p className="text-xs text-[#33222C] font-medium">
-                          PayMongo Ref:{' '}
-                          <span className="font-mono text-[11px] bg-white text-[#1E1419] px-1.5 py-0.5 rounded border border-[#D5C2BB]">
-                            {payRef || 'n/a'}
+
+                        <div className="flex flex-col lg:items-end gap-2 shrink-0">
+                          <span className="text-base font-extrabold text-[#945367] tabular-nums">
+                            {formatOrderMoney(o.total, o.currency)}
                           </span>
-                          {' · '}Token:{' '}
-                          <span className="font-mono text-[11px] bg-white text-[#1E1419] px-1.5 py-0.5 rounded border border-[#D5C2BB]">
-                            {o.downloadToken}
-                          </span>
-                        </p>
-                        <p className="text-[11px] text-[#45313D] font-medium">
-                          Items: {o.items.map(i => i.title).join(', ')}
-                        </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {!isPaid && !isRefunded && o.paypalOrderId && (
+                              <button
+                                type="button"
+                                disabled={isVerifyingThis}
+                                onClick={() => handleVerifyOrderWithPaypal(o)}
+                                className="px-3 py-1.5 bg-white hover:bg-[#F4EAE6] text-[#1E1419] border border-[#D5C2BB] rounded-xl text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer whitespace-nowrap"
+                              >
+                                <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingThis ? 'animate-spin' : ''}`} />
+                                <span>{isVerifyingThis ? 'Checking...' : 'Verify with PayPal'}</span>
+                              </button>
+                            )}
+                            {isPaid && (o.paypalCaptureId || o.paypalOrderId) && (
+                              <button
+                                type="button"
+                                disabled={isRefundingThis}
+                                onClick={() => {
+                                  if (showRefundConfirm) {
+                                    setRefundConfirmOrderKey(null);
+                                    setRefundReasonInput('');
+                                  } else {
+                                    setRefundConfirmOrderKey(orderKey);
+                                    setRefundReasonInput('');
+                                  }
+                                }}
+                                className="px-3 py-1.5 bg-white hover:bg-red-50 text-red-700 border border-red-200 rounded-xl text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer whitespace-nowrap"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Refund</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => navigateTo('confirmation', o.downloadToken)}
+                              className="px-3 py-1.5 bg-[#8B6F7A] hover:bg-[#785E69] text-[#F7F3E9] rounded-xl text-[11px] font-bold cursor-pointer whitespace-nowrap"
+                            >
+                              View Customer Order Page
+                            </button>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="flex flex-col lg:items-end gap-2 shrink-0">
-                        <span className="text-base font-extrabold text-[#945367] tabular-nums">
-                          {formatOrderMoney(o.total, o.currency)}
-                        </span>
-                        <div className="flex flex-wrap items-center gap-2">
-                          {!isPaid && o.paymongoCheckoutSessionId && (
-                            <button
-                              type="button"
-                              disabled={isVerifyingThis}
-                              onClick={() => handleVerifyOrderWithPaymongo(o)}
-                              className="px-3 py-1.5 bg-white hover:bg-[#F4EAE6] text-[#1E1419] border border-[#D5C2BB] rounded-xl text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                            >
-                              <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingThis ? 'animate-spin' : ''}`} />
-                              <span>{isVerifyingThis ? 'Checking...' : 'Verify with PayMongo'}</span>
-                            </button>
-                          )}
-                          <button
-                            onClick={() => navigateTo('confirmation', o.downloadToken)}
-                            className="px-3 py-1.5 bg-[#8B6F7A] hover:bg-[#785E69] text-[#F7F3E9] rounded-xl text-[11px] font-bold cursor-pointer"
-                          >
-                            View Customer Order Page
-                          </button>
+                      {showRefundConfirm && (
+                        <div className="p-4 bg-white rounded-2xl border border-red-200 space-y-3 text-xs">
+                          <div className="space-y-1">
+                            <p className="font-bold text-red-800">
+                              Confirm PayPal Full Refund ({formatOrderMoney(o.total, o.currency)})
+                            </p>
+                            <p className="text-[#45313D] font-medium">
+                              This refunds payment <code className="font-mono">{o.paypalCaptureId || o.paypalOrderId}</code> via PayPal and revokes wallpaper download access for {o.customerEmail}.
+                            </p>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <input
+                              type="text"
+                              placeholder="Optional refund reason (e.g. Duplicate purchase)"
+                              value={refundReasonInput}
+                              onChange={e => setRefundReasonInput(e.target.value)}
+                              className="flex-1 px-3 py-2 text-xs bg-[#F9F6F0] border border-[#D5C2BB] rounded-xl text-[#1E1419]"
+                            />
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                disabled={isRefundingThis}
+                                onClick={() => {
+                                  setRefundConfirmOrderKey(null);
+                                  setRefundReasonInput('');
+                                }}
+                                className="px-3 py-2 bg-[#F9F6F0] hover:bg-[#E8C9C1]/40 text-[#1E1419] border border-[#D5C2BB] rounded-xl font-bold cursor-pointer whitespace-nowrap"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isRefundingThis}
+                                onClick={() => {
+                                  void handleRefundOrderWithPaypal(o, refundReasonInput);
+                                }}
+                                className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-xl font-bold flex items-center gap-1.5 disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                              >
+                                {isRefundingThis && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                                <span>{isRefundingThis ? 'Refunding...' : 'Confirm Refund'}</span>
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1469,15 +1613,15 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* PayMongo Payment Gateway Configuration */}
+            {/* PayPal Payment Gateway Configuration */}
             <div className="border-t border-[#E8C9C1]/50 pt-6 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B6F7A]">
-                    PayMongo Hosted Checkout &amp; PHP Currency Settings
+                    PayPal Exclusive Checkout (USD)
                   </h3>
                   <p className="text-[11px] text-[#45313D] mt-0.5">
-                    Payments process strictly via official PayMongo Hosted Checkout Sessions in PHP. Secret keys and webhook signing secrets live in server environment variables.
+                    Sleepyshroom uses PayPal exclusively in USD. Keep PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, and PAYPAL_WEBHOOK_ID in server environment variables.
                   </p>
                 </div>
 
@@ -1491,118 +1635,98 @@ export const AdminDashboard: React.FC = () => {
                     })}
                     className="accent-[#8B6F7A]"
                   />
-                  <span className="text-xs text-[#1E1419] font-bold">PayMongo Sandbox Mode</span>
+                  <span className="text-xs text-[#1E1419] font-bold">PayPal Sandbox Mode</span>
                 </label>
               </div>
 
               {/* Live Server Environment Status */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div className="p-3 bg-white rounded-2xl border border-[#E8C9C1]">
-                  <span className="text-[10px] font-bold uppercase text-[#8B6F7A] block">PayMongo Secret Key</span>
+                  <span className="text-[10px] font-bold uppercase text-[#8B6F7A] block">PayPal API Credentials</span>
                   <span className={`font-bold ${gatewayStatus?.configured ? 'text-emerald-800' : 'text-amber-800'}`}>
                     {gatewayStatus
                       ? gatewayStatus.configured
-                        ? 'Configured (Server Env)'
-                        : gatewayStatus.blockedLiveMode
-                        ? 'Live Key Blocked (Use Sandbox Key)'
-                        : 'Not Set (PAYMONGO_SECRET_KEY)'
+                        ? `Configured (${gatewayStatus.environment === 'live' ? 'Live' : 'Sandbox'})`
+                        : 'Not Set (PAYPAL_CLIENT_ID / SECRET)'
                       : 'Checking...'}
                   </span>
                 </div>
                 <div className="p-3 bg-white rounded-2xl border border-[#E8C9C1]">
-                  <span className="text-[10px] font-bold uppercase text-[#8B6F7A] block">Webhook Signature Secret</span>
+                  <span className="text-[10px] font-bold uppercase text-[#8B6F7A] block">Webhook Signature Verification</span>
                   <span className={`font-bold ${gatewayStatus?.webhookConfigured ? 'text-emerald-800' : 'text-amber-800'}`}>
                     {gatewayStatus
                       ? gatewayStatus.webhookConfigured
-                        ? 'Configured (PAYMONGO_WEBHOOK_SECRET)'
-                        : 'Not Set (PAYMONGO_WEBHOOK_SECRET)'
+                        ? 'Configured (PAYPAL_WEBHOOK_ID)'
+                        : 'Not Set (PAYPAL_WEBHOOK_ID)'
                       : 'Checking...'}
                   </span>
                 </div>
                 <div className="p-3 bg-white rounded-2xl border border-[#E8C9C1]">
-                  <span className="text-[10px] font-bold uppercase text-[#8B6F7A] block">Checkout Currency Rate</span>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="font-bold text-[#1E1419]">1 USD = ₱</span>
-                    <input
-                      type="number"
-                      min={1}
-                      step={0.5}
-                      value={settings.paymentProviders.phpPerUsdRate ?? 58}
-                      onChange={e => {
-                        const val = Number(e.target.value);
-                        setSettings({
-                          ...settings,
-                          paymentProviders: {
-                            ...settings.paymentProviders,
-                            phpPerUsdRate: Number.isFinite(val) && val > 0 ? val : 58,
-                          },
-                        });
-                      }}
-                      className="w-20 px-2 py-1 text-xs font-bold bg-[#F9F6F0] border border-[#E8C9C1] rounded-lg text-[#1E1419]"
-                    />
-                    <span className="font-bold text-[#1E1419]">PHP</span>
-                  </div>
+                  <span className="text-[10px] font-bold uppercase text-[#8B6F7A] block">Checkout Currency</span>
+                  <span className="font-bold text-[#1E1419] block mt-0.5 tabular-nums">
+                    USD ($) · Min $0.50 USD
+                  </span>
                 </div>
               </div>
 
-              {/* Allowed PayMongo Channels */}
-              <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-[#1E1419]">
-                    Enabled PayMongo Payment Methods
-                  </span>
-                  <label className="flex items-center gap-2 cursor-pointer">
+              {/* PayPal Checkout Controls */}
+              <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F9F6F0] border border-[#E8C9C1] cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={settings.paymentProviders.paymongoEnabled !== false}
+                      checked={settings.paymentProviders.paypalEnabled !== false}
                       onChange={e => setSettings({
                         ...settings,
                         paymentProviders: {
                           ...settings.paymentProviders,
-                          paymongoEnabled: e.target.checked,
+                          paypalEnabled: e.target.checked,
                         },
                       })}
-                      className="accent-[#8B6F7A]"
+                      className="accent-[#8B6F7A] mt-0.5"
                     />
-                    <span className="text-xs text-[#8B6F7A] font-semibold">PayMongo Checkout Active</span>
+                    <div>
+                      <span className="font-bold text-[#1E1419] block">Enable PayPal Checkout</span>
+                      <span className="text-[11px] text-[#45313D]">
+                        Allow customers to complete purchases through PayPal Orders v2.
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F9F6F0] border border-[#E8C9C1] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.paymentProviders.paypalAllowCards !== false}
+                      onChange={e => setSettings({
+                        ...settings,
+                        paymentProviders: {
+                          ...settings.paymentProviders,
+                          paypalAllowCards: e.target.checked,
+                        },
+                      })}
+                      className="accent-[#8B6F7A] mt-0.5"
+                    />
+                    <div>
+                      <span className="font-bold text-[#1E1419] block">Allow Debit &amp; Credit Cards via PayPal</span>
+                      <span className="text-[11px] text-[#45313D]">
+                        Show Visa, Mastercard, and card checkout options alongside PayPal buttons.
+                      </span>
+                    </div>
                   </label>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  {PAYMONGO_METHOD_OPTIONS.map(option => {
-                    const current =
-                      settings.paymentProviders.paymongoEnabledMethods ||
-                      PAYMONGO_METHOD_OPTIONS.map(m => m.key);
-                    const checked = current.includes(option.key);
-                    return (
-                      <label
-                        key={option.key}
-                        className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F9F6F0] border border-[#E8C9C1] cursor-pointer text-xs"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={e => {
-                            const next = e.target.checked
-                              ? Array.from(new Set([...current, option.key]))
-                              : current.filter(k => k !== option.key);
-                            setSettings({
-                              ...settings,
-                              paymentProviders: {
-                                ...settings.paymentProviders,
-                                paymongoEnabledMethods: next.length > 0 ? next : [option.key],
-                              },
-                            });
-                          }}
-                          className="accent-[#8B6F7A] mt-0.5"
-                        />
-                        <div>
-                          <span className="font-bold text-[#1E1419] block">{option.label}</span>
-                          <span className="text-[11px] text-[#45313D]">{option.hint}</span>
-                        </div>
-                      </label>
-                    );
-                  })}
+                <div className="p-3 rounded-xl bg-[#F9F6F0] border border-[#E8C9C1] space-y-1 text-[11px] text-[#45313D]">
+                  <p className="font-bold text-[#1E1419]">PayPal Webhook Endpoint</p>
+                  <p className="font-mono text-[#1E1419] break-all">
+                    {typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/paypal` : '/api/webhooks/paypal'}
+                  </p>
+                  <p>
+                    Subscribe to <code className="font-mono">CHECKOUT.ORDER.APPROVED</code>,{' '}
+                    <code className="font-mono">CHECKOUT.ORDER.COMPLETED</code>,{' '}
+                    <code className="font-mono">PAYMENT.CAPTURE.COMPLETED</code>,{' '}
+                    <code className="font-mono">PAYMENT.CAPTURE.DENIED</code>, and{' '}
+                    <code className="font-mono">PAYMENT.CAPTURE.REFUNDED</code>.
+                  </p>
                 </div>
               </div>
             </div>

@@ -1,8 +1,6 @@
 export type DeviceType = 'desktop' | 'mobile' | 'tablet';
 
-export type PaymongoPaymentMethodKey = 'card' | 'gcash' | 'paymaya' | 'qrph' | 'grab_pay';
-
-export type PaymentProviderKey = 'paymongo';
+export type PaymentProviderKey = 'paypal';
 
 export type OrderPaymentStatus =
   | 'pending'
@@ -81,9 +79,8 @@ export interface WebsiteSettings {
   showMobileSection: boolean;
   showBrandIntro: boolean;
   paymentProviders: {
-    paymongoEnabled: boolean;
-    paymongoEnabledMethods: PaymongoPaymentMethodKey[];
-    phpPerUsdRate: number;
+    paypalEnabled: boolean;
+    paypalAllowCards: boolean;
     testMode: boolean;
   };
   socialLinks: {
@@ -144,11 +141,14 @@ export interface Order {
   isTestOrder?: boolean;
   transactionId: string;
   paymentReference?: string;
-  paymongoCheckoutSessionId?: string;
-  paymongoPaymentIntentId?: string;
-  paymongoPaymentId?: string;
-  paymongoEventId?: string;
+  paypalOrderId?: string;
+  paypalCaptureId?: string;
+  paypalPayerId?: string;
+  paypalEventId?: string;
+  paypalRefundId?: string;
   paidAt?: string;
+  refundedAt?: string;
+  refundReason?: string;
   failureReason?: string;
   downloadToken: string;
   downloadCount: number;

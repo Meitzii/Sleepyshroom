@@ -19,15 +19,8 @@ export const initialSettings: WebsiteSettings = {
   "showMobileSection": true,
   "showBrandIntro": true,
   "paymentProviders": {
-    "paymongoEnabled": true,
-    "paymongoEnabledMethods": [
-      "card",
-      "gcash",
-      "paymaya",
-      "qrph",
-      "grab_pay"
-    ],
-    "phpPerUsdRate": 58,
+    "paypalEnabled": true,
+    "paypalAllowCards": true,
     "testMode": true
   },
   "socialLinks": {

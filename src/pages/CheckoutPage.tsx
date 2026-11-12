@@ -1,34 +1,34 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
+  loadScript,
+  type PayPalButtonsComponent,
+} from '@paypal/paypal-js';
+import {
   Lock,
-  CreditCard,
   ArrowLeft,
   Download,
   AlertCircle,
   Tag,
-  CheckCircle2,
-  Smartphone,
-  QrCode,
-  Wallet,
+  ShieldCheck,
   ExternalLink,
   Loader2,
   X,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
-import type { PaymongoPaymentMethodKey } from '../types/index.ts';
+import type { Order } from '../types/index.ts';
 import {
   parseJsonResponse,
   extractApiErrorMessage,
   getOptionalSupabaseAuthHeader,
 } from '../utils/apiClient.ts';
-import { calculateCheckoutPhpBreakdown, formatPhp } from '../utils/currency.ts';
+import { calculateCheckoutBreakdown, formatUsd } from '../utils/currency.ts';
 
 const BILLING_COUNTRIES = [
-  'Philippines',
   'United States',
   'Canada',
   'United Kingdom',
   'Australia',
+  'Philippines',
   'Japan',
   'Singapore',
   'South Korea',
@@ -37,33 +37,19 @@ const BILLING_COUNTRIES = [
   'Other',
 ];
 
-interface PaymongoMethodOption {
-  key: PaymongoPaymentMethodKey;
-  label: string;
-  description: string;
-  minPhp: number;
-}
-
-interface PaymongoCheckoutConfig {
-  provider: 'paymongo';
+interface PayPalCheckoutConfig {
+  provider: 'paypal';
   enabled?: boolean;
   configured: boolean;
-  testMode: boolean;
-  blockedLiveMode?: boolean;
   webhookConfigured: boolean;
+  clientId: string;
+  environment: 'sandbox' | 'live';
+  testMode: boolean;
+  allowCards: boolean;
   currency: string;
   currencySymbol: string;
-  phpPerUsdRate: number;
-  enabledMethods: PaymongoMethodOption[];
+  minOrderUsd: number;
 }
-
-const DEFAULT_PAYMONGO_METHODS: PaymongoMethodOption[] = [
-  { key: 'card', label: 'Credit / Debit Card', description: 'Visa, Mastercard', minPhp: 20 },
-  { key: 'gcash', label: 'GCash', description: 'Pay with GCash e-wallet', minPhp: 1 },
-  { key: 'paymaya', label: 'Maya', description: 'Pay with Maya wallet', minPhp: 1 },
-  { key: 'qrph', label: 'QR Ph', description: 'InstaPay / PESONet banking QR', minPhp: 1 },
-  { key: 'grab_pay', label: 'GrabPay', description: 'Pay with GrabPay wallet', minPhp: 20 },
-];
 
 export const CheckoutPage: React.FC = () => {
   const {
@@ -71,50 +57,131 @@ export const CheckoutPage: React.FC = () => {
     appliedDiscount,
     applyDiscount,
     removeDiscount,
+    clearCart,
+    setLatestOrder,
     navigateTo,
     user,
     settings,
     cancelledCheckoutToken,
     clearCancelledCheckoutNotice,
-    phpPerUsdRate,
   } = useShop();
 
   // Step 1: Billing & Digital Delivery Details
   const [customerName, setCustomerName] = useState(user?.name || '');
   const [customerEmail, setCustomerEmail] = useState(user?.email || '');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [billingCountry, setBillingCountry] = useState('Philippines');
+  const [billingCountry, setBillingCountry] = useState('United States');
   const [billingCity, setBillingCity] = useState('');
   const [billingPostalCode, setBillingPostalCode] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
 
-  // Step 2: Server PayMongo Config & Method Preference
-  const [paymentConfig, setPaymentConfig] = useState<PaymongoCheckoutConfig | null>(null);
+  // Step 2: Server PayPal Gateway Config & SDK State
+  const [paymentConfig, setPaymentConfig] = useState<PayPalCheckoutConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
-  const [selectedMethod, setSelectedMethod] = useState<'all' | PaymongoPaymentMethodKey>('all');
+  const [sdkLoading, setSdkLoading] = useState(false);
+  const [sdkReady, setSdkReady] = useState(false);
+  const [sdkError, setSdkError] = useState<string | null>(null);
 
   // Promo code inside Checkout Order Summary
   const [promoInput, setPromoInput] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoFeedback, setPromoFeedback] = useState<{ text: string; isError?: boolean } | null>(null);
 
-  // Submission & cancellation feedback
-  const [loading, setLoading] = useState(false);
+  // Submission, capture & hosted fallback state
+  const [capturing, setCapturing] = useState(false);
+  const [hostedLoading, setHostedLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const processedCancelTokenRef = useRef<string | null>(null);
+  const [fallbackApproveUrl, setFallbackApproveUrl] = useState<string | null>(null);
 
-  // Fetch live PayMongo gateway config from server
+  const paypalContainerRef = useRef<HTMLDivElement | null>(null);
+  const processedCancelTokenRef = useRef<string | null>(null);
+  const activeOrderRef = useRef<{
+    downloadToken: string;
+    paypalOrderId: string;
+    approveUrl?: string;
+    signature: string;
+  } | null>(null);
+
+  const breakdown = useMemo(
+    () => calculateCheckoutBreakdown(cart, appliedDiscount),
+    [cart, appliedDiscount]
+  );
+
+  const minOrderCents = Math.max(
+    50,
+    Math.round((paymentConfig?.minOrderUsd ?? 0.5) * 100)
+  );
+  const meetsMinOrder = breakdown.totalCents >= minOrderCents;
+
+  const isPaypalEnabled =
+    paymentConfig?.enabled ?? (settings?.paymentProviders?.paypalEnabled !== false);
+  const allowCards =
+    paymentConfig?.allowCards ?? (settings?.paymentProviders?.paypalAllowCards !== false);
+  const isTestMode =
+    paymentConfig?.testMode ?? (settings?.paymentProviders?.testMode !== false);
+  const sdkEnvironment: 'sandbox' | 'production' =
+    paymentConfig?.environment === 'live' ? 'production' : 'sandbox';
+
+  // Keep latest form & cart state in a ref so PayPal Buttons callbacks never force iframe teardown on typing
+  const checkoutStateRef = useRef({
+    customerName,
+    customerEmail,
+    customerPhone,
+    billingCountry,
+    billingCity,
+    billingPostalCode,
+    billingAddress,
+    cart,
+    appliedDiscount,
+    breakdown,
+    meetsMinOrder,
+  });
+
+  checkoutStateRef.current = {
+    customerName,
+    customerEmail,
+    customerPhone,
+    billingCountry,
+    billingCity,
+    billingPostalCode,
+    billingAddress,
+    cart,
+    appliedDiscount,
+    breakdown,
+    meetsMinOrder,
+  };
+
+  const validateBillingState = (state: typeof checkoutStateRef.current): string | null => {
+    const trimmedName = state.customerName.trim();
+    const trimmedEmail = state.customerEmail.trim();
+
+    if (!trimmedName) {
+      return 'Please enter your full name for billing and digital delivery.';
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmedEmail)) {
+      return 'Please enter a valid email address for digital download delivery.';
+    }
+    if (!state.billingCountry.trim()) {
+      return 'Please select your billing country or region.';
+    }
+    if (!state.meetsMinOrder) {
+      return `PayPal Checkout requires a minimum payable order of ${formatUsd(minOrderCents / 100)}. Freebie wallpapers can be downloaded directly without checkout.`;
+    }
+    return null;
+  };
+
+  // Fetch live PayPal public config from server
   useEffect(() => {
     let active = true;
     (async () => {
       try {
         const res = await fetch('/api/checkout');
-        const parsed = await parseJsonResponse<PaymongoCheckoutConfig>(res);
+        const parsed = await parseJsonResponse<PayPalCheckoutConfig>(res);
         if (active && parsed.ok && parsed.isJson && parsed.data) {
           setPaymentConfig(parsed.data);
         }
       } catch {
-        // Non-blocking fallback uses settings defaults
+        // Non-blocking fallback
       } finally {
         if (active) setConfigLoading(false);
       }
@@ -124,9 +191,13 @@ export const CheckoutPage: React.FC = () => {
     };
   }, []);
 
-  // Reconcile returned PayMongo cancel redirect against server
+  // Reconcile returned PayPal cancel redirect against server
   useEffect(() => {
-    if (!cancelledCheckoutToken || processedCancelTokenRef.current === cancelledCheckoutToken) {
+    if (
+      cancelledCheckoutToken === null ||
+      !cancelledCheckoutToken ||
+      processedCancelTokenRef.current === cancelledCheckoutToken
+    ) {
       return;
     }
     processedCancelTokenRef.current = cancelledCheckoutToken;
@@ -163,34 +234,335 @@ export const CheckoutPage: React.FC = () => {
     setCustomerEmail(prev => (prev.trim() ? prev : user.email || ''));
   }, [user]);
 
-  const effectiveRate = paymentConfig?.phpPerUsdRate || phpPerUsdRate || 58;
-  const breakdown = useMemo(
-    () => calculateCheckoutPhpBreakdown(cart, appliedDiscount, effectiveRate),
-    [cart, appliedDiscount, effectiveRate]
-  );
-
-  const isTestMode =
-    paymentConfig?.testMode ?? (settings?.paymentProviders?.testMode !== false);
-
-  const enabledMethods = useMemo<PaymongoMethodOption[]>(() => {
-    if (paymentConfig?.enabledMethods && paymentConfig.enabledMethods.length > 0) {
-      return paymentConfig.enabledMethods;
-    }
-    const configuredKeys = settings?.paymentProviders?.paymongoEnabledMethods;
-    if (Array.isArray(configuredKeys) && configuredKeys.length > 0) {
-      return DEFAULT_PAYMONGO_METHODS.filter(m => configuredKeys.includes(m.key));
-    }
-    return DEFAULT_PAYMONGO_METHODS;
-  }, [paymentConfig, settings?.paymentProviders?.paymongoEnabledMethods]);
+  const buildOrderSignature = (state: typeof checkoutStateRef.current) =>
+    JSON.stringify({
+      customerName: state.customerName.trim(),
+      customerEmail: state.customerEmail.trim().toLowerCase(),
+      billingCountry: state.billingCountry.trim(),
+      discountCode: state.appliedDiscount?.code || '',
+      totalCents: state.breakdown.totalCents,
+      items: state.cart.map(i => `${i.product.id}:${i.quantity}`),
+    });
 
   useEffect(() => {
-    if (selectedMethod !== 'all') {
-      const found = enabledMethods.find(m => m.key === selectedMethod);
-      if (!found || breakdown.totalPhp < found.minPhp) {
-        setSelectedMethod('all');
+    setFallbackApproveUrl(null);
+    activeOrderRef.current = null;
+  }, [
+    customerName,
+    customerEmail,
+    billingCountry,
+    breakdown.totalCents,
+    appliedDiscount?.code,
+    cart,
+  ]);
+
+  const createServerPaypalOrder = async (): Promise<{
+    paypalOrderId: string;
+    downloadToken: string;
+    approveUrl: string;
+  }> => {
+    const latest = checkoutStateRef.current;
+    const validationErr = validateBillingState(latest);
+    if (validationErr) {
+      setErrorMessage(validationErr);
+      throw new Error(validationErr);
+    }
+
+    setErrorMessage(null);
+    const authHeaders = await getOptionalSupabaseAuthHeader();
+
+    const response = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify({
+        customerEmail: latest.customerEmail.trim(),
+        customerName: latest.customerName.trim(),
+        billingDetails: {
+          country: latest.billingCountry.trim(),
+          city: latest.billingCity.trim(),
+          postalCode: latest.billingPostalCode.trim(),
+          addressLine1: latest.billingAddress.trim(),
+          phone: latest.customerPhone.trim(),
+        },
+        items: latest.cart.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+        })),
+        discountCode: latest.appliedDiscount?.code,
+      }),
+    });
+
+    const parsed = await parseJsonResponse<{
+      success?: boolean;
+      paypalOrderId?: string;
+      approveUrl?: string;
+      checkoutUrl?: string;
+      order?: { downloadToken?: string };
+      error?: string;
+    }>(response);
+
+    if (!parsed.isJson || !parsed.ok || !parsed.data?.success || !parsed.data?.paypalOrderId) {
+      const msg = extractApiErrorMessage(
+        parsed,
+        'Could not create PayPal order right now. Please try again.'
+      );
+      setErrorMessage(msg);
+      throw new Error(msg);
+    }
+
+    const paypalOrderId = parsed.data.paypalOrderId;
+    const downloadToken = parsed.data.order?.downloadToken || '';
+    const approveUrl = parsed.data.approveUrl || parsed.data.checkoutUrl || '';
+
+    activeOrderRef.current = {
+      paypalOrderId,
+      downloadToken,
+      approveUrl,
+      signature: buildOrderSignature(latest),
+    };
+
+    if (approveUrl) {
+      setFallbackApproveUrl(approveUrl);
+    }
+
+    if (downloadToken && paypalOrderId) {
+      try {
+        sessionStorage.setItem(
+          `sleepyshroom_paypal_return_${downloadToken}`,
+          paypalOrderId
+        );
+      } catch {
+        // Ignore storage errors
       }
     }
-  }, [enabledMethods, selectedMethod, breakdown.totalPhp]);
+
+    return { paypalOrderId, downloadToken, approveUrl };
+  };
+
+  // Load and render PayPal Smart Buttons (PayPal + Debit/Credit Card) when configured
+  useEffect(() => {
+    const container = paypalContainerRef.current;
+    if (!container) return;
+
+    if (
+      configLoading ||
+      !isPaypalEnabled ||
+      !paymentConfig?.configured ||
+      !paymentConfig?.clientId ||
+      !meetsMinOrder
+    ) {
+      setSdkReady(false);
+      setSdkLoading(false);
+      container.innerHTML = '';
+      return;
+    }
+
+    let cancelled = false;
+    let renderedButtons: PayPalButtonsComponent | null = null;
+
+    setSdkLoading(true);
+    setSdkReady(false);
+    setSdkError(null);
+
+    (async () => {
+      try {
+        const paypal = await loadScript({
+          clientId: paymentConfig.clientId,
+          currency: 'USD',
+          intent: 'capture',
+          components: 'buttons',
+          environment: sdkEnvironment,
+          disableFunding: allowCards ? undefined : ['card'],
+        });
+
+        if (cancelled) return;
+
+        if (!paypal?.Buttons) {
+          setSdkError(
+            'PayPal Smart Buttons could not initialize in this browser. You can use Hosted PayPal Checkout below.'
+          );
+          setSdkLoading(false);
+          return;
+        }
+
+        const buttons = paypal.Buttons({
+          style: {
+            layout: 'vertical',
+            color: 'gold',
+            shape: 'rect',
+            label: 'checkout',
+            height: 46,
+            tagline: false,
+          },
+          onClick: (_data, actions) => {
+            const err = validateBillingState(checkoutStateRef.current);
+            if (err) {
+              setErrorMessage(err);
+              return actions.reject();
+            }
+            setErrorMessage(null);
+            return actions.resolve();
+          },
+          createOrder: async () => {
+            const created = await createServerPaypalOrder();
+            return created.paypalOrderId;
+          },
+          onApprove: async (data) => {
+            const orderIdToCapture =
+              data.orderID || activeOrderRef.current?.paypalOrderId || '';
+            const downloadToken = activeOrderRef.current?.downloadToken || '';
+            const lookupKey = downloadToken || orderIdToCapture;
+
+            if (!lookupKey) {
+              setErrorMessage('Missing PayPal order reference for payment capture.');
+              return;
+            }
+
+            setCapturing(true);
+            setErrorMessage(null);
+
+            try {
+              const authHeaders = await getOptionalSupabaseAuthHeader();
+              const captureRes = await fetch(
+                `/api/orders/${encodeURIComponent(lookupKey)}`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    ...authHeaders,
+                  },
+                  body: JSON.stringify({
+                    action: 'capture',
+                    paypalOrderId: orderIdToCapture,
+                  }),
+                }
+              );
+
+              const capturedParsed = await parseJsonResponse<{
+                success?: boolean;
+                verifiedPaid?: boolean;
+                order?: Order;
+                error?: string;
+              }>(captureRes);
+
+              if (
+                !capturedParsed.isJson ||
+                !capturedParsed.ok ||
+                !capturedParsed.data?.verifiedPaid
+              ) {
+                const msg = extractApiErrorMessage(
+                  capturedParsed,
+                  'PayPal approved the payment, but capture verification failed.'
+                );
+                setErrorMessage(msg);
+                return;
+              }
+
+              clearCancelledCheckoutNotice();
+              const verifiedOrder = capturedParsed.data.order;
+              if (verifiedOrder) {
+                setLatestOrder(verifiedOrder);
+              }
+              clearCart();
+              navigateTo(
+                'confirmation',
+                verifiedOrder?.downloadToken || downloadToken
+              );
+            } catch (err: any) {
+              setErrorMessage(
+                err?.message ||
+                  'Unable to verify PayPal payment capture right now. Please try again.'
+              );
+            } finally {
+              setCapturing(false);
+            }
+          },
+          onCancel: () => {
+            setErrorMessage(
+              'PayPal checkout was closed before payment completed. Your bag items remain saved.'
+            );
+            const dlToken = activeOrderRef.current?.downloadToken;
+            if (dlToken) {
+              void (async () => {
+                try {
+                  const authHeaders = await getOptionalSupabaseAuthHeader();
+                  await fetch(`/api/orders/${encodeURIComponent(dlToken)}`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      ...authHeaders,
+                    },
+                    body: JSON.stringify({ action: 'cancel_session' }),
+                  });
+                } catch {
+                  // Non-blocking
+                }
+              })();
+            }
+          },
+          onError: (err) => {
+            console.error('PayPal Smart Buttons error:', err);
+            setErrorMessage(prev =>
+              prev ||
+              'PayPal Checkout encountered an error. Please double-check your billing email and retry, or use Hosted PayPal Checkout below.'
+            );
+          },
+        });
+
+        renderedButtons = buttons;
+
+        if (!buttons.isEligible()) {
+          setSdkError(
+            'Inline PayPal Smart Buttons are not eligible here. Please use Hosted PayPal Checkout below.'
+          );
+          setSdkLoading(false);
+          return;
+        }
+
+        container.innerHTML = '';
+        await buttons.render(container);
+
+        if (!cancelled) {
+          setSdkReady(true);
+          setSdkLoading(false);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          console.error('Failed to load PayPal JS SDK:', err);
+          setSdkError(
+            err?.message ||
+              'Could not load PayPal Smart Buttons. You can continue via Hosted PayPal Checkout below.'
+          );
+          setSdkLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (renderedButtons) {
+        void renderedButtons.close().catch(() => {});
+      }
+      if (container) {
+        container.innerHTML = '';
+      }
+    };
+  }, [
+    configLoading,
+    isPaypalEnabled,
+    paymentConfig?.configured,
+    paymentConfig?.clientId,
+    sdkEnvironment,
+    allowCards,
+    meetsMinOrder,
+    clearCancelledCheckoutNotice,
+    clearCart,
+    navigateTo,
+    setLatestOrder,
+  ]);
 
   if (cart.length === 0) {
     return (
@@ -227,93 +599,33 @@ export const CheckoutPage: React.FC = () => {
     }
   };
 
-  const handleSubmitPayment = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleHostedPaypalRedirect = async () => {
     setErrorMessage(null);
 
-    const trimmedName = customerName.trim();
-    const trimmedEmail = customerEmail.trim();
-
-    if (!trimmedName) {
-      setErrorMessage('Please enter your full name for billing and digital delivery.');
+    const currentSignature = buildOrderSignature(checkoutStateRef.current);
+    if (
+      fallbackApproveUrl &&
+      activeOrderRef.current?.paypalOrderId &&
+      activeOrderRef.current.signature === currentSignature
+    ) {
+      setHostedLoading(true);
+      window.location.assign(fallbackApproveUrl);
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmedEmail)) {
-      setErrorMessage('Please enter a valid email address for digital download delivery.');
-      return;
-    }
-
-    if (!billingCountry.trim()) {
-      setErrorMessage('Please select your billing country or region.');
-      return;
-    }
-
-    if (breakdown.totalCentavos < 100) {
-      setErrorMessage(
-        'PayMongo Checkout requires a minimum payable amount. Freebie wallpapers can be downloaded directly without checkout.'
-      );
-      return;
-    }
-
-    setLoading(true);
-
+    setHostedLoading(true);
     try {
-      const authHeaders = await getOptionalSupabaseAuthHeader();
-
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders,
-        },
-        body: JSON.stringify({
-          customerEmail: trimmedEmail,
-          customerName: trimmedName,
-          billingDetails: {
-            country: billingCountry.trim(),
-            city: billingCity.trim(),
-            postalCode: billingPostalCode.trim(),
-            addressLine1: billingAddress.trim(),
-            phone: customerPhone.trim(),
-          },
-          items: cart.map(item => ({
-            productId: item.product.id,
-            quantity: item.quantity,
-          })),
-          discountCode: appliedDiscount?.code,
-          paymentMethod: selectedMethod,
-        }),
-      });
-
-      const parsed = await parseJsonResponse<{
-        success?: boolean;
-        checkoutUrl?: string;
-        sessionId?: string;
-        order?: { downloadToken?: string };
-        error?: string;
-      }>(response);
-
-      if (
-        !parsed.isJson ||
-        !parsed.ok ||
-        !parsed.data?.success ||
-        !parsed.data?.checkoutUrl
-      ) {
-        const msg = extractApiErrorMessage(
-          parsed,
-          'Could not start PayMongo Checkout right now. Please try again.'
-        );
-        throw new Error(msg);
+      const created = await createServerPaypalOrder();
+      if (!created.approveUrl) {
+        throw new Error('PayPal did not return a hosted approval URL.');
       }
-
       clearCancelledCheckoutNotice();
-      window.location.assign(parsed.data.checkoutUrl);
+      window.location.assign(created.approveUrl);
     } catch (err: any) {
       setErrorMessage(
-        err?.message || 'Unable to connect to PayMongo Checkout. Please verify your details.'
+        err?.message || 'Unable to launch Hosted PayPal Checkout right now.'
       );
-      setLoading(false);
+      setHostedLoading(false);
     }
   };
 
@@ -331,7 +643,7 @@ export const CheckoutPage: React.FC = () => {
           <span>Continue Shopping</span>
         </button>
 
-        {/* Cancelled PayMongo session banner */}
+        {/* Cancelled PayPal session banner */}
         {cancelledCheckoutToken !== null && (
           <div
             role="status"
@@ -340,9 +652,9 @@ export const CheckoutPage: React.FC = () => {
             <div className="flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold">PayMongo checkout was cancelled before payment completed.</p>
+                <p className="font-bold">PayPal checkout was cancelled before payment completed.</p>
                 <p className="text-amber-900 mt-0.5">
-                  No payment was captured and downloads were not unlocked. Your bag items remain saved so you can review or retry anytime.
+                  No payment was captured and downloads remain locked. Your bag items stay saved so you can retry anytime.
                 </p>
               </div>
             </div>
@@ -359,320 +671,293 @@ export const CheckoutPage: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-          {/* Left Column: Billing & PayMongo Checkout Form */}
+          {/* Left Column: Billing & Exclusive PayPal Checkout */}
           <div className="lg:col-span-7 space-y-6">
-            <form onSubmit={handleSubmitPayment} className="space-y-6" noValidate>
 
-              {/* Step 1: Billing & Delivery Details */}
-              <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs space-y-4">
-                <div className="flex items-center gap-2 border-b border-[#EADCC8] pb-3">
+            {/* Step 1: Billing & Digital Delivery Details */}
+            <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs space-y-4">
+              <div className="flex items-center gap-2 border-b border-[#EADCC8] pb-3">
+                <span className="w-6 h-6 rounded-full bg-[#A64B3C] text-[#FFFCF7] text-xs font-bold flex items-center justify-center shrink-0">
+                  1
+                </span>
+                <h2 className="font-heading font-bold text-lg text-[#292929]">
+                  Billing &amp; Digital Delivery Details
+                </h2>
+              </div>
+
+              <p className="text-xs text-[#777777] font-medium leading-relaxed">
+                Enter your name and delivery email for your PayPal receipt and instant wallpaper download link.
+              </p>
+
+              <div className="space-y-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label htmlFor="billing-name" className="block text-xs font-bold text-[#292929] mb-1">
+                      Full Name *
+                    </label>
+                    <input
+                      id="billing-name"
+                      type="text"
+                      required
+                      autoComplete="name"
+                      placeholder="e.g. Clara Oswald"
+                      value={customerName}
+                      onChange={e => setCustomerName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="billing-email" className="block text-xs font-bold text-[#292929] mb-1">
+                      Delivery Email Address *
+                    </label>
+                    <input
+                      id="billing-email"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      value={customerEmail}
+                      onChange={e => setCustomerEmail(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label htmlFor="billing-phone" className="block text-xs font-bold text-[#292929] mb-1">
+                      Phone Number <span className="font-normal text-[#777777]">(optional)</span>
+                    </label>
+                    <input
+                      id="billing-phone"
+                      type="tel"
+                      autoComplete="tel"
+                      placeholder="e.g. +1 555 014 8920"
+                      value={customerPhone}
+                      onChange={e => setCustomerPhone(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="billing-country" className="block text-xs font-bold text-[#292929] mb-1">
+                      Country / Region *
+                    </label>
+                    <select
+                      id="billing-country"
+                      value={billingCountry}
+                      onChange={e => setBillingCountry(e.target.value)}
+                      className="w-full px-3 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
+                    >
+                      {BILLING_COUNTRIES.map(country => (
+                        <option key={country} value={country}>
+                          {country}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                  <div>
+                    <label htmlFor="billing-city" className="block text-xs font-bold text-[#292929] mb-1">
+                      City
+                    </label>
+                    <input
+                      id="billing-city"
+                      type="text"
+                      autoComplete="address-level2"
+                      placeholder="e.g. Portland"
+                      value={billingCity}
+                      onChange={e => setBillingCity(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="billing-postal" className="block text-xs font-bold text-[#292929] mb-1">
+                      ZIP / Postal Code
+                    </label>
+                    <input
+                      id="billing-postal"
+                      type="text"
+                      autoComplete="postal-code"
+                      placeholder="e.g. 97201"
+                      value={billingPostalCode}
+                      onChange={e => setBillingPostalCode(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="billing-address" className="block text-xs font-bold text-[#292929] mb-1">
+                      Street Address <span className="font-normal text-[#777777]">(optional)</span>
+                    </label>
+                    <input
+                      id="billing-address"
+                      type="text"
+                      autoComplete="street-address"
+                      placeholder="Street or unit"
+                      value={billingAddress}
+                      onChange={e => setBillingAddress(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2: PayPal Checkout Payment */}
+            <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EADCC8] pb-3">
+                <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-[#A64B3C] text-[#FFFCF7] text-xs font-bold flex items-center justify-center shrink-0">
-                    1
+                    2
                   </span>
                   <h2 className="font-heading font-bold text-lg text-[#292929]">
-                    Billing &amp; Digital Delivery Details
+                    PayPal Secure Checkout (USD)
                   </h2>
                 </div>
-
-                <p className="text-xs text-[#777777] font-medium leading-relaxed">
-                  Pre-fills your PayMongo billing receipt and delivers your verified digital download links via email.
-                </p>
-
-                <div className="space-y-3.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div>
-                      <label htmlFor="billing-name" className="block text-xs font-bold text-[#292929] mb-1">
-                        Full Name *
-                      </label>
-                      <input
-                        id="billing-name"
-                        type="text"
-                        required
-                        autoComplete="name"
-                        placeholder="e.g. Clara Oswald"
-                        value={customerName}
-                        onChange={e => setCustomerName(e.target.value)}
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="billing-email" className="block text-xs font-bold text-[#292929] mb-1">
-                        Delivery Email Address *
-                      </label>
-                      <input
-                        id="billing-email"
-                        type="email"
-                        required
-                        autoComplete="email"
-                        placeholder="you@example.com"
-                        value={customerEmail}
-                        onChange={e => setCustomerEmail(e.target.value)}
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div>
-                      <label htmlFor="billing-phone" className="block text-xs font-bold text-[#292929] mb-1">
-                        Mobile Number <span className="font-normal text-[#777777]">(optional, useful for GCash / Maya)</span>
-                      </label>
-                      <input
-                        id="billing-phone"
-                        type="tel"
-                        autoComplete="tel"
-                        placeholder="e.g. 0917 123 4567"
-                        value={customerPhone}
-                        onChange={e => setCustomerPhone(e.target.value)}
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="billing-country" className="block text-xs font-bold text-[#292929] mb-1">
-                        Country / Region *
-                      </label>
-                      <select
-                        id="billing-country"
-                        value={billingCountry}
-                        onChange={e => setBillingCountry(e.target.value)}
-                        className="w-full px-3 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
-                      >
-                        {BILLING_COUNTRIES.map(country => (
-                          <option key={country} value={country}>
-                            {country}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                    <div>
-                      <label htmlFor="billing-city" className="block text-xs font-bold text-[#292929] mb-1">
-                        City
-                      </label>
-                      <input
-                        id="billing-city"
-                        type="text"
-                        autoComplete="address-level2"
-                        placeholder="e.g. Manila"
-                        value={billingCity}
-                        onChange={e => setBillingCity(e.target.value)}
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="billing-postal" className="block text-xs font-bold text-[#292929] mb-1">
-                        ZIP / Postal Code
-                      </label>
-                      <input
-                        id="billing-postal"
-                        type="text"
-                        autoComplete="postal-code"
-                        placeholder="e.g. 1000"
-                        value={billingPostalCode}
-                        onChange={e => setBillingPostalCode(e.target.value)}
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="billing-address" className="block text-xs font-bold text-[#292929] mb-1">
-                        Street Address <span className="font-normal text-[#777777]">(optional)</span>
-                      </label>
-                      <input
-                        id="billing-address"
-                        type="text"
-                        autoComplete="street-address"
-                        placeholder="Street or unit"
-                        value={billingAddress}
-                        onChange={e => setBillingAddress(e.target.value)}
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <span className="text-xs font-semibold text-[#777777] flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-[#A64B3C]" />
+                  <span>{isTestMode ? 'PayPal Sandbox' : 'PayPal Verified Checkout'}</span>
+                </span>
               </div>
 
-              {/* Step 2: PayMongo Hosted Checkout Options */}
-              <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EADCC8] pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#A64B3C] text-[#FFFCF7] text-xs font-bold flex items-center justify-center shrink-0">
-                      2
-                    </span>
-                    <h2 className="font-heading font-bold text-lg text-[#292929]">
-                      PayMongo Secure Checkout (PHP)
-                    </h2>
-                  </div>
-                  <span className="text-xs font-semibold text-[#777777] flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-[#A64B3C]" />
-                    <span>{isTestMode ? 'PayMongo Test Sandbox' : 'PayMongo Hosted Payment'}</span>
-                  </span>
-                </div>
-
-                {!configLoading && paymentConfig && paymentConfig.enabled === false && (
-                  <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950 font-medium">
-                    <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <p className="font-bold">PayMongo checkout is currently paused by the store owner.</p>
-                      <p className="text-amber-900">
-                        Please check back shortly or contact shop.sleepyshroom@gmail.com for assistance.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {!configLoading && paymentConfig && paymentConfig.enabled !== false && !paymentConfig.configured && (
-                  <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950 font-medium">
-                    <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <p className="font-bold">
-                        {paymentConfig.blockedLiveMode
-                          ? 'Live PayMongo keys are blocked in test mode.'
-                          : 'PayMongo gateway credentials are not configured on the server yet.'}
-                      </p>
-                      <p className="text-amber-900">
-                        {paymentConfig.blockedLiveMode
-                          ? 'Use a PayMongo sandbox secret key in your server environment variables.'
-                          : 'Set PAYMONGO_SECRET_KEY in your Vercel or server environment variables to launch PayMongo Hosted Checkout.'}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-2.5">
-                  <p className="text-xs font-bold text-[#292929]">
-                    Choose Payment Experience
-                  </p>
-
-                  {/* Primary Recommended All-Methods Hosted Session */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedMethod('all');
-                      setErrorMessage(null);
-                    }}
-                    className={`w-full p-4 rounded-2xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer ${
-                      selectedMethod === 'all'
-                        ? 'border-[#A64B3C] bg-[#FFFCF7] ring-2 ring-[#A64B3C]/25'
-                        : 'border-[#EADCC8] bg-[#FFFCF7] hover:bg-[#EADCC8]/25'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Wallet className="w-5 h-5 text-[#A64B3C] shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-xs sm:text-sm font-bold text-[#292929]">
-                          All Enabled PayMongo Methods (Recommended)
-                        </p>
-                        <p className="text-[11px] text-[#777777] font-medium mt-0.5">
-                          Pick Card, GCash, Maya, QR Ph, or GrabPay directly on PayMongo&apos;s hosted checkout page.
-                        </p>
-                      </div>
-                    </div>
-                    {selectedMethod === 'all' && (
-                      <CheckCircle2 className="w-4 h-4 text-[#A64B3C] shrink-0" />
-                    )}
-                  </button>
-
-                  {/* Specific PayMongo Channels */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {enabledMethods.map(method => {
-                      const isActive = selectedMethod === method.key;
-                      const belowMin = breakdown.totalPhp > 0 && breakdown.totalPhp < method.minPhp;
-                      return (
-                        <button
-                          key={method.key}
-                          type="button"
-                          disabled={belowMin}
-                          onClick={() => {
-                            setSelectedMethod(method.key);
-                            setErrorMessage(null);
-                          }}
-                          className={`p-3 rounded-2xl border text-left transition-all flex flex-col gap-1 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
-                            isActive
-                              ? 'border-[#A64B3C] bg-[#FFFCF7] ring-2 ring-[#A64B3C]/25 font-bold'
-                              : 'border-[#EADCC8] bg-[#FFFCF7] hover:bg-[#EADCC8]/25 font-semibold'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            {method.key === 'card' ? (
-                              <CreditCard className="w-4 h-4 text-[#A64B3C]" />
-                            ) : method.key === 'qrph' ? (
-                              <QrCode className="w-4 h-4 text-[#A64B3C]" />
-                            ) : (
-                              <Smartphone className="w-4 h-4 text-[#A64B3C]" />
-                            )}
-                            {isActive && <CheckCircle2 className="w-3.5 h-3.5 text-[#A64B3C]" />}
-                          </div>
-                          <span className="text-xs text-[#292929] font-bold">{method.label}</span>
-                          <span className="text-[10px] text-[#777777] font-medium">
-                            {belowMin ? `Min ₱${method.minPhp.toFixed(0)} PHP` : method.description}
-                          </span>
-                        </button>
-                      );
-                    })}
+              {!configLoading && !isPaypalEnabled && (
+                <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950 font-medium">
+                  <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold">PayPal checkout is currently paused by the store owner.</p>
+                    <p className="text-amber-900">
+                      Please check back shortly or contact shop.sleepyshroom@gmail.com for assistance.
+                    </p>
                   </div>
                 </div>
+              )}
 
-                {/* Security Explanation Box */}
-                <div className="p-4 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8] space-y-1.5 text-xs text-[#777777]">
-                  <p className="font-bold text-[#292929] flex items-center gap-1.5">
-                    <ExternalLink className="w-3.5 h-3.5 text-[#A64B3C]" />
-                    <span>Official PayMongo Hosted Checkout Redirect</span>
-                  </p>
-                  <p className="text-[11px] leading-relaxed font-medium">
-                    Card numbers and e-wallet credentials are collected exclusively by PayMongo—never on Sleepyshroom. Your wallpapers unlock only after PayMongo confirms payment.
-                  </p>
-                </div>
-
-                {errorMessage && (
-                  <div
-                    role="alert"
-                    className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-700 font-medium"
-                  >
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{errorMessage}</span>
+              {!configLoading && isPaypalEnabled && paymentConfig && !paymentConfig.configured && (
+                <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950 font-medium">
+                  <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold">PayPal gateway credentials are not configured on the server yet.</p>
+                    <p className="text-amber-900">
+                      Add <code className="font-mono font-bold">PAYPAL_CLIENT_ID</code> and{' '}
+                      <code className="font-mono font-bold">PAYPAL_CLIENT_SECRET</code> to your server environment variables to activate PayPal Checkout.
+                    </p>
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* Submit Action */}
-                <button
-                  type="submit"
-                  disabled={loading || breakdown.totalCentavos < 100 || paymentConfig?.enabled === false}
-                  className="w-full py-4 px-6 rounded-2xl text-sm font-bold text-[#FFFCF7] bg-[#A64B3C] hover:bg-[#8E3E30] active:scale-98 shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer whitespace-nowrap"
-                >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                  ) : (
-                    <Lock className="w-4 h-4 shrink-0" />
-                  )}
+              {!meetsMinOrder && (
+                <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950 font-medium">
+                  <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold">Minimum payable total is {formatUsd(minOrderCents / 100)}.</p>
+                    <p className="text-amber-900">
+                      Complimentary freebie wallpapers ($0.00) can be downloaded directly from their product cards without checkout.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* PayPal Account + Card Acceptance Notice */}
+              <div className="p-4 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8] space-y-1.5 text-xs text-[#777777]">
+                <p className="font-bold text-[#292929] flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-[#A64B3C]" />
                   <span>
-                    {loading
-                      ? 'Redirecting to PayMongo...'
-                      : `Proceed to PayMongo Checkout · ${formatPhp(breakdown.totalPhp)}`}
+                    {allowCards
+                      ? 'Pay with PayPal or Eligible Debit / Credit Card'
+                      : 'Pay with Your PayPal Account'}
                   </span>
-                </button>
-
-                <p className="text-[11px] text-center text-[#777777] font-medium">
-                  By continuing to PayMongo, you agree to our{' '}
-                  <button
-                    type="button"
-                    onClick={() => navigateTo('policy')}
-                    className="text-[#A64B3C] font-bold hover:underline cursor-pointer"
-                  >
-                    Digital Goods Return Policy
-                  </button>
-                  . Downloads unlock automatically upon verified payment.
+                </p>
+                <p className="text-[11px] leading-relaxed font-medium">
+                  All payments are processed securely by PayPal in USD. Card numbers and PayPal credentials never touch Sleepyshroom servers, and digital wallpapers unlock immediately after PayPal capture verification.
                 </p>
               </div>
-            </form>
+
+              {errorMessage && (
+                <div
+                  role="alert"
+                  className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-700 font-medium"
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
+              {/* Capturing Verification Spinner */}
+              {capturing && (
+                <div className="p-5 bg-[#FFFCF7] border border-[#EADCC8] rounded-2xl flex items-center justify-center gap-3 text-xs sm:text-sm font-bold text-[#A64B3C]">
+                  <Loader2 className="w-5 h-5 animate-spin shrink-0" />
+                  <span>Confirming and capturing your PayPal payment...</span>
+                </div>
+              )}
+
+              {/* PayPal Smart Buttons Mount Container */}
+              {isPaypalEnabled && paymentConfig?.configured && meetsMinOrder && (
+                <div className="space-y-3">
+                  {sdkLoading && (
+                    <div className="p-4 bg-[#FFFCF7] border border-[#EADCC8] rounded-2xl flex items-center justify-center gap-2 text-xs font-semibold text-[#777777]">
+                      <Loader2 className="w-4 h-4 animate-spin text-[#A64B3C]" />
+                      <span>Loading PayPal checkout buttons...</span>
+                    </div>
+                  )}
+
+                  <div
+                    ref={paypalContainerRef}
+                    className={capturing ? 'pointer-events-none opacity-50' : 'min-h-[48px]'}
+                  />
+
+                  {sdkError && (
+                    <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 font-medium space-y-2">
+                      <p className="font-bold">{sdkError}</p>
+                    </div>
+                  )}
+
+                  {/* Hosted PayPal Approval Redirect Fallback */}
+                  {(sdkError || sdkReady || fallbackApproveUrl) && (
+                    <div className="pt-2 border-t border-[#EADCC8] flex flex-col items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={hostedLoading || capturing || !meetsMinOrder}
+                        onClick={() => {
+                          void handleHostedPaypalRedirect();
+                        }}
+                        className="w-full py-3.5 px-6 rounded-2xl text-xs sm:text-sm font-bold text-[#292929] bg-[#FFFCF7] hover:bg-[#EADCC8]/40 border border-[#EADCC8] transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                      >
+                        {hostedLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-[#A64B3C] shrink-0" />
+                        ) : (
+                          <ExternalLink className="w-4 h-4 text-[#A64B3C] shrink-0" />
+                        )}
+                        <span>
+                          {hostedLoading
+                            ? 'Redirecting to PayPal...'
+                            : `Continue to PayPal Hosted Checkout · ${formatUsd(breakdown.totalUsd)}`}
+                        </span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <p className="text-[11px] text-center text-[#777777] font-medium">
+                By completing checkout with PayPal, you agree to our{' '}
+                <button
+                  type="button"
+                  onClick={() => navigateTo('policy')}
+                  className="text-[#A64B3C] font-bold hover:underline cursor-pointer"
+                >
+                  Digital Goods Return Policy
+                </button>
+                . Downloads unlock automatically upon verified payment capture.
+              </p>
+            </div>
           </div>
 
-          {/* Right Column: Order Summary (PHP Checkout Currency) */}
+          {/* Right Column: Order Summary (USD Checkout Currency) */}
           <div className="lg:col-span-5 space-y-6">
             <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs space-y-5">
 
@@ -680,8 +965,8 @@ export const CheckoutPage: React.FC = () => {
                 <h3 className="font-heading font-bold text-lg text-[#292929]">
                   Order Summary ({cart.length} item{cart.length > 1 ? 's' : ''})
                 </h3>
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#FFFCF7] border border-[#EADCC8] text-[#A64B3C]">
-                  PHP (₱)
+                <span className="text-xs font-bold text-[#A64B3C]">
+                  USD ($)
                 </span>
               </div>
 
@@ -689,7 +974,7 @@ export const CheckoutPage: React.FC = () => {
               <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                 {cart.map(item => {
                   const lineItem = breakdown.items.find(b => b.productId === item.product.id);
-                  const linePhp = lineItem ? lineItem.linePhp : 0;
+                  const lineUsd = lineItem ? lineItem.lineUsd : 0;
                   return (
                     <div key={item.product.id} className="flex items-center gap-3">
                       <img
@@ -702,12 +987,12 @@ export const CheckoutPage: React.FC = () => {
                         <p className="text-xs font-bold text-[#292929] truncate">
                           {item.product.title}
                         </p>
-                        <p className="text-[11px] text-[#777777] font-medium">
-                          Qty {item.quantity} · {item.product.theme} (${(item.product.price * item.quantity).toFixed(2)})
+                        <p className="text-[11px] text-[#777777] font-medium tabular-nums">
+                          Qty {item.quantity} · {item.product.theme}
                         </p>
                       </div>
                       <span className="text-xs font-extrabold text-[#A64B3C] tabular-nums shrink-0">
-                        {formatPhp(linePhp, false)}
+                        {formatUsd(lineUsd, false)}
                       </span>
                     </div>
                   );
@@ -763,28 +1048,23 @@ export const CheckoutPage: React.FC = () => {
               {/* Price Breakdown */}
               <div className="border-t border-[#EADCC8] pt-4 space-y-2 text-xs">
                 <div className="flex justify-between text-[#777777] font-medium">
-                  <span>Subtotal (${breakdown.subtotalUsd.toFixed(2)} USD)</span>
+                  <span>Subtotal</span>
                   <span className="font-bold text-[#292929] tabular-nums">
-                    {formatPhp(breakdown.subtotalPhp)}
+                    {formatUsd(breakdown.subtotalUsd)}
                   </span>
                 </div>
 
-                {breakdown.discountPhp > 0 && (
+                {breakdown.discountUsd > 0 && (
                   <div className="flex justify-between text-emerald-800 font-bold">
                     <span>Discount ({appliedDiscount?.code})</span>
-                    <span className="tabular-nums">-{formatPhp(breakdown.discountPhp)}</span>
+                    <span className="tabular-nums">-{formatUsd(breakdown.discountUsd)}</span>
                   </div>
                 )}
-
-                <div className="flex justify-between text-[11px] text-[#777777] font-medium">
-                  <span>Conversion Rate</span>
-                  <span className="tabular-nums">$1.00 USD = ₱{effectiveRate.toFixed(2)} PHP</span>
-                </div>
 
                 <div className="flex justify-between items-baseline text-base font-bold text-[#292929] pt-2 border-t border-[#EADCC8]">
                   <span>Total Due</span>
                   <span className="text-xl font-extrabold text-[#A64B3C] tabular-nums">
-                    {formatPhp(breakdown.totalPhp)}
+                    {formatUsd(breakdown.totalUsd)}
                   </span>
                 </div>
               </div>
@@ -796,7 +1076,7 @@ export const CheckoutPage: React.FC = () => {
                   <span>Verified Digital Delivery</span>
                 </div>
                 <p className="text-[11px] leading-relaxed font-medium">
-                  As soon as PayMongo confirms your payment, your high-resolution wallpaper downloads unlock automatically and an email receipt is dispatched.
+                  As soon as PayPal captures and verifies your payment, your high-resolution wallpaper downloads unlock automatically and an email receipt is dispatched.
                 </p>
               </div>
 

@@ -131,19 +131,16 @@ export const EmptyCartShroom: React.FC<{ className?: string }> = ({ className = 
 export const PaymentBadges: React.FC<{ className?: string }> = ({ className = '' }) => (
   <div className={`flex flex-wrap items-center gap-2 ${className}`}>
     <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-[#292929] bg-[#FCF3E2] rounded-md border border-[#EADCC8]">
+      PayPal
+    </span>
+    <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-[#292929] bg-[#FCF3E2] rounded-md border border-[#EADCC8]">
       Visa
     </span>
     <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-[#292929] bg-[#FCF3E2] rounded-md border border-[#EADCC8]">
       Mastercard
     </span>
     <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-[#292929] bg-[#FCF3E2] rounded-md border border-[#EADCC8]">
-      PayPal
-    </span>
-    <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-[#292929] bg-[#FCF3E2] rounded-md border border-[#EADCC8]">
-      GCash
-    </span>
-    <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-[#292929] bg-[#FCF3E2] rounded-md border border-[#EADCC8]">
-      Maya
+      Debit &amp; Credit Cards
     </span>
   </div>
 );

@@ -4,7 +4,7 @@ const LEGACY_ORDERS_CACHE_KEY = 'sleepyshroom_orders';
 
 /**
  * Payment verification and digital download authorization are strictly server-enforced
- * via PayMongo webhooks, PayMongo session reconciliation, and Supabase records.
+ * via PayPal webhooks, server-side PayPal Orders v2 verification, and Supabase records.
  * Client-side localStorage must NEVER be treated as proof of payment or download entitlement.
  */
 export function clearLegacyOrderCache(): void {

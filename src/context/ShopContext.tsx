@@ -21,7 +21,7 @@ import { downloadWallpaperFile } from '../utils/downloadHelper.ts';
 import { parseJsonResponse } from '../utils/apiClient.ts';
 import { supabase, isSupabaseConfigured } from '../lib/supabase.ts';
 import { clearLegacyOrderCache } from '../utils/orderCache.ts';
-import { DEFAULT_USD_TO_PHP_RATE, formatPhp, usdToPhp } from '../utils/currency.ts';
+import { formatUsd } from '../utils/currency.ts';
 
 export interface GoogleSignInResult {
   success: boolean;
@@ -79,7 +79,8 @@ interface ShopContextType {
   setLiveToast: (toast: string | null) => void;
   cancelledCheckoutToken: string | null;
   clearCancelledCheckoutNotice: () => void;
-  phpPerUsdRate: number;
+  paypalReturnOrderId: string | null;
+  clearPaypalReturnOrderId: () => void;
 }
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
@@ -123,6 +124,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [cancelledCheckoutToken, setCancelledCheckoutToken] = useState<string | null>(null);
   const clearCancelledCheckoutNotice = () => setCancelledCheckoutToken(null);
+  const [paypalReturnOrderId, setPaypalReturnOrderId] = useState<string | null>(null);
+  const clearPaypalReturnOrderId = () => setPaypalReturnOrderId(null);
   const isCheckoutReturnRef = useRef(false);
 
   // Navigation state (SPA routing via hash or internal state)
@@ -130,16 +133,28 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [viewParam, setViewParam] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Clear legacy localStorage order caches and handle PayMongo redirect query parameters on mount
+  // Clear legacy localStorage order caches and handle PayPal redirect query parameters on mount
   useEffect(() => {
     clearLegacyOrderCache();
 
     const searchParams = new URLSearchParams(window.location.search);
     const checkoutStatus = String(searchParams.get('checkout_status') || '').toLowerCase();
     const orderTokenParam = String(searchParams.get('order') || '').trim();
+    const paypalTokenParam = String(searchParams.get('token') || '').trim();
 
     if (checkoutStatus === 'success' && orderTokenParam) {
       isCheckoutReturnRef.current = true;
+      if (paypalTokenParam) {
+        setPaypalReturnOrderId(paypalTokenParam);
+        try {
+          sessionStorage.setItem(
+            `sleepyshroom_paypal_return_${orderTokenParam}`,
+            paypalTokenParam
+          );
+        } catch {
+          // Ignore storage errors
+        }
+      }
       const targetHash = `#confirmation/${encodeURIComponent(orderTokenParam)}`;
       try {
         window.history.replaceState(null, '', `${window.location.pathname}${targetHash}`);
@@ -322,11 +337,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [subtotal, appliedDiscount]);
 
-  const phpPerUsdRate =
-    Number(settings?.paymentProviders?.phpPerUsdRate) > 0
-      ? Number(settings?.paymentProviders?.phpPerUsdRate)
-      : DEFAULT_USD_TO_PHP_RATE;
-
   const applyDiscount = async (code: string) => {
     const cleanCode = String(code || '').trim().toUpperCase();
     if (!cleanCode) {
@@ -343,7 +353,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (subtotal < match.minSpend) {
         return {
           success: false,
-          message: `Minimum spend of ${formatPhp(usdToPhp(match.minSpend, phpPerUsdRate))} required for ${match.code}.`,
+          message: `Minimum spend of ${formatUsd(match.minSpend)} required for ${match.code}.`,
         };
       }
       const rawDisc =
@@ -358,7 +368,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         message:
           match.type === 'percentage'
             ? `${match.value}% off applied!`
-            : `${formatPhp(usdToPhp(match.value, phpPerUsdRate))} off applied!`,
+            : `${formatUsd(match.value)} off applied!`,
       };
     };
 
@@ -1348,7 +1358,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLiveToast,
         cancelledCheckoutToken,
         clearCancelledCheckoutNotice,
-        phpPerUsdRate,
+        paypalReturnOrderId,
+        clearPaypalReturnOrderId,
       }}
     >
       {children}

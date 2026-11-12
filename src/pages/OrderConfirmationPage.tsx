@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   Lock,
   Loader2,
+  RotateCcw,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import type { Order } from '../types/index.ts';
@@ -23,13 +24,21 @@ interface OrderConfirmationPageProps {
 }
 
 export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ token }) => {
-  const { navigateTo, clearCart, setLatestOrder } = useShop();
+  const {
+    navigateTo,
+    clearCart,
+    setLatestOrder,
+    paypalReturnOrderId,
+    clearPaypalReturnOrderId,
+  } = useShop();
+
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(Boolean(token));
   const [verifying, setVerifying] = useState(false);
   const [downloadingProductId, setDownloadingProductId] = useState<string | null>(null);
   const [downloadFeedback, setDownloadFeedback] = useState<{ text: string; isError?: boolean } | null>(null);
   const clearedCartForTokenRef = useRef<string | null>(null);
+  const attemptedCaptureKeyRef = useRef<string | null>(null);
   const autoPollCountRef = useRef(0);
 
   const fetchVerifiedOrder = useCallback(async (showSpinner = false) => {
@@ -63,13 +72,68 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
     setLoading(Boolean(token));
     setOrder(null);
     setDownloadFeedback(null);
+
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    let storedReturnOrderId = paypalReturnOrderId || '';
+    try {
+      const fromStorage = sessionStorage.getItem(`sleepyshroom_paypal_return_${token}`);
+      if (fromStorage && !storedReturnOrderId) {
+        storedReturnOrderId = fromStorage;
+      }
+      sessionStorage.removeItem(`sleepyshroom_paypal_return_${token}`);
+    } catch {
+      // Ignore storage errors
+    }
+
+    const captureAttemptKey = storedReturnOrderId ? `${token}:${storedReturnOrderId}` : '';
+
+    if (storedReturnOrderId && attemptedCaptureKeyRef.current !== captureAttemptKey) {
+      attemptedCaptureKeyRef.current = captureAttemptKey;
+      clearPaypalReturnOrderId();
+
+      (async () => {
+        try {
+          const authHeaders = await getOptionalSupabaseAuthHeader();
+          const captureRes = await fetch(`/api/orders/${encodeURIComponent(token)}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...authHeaders,
+            },
+            body: JSON.stringify({
+              action: 'capture',
+              paypalOrderId: storedReturnOrderId,
+            }),
+          });
+          const captureParsed = await parseJsonResponse<{
+            success?: boolean;
+            order?: Order;
+            error?: string;
+          }>(captureRes);
+          if (captureParsed.isJson && captureParsed.data?.order) {
+            setOrder(captureParsed.data.order);
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.error('PayPal return capture error:', err);
+        }
+        await fetchVerifiedOrder(false);
+      })();
+      return;
+    }
+
     void fetchVerifiedOrder(false);
-  }, [token, fetchVerifiedOrder]);
+  }, [token, paypalReturnOrderId, clearPaypalReturnOrderId, fetchVerifiedOrder]);
 
   const statusLower = String(order?.paymentStatus || 'pending').toLowerCase();
   const isVerifiedPaid = statusLower === 'paid' || statusLower === 'completed';
 
-  // Clear shopping bag once payment is genuinely verified by server/PayMongo
+  // Clear shopping bag once payment is genuinely verified by PayPal
   useEffect(() => {
     if (!order || !isVerifiedPaid) return;
     setLatestOrder(order);
@@ -79,7 +143,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
     }
   }, [order, isVerifiedPaid, clearCart, setLatestOrder]);
 
-  // Brief retry check if user landed immediately before PayMongo webhook/session settled
+  // Brief retry check if user landed immediately before PayPal webhook/capture settled
   useEffect(() => {
     if (!order || statusLower !== 'pending' || autoPollCountRef.current >= 2) {
       return;
@@ -146,7 +210,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
       <div className="py-20 text-center max-w-md mx-auto space-y-3">
         <Loader2 className="w-7 h-7 text-[#A64B3C] animate-spin mx-auto" />
         <p className="text-sm font-semibold text-[#A64B3C]">
-          Verifying payment status with PayMongo...
+          Verifying payment status with PayPal...
         </p>
       </div>
     );
@@ -190,19 +254,22 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
   // Strict enforcement: NEVER show digital download buttons unless server verified paymentStatus === 'paid' | 'completed'
   if (!isVerifiedPaid) {
     const isPending = statusLower === 'pending';
-    const statusTitle =
-      isPending
-        ? 'Awaiting PayMongo Payment Confirmation'
-        : statusLower === 'cancelled'
-        ? 'Checkout Cancelled Before Payment'
-        : statusLower === 'expired'
-        ? 'Checkout Session Expired'
-        : statusLower === 'refunded'
-        ? 'Order Refunded'
-        : 'Payment Not Completed';
+    const isRefunded = statusLower === 'refunded';
+    const statusTitle = isPending
+      ? 'Awaiting PayPal Payment Confirmation'
+      : isRefunded
+      ? 'Order Refunded via PayPal'
+      : statusLower === 'cancelled'
+      ? 'Checkout Cancelled Before Payment'
+      : statusLower === 'expired'
+      ? 'Checkout Session Expired'
+      : 'Payment Not Completed';
 
     const statusDescription = isPending
-      ? 'We created your order and are waiting for PayMongo to confirm your payment. Digital downloads unlock automatically once verification finishes.'
+      ? 'We created your order and are waiting for PayPal to confirm payment capture. Digital downloads unlock automatically once verification finishes.'
+      : isRefunded
+      ? order.refundReason ||
+        'This order has been refunded via PayPal. Digital wallpaper download access is now locked.'
       : order.failureReason ||
         'Because payment has not been verified for this order, digital wallpaper downloads remain locked.';
 
@@ -214,10 +281,18 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
               className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-sm ${
                 isPending
                   ? 'bg-amber-100 text-amber-800'
+                  : isRefunded
+                  ? 'bg-stone-200 text-stone-700'
                   : 'bg-red-100 text-red-700'
               }`}
             >
-              {isPending ? <Clock className="w-8 h-8" /> : <AlertCircle className="w-8 h-8" />}
+              {isPending ? (
+                <Clock className="w-8 h-8" />
+              ) : isRefunded ? (
+                <RotateCcw className="w-8 h-8" />
+              ) : (
+                <AlertCircle className="w-8 h-8" />
+              )}
             </div>
 
             <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#292929]">
@@ -243,33 +318,45 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
                   {formatOrderMoney(order.total, order.currency)}
                 </span>
               </div>
-              {order.paymongoCheckoutSessionId && (
+              {order.paypalOrderId && (
                 <div className="flex justify-between gap-2">
-                  <span className="text-[#777777] font-medium">PayMongo Session</span>
-                  <span className="font-mono text-[#292929] truncate">{order.paymongoCheckoutSessionId}</span>
+                  <span className="text-[#777777] font-medium">PayPal Order ID</span>
+                  <span className="font-mono text-[#292929] truncate">{order.paypalOrderId}</span>
+                </div>
+              )}
+              {order.paypalRefundId && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-[#777777] font-medium">PayPal Refund ID</span>
+                  <span className="font-mono text-[#292929] truncate">{order.paypalRefundId}</span>
                 </div>
               )}
             </div>
 
             <div className="p-3.5 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8] flex items-center justify-center gap-2 text-xs font-semibold text-[#777777]">
               <Lock className="w-4 h-4 text-[#A64B3C] shrink-0" />
-              <span>Downloads are strictly locked until PayMongo payment verification succeeds.</span>
+              <span>
+                {isRefunded
+                  ? 'Downloads are disabled on refunded orders.'
+                  : 'Downloads are strictly locked until PayPal payment verification succeeds.'}
+              </span>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <button
-                type="button"
-                disabled={verifying}
-                onClick={handleManualVerify}
-                className="px-5 py-3 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-60 cursor-pointer"
-              >
-                <RefreshCw className={`w-4 h-4 ${verifying ? 'animate-spin' : ''}`} />
-                <span>{verifying ? 'Checking PayMongo...' : 'Verify Payment Status'}</span>
-              </button>
+              {!isRefunded && (
+                <button
+                  type="button"
+                  disabled={verifying}
+                  onClick={handleManualVerify}
+                  className="px-5 py-3 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                >
+                  <RefreshCw className={`w-4 h-4 ${verifying ? 'animate-spin' : ''}`} />
+                  <span>{verifying ? 'Checking PayPal...' : 'Verify with PayPal'}</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => navigateTo('checkout')}
-                className="px-5 py-3 bg-[#FFFCF7] hover:bg-[#EADCC8]/40 text-[#292929] border border-[#EADCC8] rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer"
+                className="px-5 py-3 bg-[#FFFCF7] hover:bg-[#EADCC8]/40 text-[#292929] border border-[#EADCC8] rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Return to Checkout</span>
@@ -296,7 +383,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
           </h1>
 
           <p className="text-sm sm:text-base text-[#777777] font-medium">
-            Payment verified via PayMongo. Your digital wallpapers are unlocked for{' '}
+            Payment verified via PayPal. Your digital wallpapers are unlocked for{' '}
             <strong className="text-[#292929] font-bold">{order.customerEmail}</strong>.
           </p>
         </div>
@@ -331,7 +418,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
                 Order {order.orderNumber}
               </h2>
             </div>
-            <span className="text-xs font-semibold text-[#777777]">
+            <span className="text-xs font-semibold text-[#777777] tabular-nums">
               Paid on {new Date(order.paidAt || order.createdAt).toLocaleDateString()}
             </span>
           </div>
@@ -417,16 +504,16 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
                 {billingLocation ? ` (${billingLocation})` : ''}
               </span>
               <span>
-                PayMongo Reference:{' '}
+                PayPal Reference:{' '}
                 <strong className="text-[#292929] font-mono">
-                  {order.paymongoPaymentId || order.transactionId || order.paymongoCheckoutSessionId}
+                  {order.paypalCaptureId || order.paypalOrderId || order.transactionId}
                 </strong>
               </span>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <span>
                 Payment: <strong className="text-[#292929]">{order.paymentMethod}</strong>
-                {order.isTestOrder ? ' · Test Mode' : ''}
+                {order.isTestOrder ? ' · Sandbox' : ''}
               </span>
               <span className="text-xs font-bold text-[#292929]">
                 Total Paid:{' '}
@@ -443,13 +530,13 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <button
             onClick={() => navigateTo('account')}
-            className="w-full sm:w-auto px-6 py-3 bg-[#FFFCF7] hover:bg-[#FCF3E2] text-[#292929] rounded-xl text-xs sm:text-sm font-bold transition-all border border-[#EADCC8] cursor-pointer"
+            className="w-full sm:w-auto px-6 py-3 bg-[#FFFCF7] hover:bg-[#FCF3E2] text-[#292929] rounded-xl text-xs sm:text-sm font-bold transition-all border border-[#EADCC8] cursor-pointer whitespace-nowrap"
           >
             View in My Account
           </button>
           <button
             onClick={() => navigateTo('collections')}
-            className="w-full sm:w-auto px-6 py-3 bg-[#A64B3C] text-[#FFFCF7] rounded-xl text-xs sm:text-sm font-bold hover:bg-[#8E3E30] transition-all cursor-pointer"
+            className="w-full sm:w-auto px-6 py-3 bg-[#A64B3C] text-[#FFFCF7] rounded-xl text-xs sm:text-sm font-bold hover:bg-[#8E3E30] transition-all cursor-pointer whitespace-nowrap"
           >
             Explore More Wallpapers
           </button>
