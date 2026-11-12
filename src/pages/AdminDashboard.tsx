@@ -1933,6 +1933,127 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* Artwork & Product Preview Protection */}
+            <div className="border-t border-[#E8C9C1]/50 pt-6 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B6F7A] flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                    <span>Artwork &amp; Product Preview Protection</span>
+                  </h3>
+                  <p className="text-[11px] text-[#45313D] mt-0.5">
+                    Protect original art on public storefront pages. Purchased downloads are always delivered 100% unwatermarked and lossless.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3">
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <span className="text-xs font-bold text-[#1E1419]">Enable Watermark Overlay</span>
+                    <input
+                      type="checkbox"
+                      checked={settings.artworkProtection?.watermarkEnabled !== false}
+                      onChange={e => setSettings({
+                        ...settings,
+                        artworkProtection: {
+                          watermarkEnabled: e.target.checked,
+                          watermarkOpacity: settings.artworkProtection?.watermarkOpacity ?? 0.22,
+                          watermarkStyle: settings.artworkProtection?.watermarkStyle ?? 'diagonal',
+                          disableContextMenu: settings.artworkProtection?.disableContextMenu !== false,
+                          disableDrag: settings.artworkProtection?.disableDrag !== false,
+                        }
+                      })}
+                      className="accent-[#8B6F7A] w-4 h-4 cursor-pointer"
+                    />
+                  </label>
+                  <p className="text-[11px] text-[#777777]">
+                    Renders an integrated watermark pattern across all catalog and mockup preview images.
+                  </p>
+
+                  <div className="pt-2 border-t border-[#E8C9C1]/40 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#1E1419]">Watermark Opacity</span>
+                      <span className="font-mono text-[#8B6F7A]">
+                        {Math.round((settings.artworkProtection?.watermarkOpacity ?? 0.22) * 100)}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.10"
+                      max="0.45"
+                      step="0.05"
+                      value={settings.artworkProtection?.watermarkOpacity ?? 0.22}
+                      onChange={e => setSettings({
+                        ...settings,
+                        artworkProtection: {
+                          watermarkEnabled: settings.artworkProtection?.watermarkEnabled !== false,
+                          watermarkOpacity: parseFloat(e.target.value),
+                          watermarkStyle: settings.artworkProtection?.watermarkStyle ?? 'diagonal',
+                          disableContextMenu: settings.artworkProtection?.disableContextMenu !== false,
+                          disableDrag: settings.artworkProtection?.disableDrag !== false,
+                        }
+                      })}
+                      className="w-full accent-[#8B6F7A]"
+                    />
+                    <div className="flex justify-between text-[10px] text-[#777777]">
+                      <span>Subtle (10%)</span>
+                      <span>Balanced (22%)</span>
+                      <span>Prominent (45%)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[#1E1419] mb-1">
+                      Watermark Pattern Style
+                    </label>
+                    <select
+                      value={settings.artworkProtection?.watermarkStyle ?? 'diagonal'}
+                      onChange={e => setSettings({
+                        ...settings,
+                        artworkProtection: {
+                          watermarkEnabled: settings.artworkProtection?.watermarkEnabled !== false,
+                          watermarkOpacity: settings.artworkProtection?.watermarkOpacity ?? 0.22,
+                          watermarkStyle: e.target.value as 'diagonal' | 'center' | 'corner',
+                          disableContextMenu: settings.artworkProtection?.disableContextMenu !== false,
+                          disableDrag: settings.artworkProtection?.disableDrag !== false,
+                        }
+                      })}
+                      className="w-full px-3 py-2 text-xs bg-[#F9F6F0] border border-[#E8C9C1] rounded-xl text-[#1E1419]"
+                    >
+                      <option value="diagonal">Repeating Diagonal Grid (Recommended)</option>
+                      <option value="center">Centered Studio Emblem</option>
+                      <option value="corner">Subtle Corner Badge</option>
+                    </select>
+                  </div>
+
+                  <label className="flex items-center justify-between cursor-pointer pt-2 border-t border-[#E8C9C1]/40">
+                    <span className="text-xs font-bold text-[#1E1419]">Deterrence Layer (Anti-Save)</span>
+                    <input
+                      type="checkbox"
+                      checked={settings.artworkProtection?.disableContextMenu !== false}
+                      onChange={e => setSettings({
+                        ...settings,
+                        artworkProtection: {
+                          watermarkEnabled: settings.artworkProtection?.watermarkEnabled !== false,
+                          watermarkOpacity: settings.artworkProtection?.watermarkOpacity ?? 0.22,
+                          watermarkStyle: settings.artworkProtection?.watermarkStyle ?? 'diagonal',
+                          disableContextMenu: e.target.checked,
+                          disableDrag: e.target.checked,
+                        }
+                      })}
+                      className="accent-[#8B6F7A] w-4 h-4 cursor-pointer"
+                    />
+                  </label>
+                  <p className="text-[11px] text-[#777777]">
+                    Disables browser right-click context menu and drag-to-desktop on previews, showing a polite notification.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Editable Return & Refund Policy */}
             <div className="border-t border-[#E8C9C1]/50 pt-6 space-y-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B6F7A]">

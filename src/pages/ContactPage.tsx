@@ -6,6 +6,11 @@ import {
   AlertCircle,
   Loader2,
   ShieldCheck,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { supabase } from '../lib/supabase.ts';
@@ -47,6 +52,7 @@ export const ContactPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [submittedState, setSubmittedState] = useState<SubmissionSuccessState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0); // first FAQ open by default
 
   const isSubmittingRef = useRef(false);
   const submissionIdRef = useRef<string>(createSubmissionUuid());
@@ -389,15 +395,143 @@ export const ContactPage: React.FC = () => {
 
         </div>
 
-        {/* Direct Email note */}
-        <div className="mt-8 text-center text-xs text-[#777777] font-medium">
-          Prefer standard email? You can also write directly to{' '}
-          <a
-            href={`mailto:${targetEmail}`}
-            className="font-bold underline text-[#A64B3C] hover:text-[#8E3E30]"
-          >
-            {targetEmail}
-          </a>
+        {/* Customer Support Information Cards */}
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-[#FCF3E2] border border-[#EADCC8] rounded-2xl p-5 text-left">
+            <div className="w-10 h-10 rounded-xl bg-[#A64B3C]/10 text-[#A64B3C] flex items-center justify-center mb-3">
+              <Mail className="w-5 h-5" />
+            </div>
+            <h3 className="font-heading font-bold text-sm text-[#292929] mb-1">
+              Direct Support Emails
+            </h3>
+            <p className="text-xs text-[#777777] mb-3">
+              Need immediate help or prefer writing from your personal mailbox?
+            </p>
+            <div className="space-y-1 text-xs">
+              <div>
+                <a
+                  href="mailto:sleepyshroom@gmail.com"
+                  className="font-bold text-[#A64B3C] hover:underline"
+                >
+                  sleepyshroom@gmail.com
+                </a>
+              </div>
+              <div>
+                <a
+                  href="mailto:shop.sleepyshroom@gmail.com"
+                  className="text-[#777777] hover:underline"
+                >
+                  shop.sleepyshroom@gmail.com
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#FCF3E2] border border-[#EADCC8] rounded-2xl p-5 text-left">
+            <div className="w-10 h-10 rounded-xl bg-amber-600/10 text-amber-700 flex items-center justify-center mb-3">
+              <Clock className="w-5 h-5" />
+            </div>
+            <h3 className="font-heading font-bold text-sm text-[#292929] mb-1">
+              Response Guarantee
+            </h3>
+            <p className="text-xs text-[#777777] mb-2">
+              Sleepyshroom is managed by an independent digital artist. All inquiries are personally read and answered within <strong>12 to 24 hours</strong>.
+            </p>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+              <Sparkles className="w-3 h-3" /> 7 Days a Week Support
+            </span>
+          </div>
+
+          <div className="bg-[#FCF3E2] border border-[#EADCC8] rounded-2xl p-5 text-left">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600/10 text-emerald-700 flex items-center justify-center mb-3">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <h3 className="font-heading font-bold text-sm text-[#292929] mb-1">
+              Purchase & File Assistance
+            </h3>
+            <p className="text-xs text-[#777777]">
+              Lost your download link? Need custom crop dimensions for an uncommon display? Simply include your PayPal email or Order ID when contacting us.
+            </p>
+          </div>
+        </div>
+
+        {/* Frequently Asked Questions Section */}
+        <div className="mt-16 pt-12 border-t border-[#EADCC8]">
+          <div className="text-center max-w-xl mx-auto mb-8 space-y-2">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FCF3E2] border border-[#EADCC8] text-xs font-bold text-[#A64B3C]">
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>Customer Help & Answers</span>
+            </div>
+            <h2 className="font-heading font-bold text-2xl sm:text-3xl text-[#292929]">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-xs sm:text-sm text-[#777777]">
+              Everything you need to know about purchasing, digital delivery, formats, and licensing.
+            </p>
+          </div>
+
+          <div className="space-y-3 max-w-3xl mx-auto">
+            {[
+              {
+                q: 'How do I purchase a product?',
+                a: 'Browse our collection, add your favorite wallpapers or bundles to your cart, and proceed to checkout. We use PayPal Checkout exclusively, allowing you to pay safely with your PayPal balance, credit card, or debit card. No account sign-up is required to purchase.'
+              },
+              {
+                q: 'How will I receive my digital files?',
+                a: 'Immediately upon successful payment, your order confirmation screen will generate your secure, instant download links. You will also receive an automated order confirmation email containing your permanent receipt and download tokens so you can access your art anytime.'
+              },
+              {
+                q: 'Are the products physical or digital?',
+                a: 'All items in Sleepyshroom are 100% digital downloads. No physical print, parcel, or poster will be shipped through the mail. This ensures instant global delivery without shipping fees, customs duties, or waiting periods.'
+              },
+              {
+                q: 'Which devices are supported?',
+                a: 'Our artwork is crafted in ultra-high resolution (up to 6K 6016×3384 for ultra-wide monitors and desktops, and calibrated 1290×2796 for mobile and tablet devices). They fit all modern displays including Apple iPhone, iPad, MacBooks, iMacs, Samsung Galaxy, Google Pixel, Windows desktop monitors, and Android tablets.'
+              },
+              {
+                q: 'Can I download my purchases again?',
+                a: 'Yes! Your download tokens remain active and tied to your order record. If you created a customer account during checkout, you can log in anytime to view your complete digital library under your Account dashboard. If you checked out as a guest, simply email sleepyshroom@gmail.com with your order details and we will regenerate your files.'
+              },
+              {
+                q: 'Can I use the wallpapers commercially?',
+                a: 'No. All Sleepyshroom illustrations and stationery assets are strictly for personal, non-commercial use on your personal devices. Redistribution, reselling, sublicensing, minting as NFTs, altering for commercial resale, or uploading to print-on-demand services is strictly prohibited under international copyright law.'
+              },
+              {
+                q: 'What should I do if my download link expires or fails?',
+                a: 'If a network interruption halts your download or an expired session occurs, simply send a brief note to sleepyshroom@gmail.com or shop.sleepyshroom@gmail.com with your PayPal email or Order ID. We will promptly issue fresh download access and direct file mirrors within 12–24 hours.'
+              }
+            ].map((faq, index) => {
+              const isOpen = openFaqIndex === index;
+              return (
+                <div
+                  key={index}
+                  className="bg-[#FCF3E2] border border-[#EADCC8] rounded-2xl overflow-hidden transition-colors"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaqIndex(isOpen ? null : index)}
+                    className="w-full px-5 py-4 flex items-center justify-between text-left gap-4 hover:bg-[#F5E8D0] transition-colors cursor-pointer"
+                  >
+                    <span className="font-heading font-bold text-sm sm:text-base text-[#292929]">
+                      {faq.q}
+                    </span>
+                    <span className="text-[#A64B3C] shrink-0">
+                      {isOpen ? (
+                        <ChevronUp className="w-5 h-5" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5" />
+                      )}
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-[#555555] leading-relaxed border-t border-[#EADCC8]/60">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
       </div>

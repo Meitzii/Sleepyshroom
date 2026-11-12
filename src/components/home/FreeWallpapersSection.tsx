@@ -32,7 +32,7 @@ export const FreeWallpapersSection: React.FC = () => {
               Complimentary Cozy Freebies
             </h2>
             <p className="mt-2 text-sm text-[#777777] font-medium leading-relaxed">
-              Find a little happiness for your screens right away! Download these two hand-crafted wallpapers completely free — instant download, no credit card, and fully customizable via the admin panel.
+              Find a little happiness for your screens right away! Enjoy these two hand-crafted wallpapers completely free — instant 1-click download with no checkout required, ready for your phone, tablet, and desktop.
             </p>
 
             {/* Quick reassurance perks */}

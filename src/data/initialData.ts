@@ -28,6 +28,13 @@ export const initialSettings: WebsiteSettings = {
     "twitter": "https://twitter.com/sleepyshroom",
     "pinterest": "https://pinterest.com/sleepyshroom"
   },
+  "artworkProtection": {
+    "watermarkEnabled": true,
+    "watermarkOpacity": 0.22,
+    "watermarkStyle": "diagonal",
+    "disableContextMenu": true,
+    "disableDrag": true
+  },
   "aboutMe": {
     "heading": "Hello, welcome to my little corner!",
     "introduction": "Hi! I'm the person behind sleepyshroom. I created this little shop to share cozy, dreamy, and lovely designs that make everyday screens feel a little more special.",

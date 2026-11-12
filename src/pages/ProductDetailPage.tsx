@@ -11,10 +11,14 @@ import {
   ChevronRight, 
   ArrowLeft,
   FileCheck,
-  Layers
+  Layers,
+  Lock,
+  HelpCircle,
+  FileText
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { ProductCard } from '../components/common/ProductCard.tsx';
+import { ProtectedArtworkPreview } from '../components/common/ProtectedArtworkPreview.tsx';
 
 interface ProductDetailPageProps {
   slug: string;
@@ -70,6 +74,31 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
 
   return (
     <div className="py-8 sm:py-12 bg-[#FFFCF7]">
+      {/* Schema.org Product Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: product.title,
+            description: product.description,
+            image: product.images.map(img =>
+              img.startsWith('http') ? img : `https://sleepyshroom.vercel.app${img}`
+            ),
+            offers: {
+              '@type': 'Offer',
+              price: product.price,
+              priceCurrency: 'USD',
+              availability: 'https://schema.org/InStock',
+              seller: {
+                '@type': 'Organization',
+                name: 'sleepyshroom',
+              },
+            },
+          }),
+        }}
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Breadcrumb Navigation */}
@@ -148,13 +177,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 /* Desktop Monitor Frame */
                 <div className="w-full max-w-2xl bg-[#292929] rounded-2xl p-2.5 sm:p-3.5 shadow-2xl border-2 border-[#EADCC8]/40 flex flex-col items-center">
                   <div className="w-full aspect-16/10 rounded-lg overflow-hidden bg-black relative">
-                    <img
+                    <ProtectedArtworkPreview
                       src={activeImage}
                       alt={product.title}
+                      watermarkOpacity={0.24}
+                      showWatermark={true}
                       className="w-full h-full object-cover"
                     />
                     {/* Simulated macOS / Desktop Menu Bar */}
-                    <div className="absolute top-0 inset-x-0 h-4 bg-black/40 backdrop-blur-xs flex items-center justify-between px-3 text-[9px] text-white/90">
+                    <div className="absolute top-0 inset-x-0 h-4 bg-black/40 backdrop-blur-xs flex items-center justify-between px-3 text-[9px] text-white/90 z-20 pointer-events-none">
                       <span>10:42 AM</span>
                       <span>100% 🔋</span>
                     </div>
@@ -169,18 +200,20 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 /* Phone Frame */
                 <div className="w-64 sm:w-72 aspect-9/18 bg-[#292929] rounded-[40px] p-2.5 shadow-2xl border-4 border-[#EADCC8]/50 relative flex flex-col">
                   {/* Speaker Notch */}
-                  <div className="absolute top-4 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-10 flex items-center justify-end pr-2">
+                  <div className="absolute top-4 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-20 flex items-center justify-end pr-2 pointer-events-none">
                     <div className="w-2 h-2 rounded-full bg-slate-900 border border-slate-800" />
                   </div>
                   {/* Screen Content */}
                   <div className="w-full h-full rounded-[30px] overflow-hidden relative">
-                    <img
+                    <ProtectedArtworkPreview
                       src={activeImage}
                       alt={product.title}
+                      watermarkOpacity={0.24}
+                      showWatermark={true}
                       className="w-full h-full object-cover"
                     />
                     {/* Simulated iOS Clock */}
-                    <div className="absolute top-12 inset-x-0 text-center text-white text-shadow drop-shadow-md">
+                    <div className="absolute top-12 inset-x-0 text-center text-white text-shadow drop-shadow-md z-20 pointer-events-none">
                       <p className="text-xs font-medium tracking-wide">Friday, November 6</p>
                       <p className="font-heading font-bold text-4xl mt-0.5 tracking-tight">09:41</p>
                     </div>
@@ -192,12 +225,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 /* Tablet Frame */
                 <div className="w-80 sm:w-96 aspect-4/3 bg-[#292929] rounded-3xl p-3 shadow-2xl border-4 border-[#EADCC8]/40 flex flex-col">
                   <div className="w-full h-full rounded-2xl overflow-hidden relative">
-                    <img
+                    <ProtectedArtworkPreview
                       src={activeImage}
                       alt={product.title}
+                      watermarkOpacity={0.24}
+                      showWatermark={true}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute top-2 right-4 text-[10px] text-white/90 font-medium">
+                    <div className="absolute top-2 right-4 text-[10px] text-white/90 font-medium z-20 pointer-events-none">
                       9:41 AM · 100%
                     </div>
                   </div>
@@ -219,7 +254,12 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                         : 'border-[#EADCC8] opacity-70 hover:opacity-100'
                     }`}
                   >
-                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    <ProtectedArtworkPreview
+                      src={img}
+                      alt={`${product.title} view ${idx + 1}`}
+                      showWatermark={false}
+                      className="w-full h-full object-cover"
+                    />
                   </button>
                 ))}
               </div>
@@ -368,21 +408,28 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8]">
-                    <p className="text-[#777777] font-bold">Device Types</p>
+                    <p className="text-[#777777] font-bold">Device Compatibility</p>
                     <p className="font-bold text-[#292929] mt-0.5 capitalize">
                       {product.deviceTypes.join(', ')}
                     </p>
                   </div>
                   <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8]">
-                    <p className="text-[#777777] font-bold">Archive Size</p>
+                    <p className="text-[#777777] font-bold">Archive Package Size</p>
                     <p className="font-bold text-[#292929] mt-0.5">
                       {product.fileSize}
                     </p>
                   </div>
                 </div>
 
+                <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs space-y-1">
+                  <p className="text-[#777777] font-bold">Included File Formats</p>
+                  <p className="font-bold text-[#292929] text-xs">
+                    Lossless 300 DPI PNG, High-Resolution JPEG, &amp; Uncompressed ZIP Archives
+                  </p>
+                </div>
+
                 <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs">
-                  <p className="text-[#777777] font-bold">Available Resolutions</p>
+                  <p className="text-[#777777] font-bold">Calibrated Resolutions</p>
                   <ul className="mt-1 space-y-0.5">
                     {product.resolutions.map((res, i) => (
                       <li key={i} className="font-bold text-[#292929] flex items-center gap-1.5">
@@ -394,7 +441,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 </div>
 
                 <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs">
-                  <p className="text-[#777777] font-bold">What's Included</p>
+                  <p className="text-[#777777] font-bold">What's In The Package</p>
                   <ul className="mt-1 space-y-1">
                     {product.whatsIncluded.map((inc, i) => (
                       <li key={i} className="text-[#292929] font-medium flex items-start gap-1.5">
@@ -405,12 +452,34 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                   </ul>
                 </div>
 
+                {/* Personal-Use License Notice */}
+                <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-[#292929]">
+                    <Lock className="w-3.5 h-3.5 text-[#A64B3C]" />
+                    <span>Personal Use Licensing</span>
+                  </div>
+                  <p className="text-[#777777] font-medium leading-relaxed text-[11px]">
+                    Licensed for unlimited personal use across all your computers, phones, and tablets. Reselling, sublicensing, commercial sharing, or unauthorized redistribution is strictly prohibited under copyright.
+                  </p>
+                </div>
+
+                {/* Instant Delivery Guarantee */}
+                <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-[#292929]">
+                    <HelpCircle className="w-3.5 h-3.5 text-[#A64B3C]" />
+                    <span>Instant Digital Delivery</span>
+                  </div>
+                  <p className="text-[#777777] font-medium leading-relaxed text-[11px]">
+                    Downloads unlock instantly on your confirmation page upon payment capture. You also receive an automated email receipt with a lifetime access link.
+                  </p>
+                </div>
+
               </div>
 
               {/* Guarantees */}
               <div className="border-t border-[#EADCC8] pt-4 flex items-center gap-2 text-xs text-[#292929] font-bold">
                 <ShieldCheck className="w-4 h-4 text-[#A64B3C]" />
-                <span>300 DPI Lossless Quality & Permanent Account Access</span>
+                <span>Lossless 300 DPI Original Artwork &amp; 14-Day Duplicate Protection</span>
               </div>
 
             </div>

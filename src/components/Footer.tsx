@@ -137,10 +137,34 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2 text-xs text-[#777777] font-semibold">
               <li>
                 <button
-                  onClick={() => navigateTo('policy')}
+                  onClick={() => navigateTo('policy', 'refund')}
                   className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
                 >
-                  Return & Refund Policy (Digital Goods)
+                  Digital Product Refund Policy
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => navigateTo('policy', 'privacy')}
+                  className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
+                >
+                  Privacy Policy & Data Security
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => navigateTo('policy', 'terms')}
+                  className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
+                >
+                  Terms of Service
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => navigateTo('policy', 'copyright')}
+                  className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
+                >
+                  Copyright &amp; Personal License
                 </button>
               </li>
               <li>
@@ -148,7 +172,7 @@ export const Footer: React.FC = () => {
                   onClick={() => navigateTo('about')}
                   className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
                 >
-                  About Me & Story
+                  About Sleepyshroom Studio
                 </button>
               </li>
               <li>
@@ -156,15 +180,7 @@ export const Footer: React.FC = () => {
                   onClick={() => navigateTo('contact')}
                   className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
                 >
-                  Contact Support
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => navigateTo('policy')}
-                  className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
-                >
-                  Terms & Conditions
+                  Contact &amp; FAQ
                 </button>
               </li>
             </ul>

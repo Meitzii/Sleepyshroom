@@ -1,0 +1,9 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Disallow: /api/admin/
+Disallow: /admin
+
+# Host and Sitemap
+Host: https://sleepyshroom.vercel.app
+Sitemap: https://sleepyshroom.vercel.app/sitemap.xml

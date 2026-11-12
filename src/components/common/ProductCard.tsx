@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Eye, ShoppingBag, Check, Sparkles, Download, Gift } from 'lucide-react';
 import { useShop } from '../../context/ShopContext.tsx';
 import type { Product } from '../../types/index.ts';
+import { ProtectedArtworkPreview } from './ProtectedArtworkPreview.tsx';
 
 interface ProductCardProps {
   product: Product;
@@ -46,24 +47,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         isFree ? 'border-[#A64B3C]/50 ring-2 ring-[#A64B3C]/20' : 'border-[#EADCC8]'
       }`}
     >
-      {/* =========================================================================
-       * 🖼️ [WALLPAPER DISPLAY IMAGE]
-       * This <img> tag renders the wallpaper preview on the website.
-       * The image source comes from `product.images[0]`.
-       * To change which image displays here:
-       *   -> Edit `data/store.json` (search for the wallpaper title, change `images[0]`)
-       *   -> OR edit in Admin Dashboard at /admin -> Products -> Edit Product -> Image URL
-       * ========================================================================= */}
       <div 
         className={`relative w-full overflow-hidden bg-[#EADCC8]/30 ${
           isPortrait ? 'aspect-9/14 sm:aspect-9/14' : 'aspect-16/10'
         }`}
       >
-        <img
+        <ProtectedArtworkPreview
           src={product.images[0]}
           alt={product.title}
+          watermarkOpacity={0.2}
+          showWatermark={true}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-104"
-          loading="lazy"
         />
 
         {/* Subtle hover gradient */}

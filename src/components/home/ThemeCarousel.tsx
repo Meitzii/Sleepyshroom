@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, TouchEvent } from 'react';
 import { ChevronLeft, ChevronRight, ArrowRight, ImagePlus, Sparkles } from 'lucide-react';
 import { useShop } from '../../context/ShopContext.tsx';
 import type { CarouselSlide } from '../../types/index.ts';
+import { ProtectedArtworkPreview } from '../common/ProtectedArtworkPreview.tsx';
 
 export const ThemeCarousel: React.FC = () => {
   const { carouselSlides, navigateTo } = useShop();
@@ -115,29 +116,26 @@ export const ThemeCarousel: React.FC = () => {
           <div className="bg-[#FCF3E2] rounded-3xl border border-[#EADCC8] shadow-md overflow-hidden transition-all duration-300">
             <div className="grid grid-cols-1 md:grid-cols-12 items-center">
               
-              {/* Slide Image / Placeholder Container */}
+              {/* Slide Image / Protected Artwork Container */}
               <div className="md:col-span-7 relative aspect-16/10 bg-[#EADCC8]/30 overflow-hidden">
                 {currentSlide.imageUrl ? (
-                  <img
+                  <ProtectedArtworkPreview
                     src={currentSlide.imageUrl}
                     alt={currentSlide.themeTitle}
+                    watermarkOpacity={0.22}
+                    showWatermark={true}
                     className="w-full h-full object-cover transition-transform duration-700 hover:scale-103"
-                    onError={(e) => {
-                      // Fallback if image fails
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
                   />
                 ) : (
-                  /* Editable Image Placeholder as requested */
-                  <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-[#FFFCF7] border-2 border-dashed border-[#A64B3C]/30">
+                  <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-[#FFFCF7] border border-[#EADCC8]">
                     <div className="w-14 h-14 rounded-full bg-[#FCF3E2] flex items-center justify-center text-[#A64B3C] mb-3 border border-[#EADCC8]">
-                      <ImagePlus className="w-7 h-7" />
+                      <Sparkles className="w-7 h-7" />
                     </div>
                     <p className="text-sm font-bold text-[#292929]">
-                      Upload your theme image here
+                      Cozy Collection Preview
                     </p>
                     <p className="text-xs text-[#777777] mt-1 max-w-xs font-medium">
-                      Customize this slide through the Admin Dashboard &gt; Carousel Management.
+                      New handcrafted wallpapers and seasonal themes arriving soon!
                     </p>
                   </div>
                 )}

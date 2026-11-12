@@ -88,6 +88,13 @@ export interface WebsiteSettings {
     twitter: string;
     pinterest: string;
   };
+  artworkProtection?: {
+    watermarkEnabled: boolean;
+    watermarkOpacity: number;
+    watermarkStyle: 'diagonal' | 'center' | 'corner';
+    disableContextMenu: boolean;
+    disableDrag: boolean;
+  };
   aboutMe: {
     heading: string;
     introduction: string;
