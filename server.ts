@@ -20,12 +20,18 @@ import type {
 import {
   verifyAdminRequest,
   resolveSupabaseServerConfig,
+  extractBearerToken,
   handleContactSubmission,
   handleAdminListMessages,
   handleAdminUpdateMessageStatus,
   handleAdminDeleteMessage,
   handleAdminReplyMessage,
 } from './lib/contact-service.js';
+import {
+  fetchSupabaseSettings,
+  upsertSupabaseSettings,
+  mergeWithDefaultSettings,
+} from './lib/settings-service.js';
 import {
   handleGetPaymentConfig,
   handleDiscountValidation,
@@ -741,20 +747,28 @@ app.use('/src/assets/images', express.static(path.join(__dirname, 'public', 'src
 // API ROUTES
 
 // 1. Settings & Content
-app.get('/api/content', (_req: Request, res: Response) => {
+app.get('/api/content', async (_req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   const store = readStore();
+  const supaSettings = await fetchSupabaseSettings();
+  const effectiveSettings = supaSettings
+    ? (mergeWithDefaultSettings(supaSettings, store.settings) as WebsiteSettings)
+    : store.settings;
   res.json({
-    settings: store.settings,
+    settings: effectiveSettings,
     carouselSlides: store.carouselSlides.filter(s => s.status === 'published' && s.visible).sort((a, b) => a.order - b.order),
   });
 });
 
-app.get('/api/admin/content', (_req: Request, res: Response) => {
+app.get('/api/admin/content', async (_req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   const store = readStore();
+  const supaSettings = await fetchSupabaseSettings();
+  const effectiveSettings = supaSettings
+    ? (mergeWithDefaultSettings(supaSettings, store.settings) as WebsiteSettings)
+    : store.settings;
   res.json({
-    settings: store.settings,
+    settings: effectiveSettings,
     carouselSlides: store.carouselSlides.sort((a, b) => a.order - b.order),
   });
 });
@@ -800,6 +814,20 @@ app.put('/api/admin/settings', async (req: Request, res: Response) => {
   };
   store.settings = nextSettings;
   saveStore(store);
+
+  const cfg = resolveSupabaseServerConfig();
+  const bearer = extractBearerToken(req);
+  await upsertSupabaseSettings(
+    nextSettings,
+    cfg.configured
+      ? {
+          cfg,
+          restApiKey: cfg.serviceRoleKey || cfg.anonKey,
+          restAuthToken: cfg.serviceRoleKey || bearer || cfg.anonKey,
+        }
+      : null
+  );
+
   res.json({ success: true, settings: store.settings });
 });
 
