@@ -24,8 +24,10 @@ export const initialSettings: WebsiteSettings = {
     "testMode": false
   },
   "socialMedia": {
-    "pinterest": { "enabled": false, "url": "" },
-    "instagram": { "enabled": false, "url": "" },
+    "pinterest": { "enabled": true, "url": "https://ph.pinterest.com/FreecafeDecals/" },
+    "instagram": { "enabled": true, "url": "https://www.instagram.com/meitzii.art" },
+    "linktree": { "enabled": true, "url": "https://linktr.ee/Cheumeitzii" },
+    "kofi": { "enabled": true, "url": "https://ko-fi.com/cheumeitzii" },
     "tiktok": { "enabled": false, "url": "" },
     "facebook": { "enabled": false, "url": "" }
   },

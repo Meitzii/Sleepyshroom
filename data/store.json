@@ -24,12 +24,20 @@
     },
     "socialMedia": {
       "pinterest": {
-        "enabled": false,
-        "url": ""
+        "enabled": true,
+        "url": "https://ph.pinterest.com/FreecafeDecals/"
       },
       "instagram": {
-        "enabled": false,
-        "url": ""
+        "enabled": true,
+        "url": "https://www.instagram.com/meitzii.art"
+      },
+      "linktree": {
+        "enabled": true,
+        "url": "https://linktr.ee/Cheumeitzii"
+      },
+      "kofi": {
+        "enabled": true,
+        "url": "https://ko-fi.com/cheumeitzii"
       },
       "tiktok": {
         "enabled": false,

@@ -112,7 +112,13 @@ export interface LegalPageContent {
   ownerReviewRequiredNotice?: string;
 }
 
-export type SocialPlatformKey = 'pinterest' | 'instagram' | 'tiktok' | 'facebook';
+export type SocialPlatformKey =
+  | 'pinterest'
+  | 'instagram'
+  | 'linktree'
+  | 'kofi'
+  | 'tiktok'
+  | 'facebook';
 
 export interface SocialMediaLinkConfig {
   enabled: boolean;

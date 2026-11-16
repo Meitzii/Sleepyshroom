@@ -23,6 +23,16 @@ export const SOCIAL_PLATFORMS_META: SocialPlatformMeta[] = [
     placeholder: 'https://www.instagram.com/yourhandle',
   },
   {
+    key: 'linktree',
+    label: 'Linktree',
+    placeholder: 'https://linktr.ee/yourhandle',
+  },
+  {
+    key: 'kofi',
+    label: 'Ko-fi',
+    placeholder: 'https://ko-fi.com/yourhandle',
+  },
+  {
     key: 'tiktok',
     label: 'TikTok',
     placeholder: 'https://www.tiktok.com/@yourhandle',
@@ -38,6 +48,8 @@ export function createDefaultSocialMediaSettings(): SocialMediaSettings {
   return {
     pinterest: { enabled: false, url: '' },
     instagram: { enabled: false, url: '' },
+    linktree: { enabled: false, url: '' },
+    kofi: { enabled: false, url: '' },
     tiktok: { enabled: false, url: '' },
     facebook: { enabled: false, url: '' },
   };

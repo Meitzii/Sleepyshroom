@@ -354,8 +354,42 @@ export const FacebookIcon: React.FC<{ className?: string; size?: number }> = ({
   </svg>
 );
 
+export const LinktreeIcon: React.FC<{ className?: string; size?: number }> = ({
+  className = '',
+  size = 18,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 ${className}`}
+    aria-hidden="true"
+  >
+    <path d="m13.736 5.853 4.005-4.117 2.325 2.38-4.2 4.005h5.908v3.305h-5.937l4.229 4.108-2.325 2.334-5.741-5.769-5.741 5.769-2.325-2.325 4.229-4.108H2.226V8.121h5.909l-4.2-4.004 2.324-2.381 4.005 4.117V0h3.472zm-3.472 10.306h3.472V24h-3.472z" />
+  </svg>
+);
+
+export const KofiIcon: React.FC<{ className?: string; size?: number }> = ({
+  className = '',
+  size = 18,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 ${className}`}
+    aria-hidden="true"
+  >
+    <path d="M23.881 8.948c-.773-4.085-4.859-4.593-4.859-4.593H.723c-.604 0-.679.798-.679.798s-.082 7.324-.022 11.822c.164 2.424 2.586 2.672 2.586 2.672s8.267-.023 11.966-.049c2.438-.426 2.683-2.566 2.658-3.734 4.352.24 7.422-2.831 6.649-6.916zm-11.062 3.511c-1.246 1.453-4.011 3.976-4.011 3.976s-.121.119-.31.023c-.076-.057-.108-.09-.108-.09-.443-.441-3.368-3.049-4.034-3.954-.709-.965-1.041-2.7-.091-3.71.951-1.01 3.005-1.086 4.363.407 0 0 1.565-1.782 3.468-.963 1.904.82 1.832 3.011.723 4.311zm6.173.478c-.928.116-1.682.028-1.682.028V7.284h1.77s1.971.551 1.971 2.638c0 1.913-.985 2.667-2.059 3.015z" />
+  </svg>
+);
+
 export const SocialPlatformIcon: React.FC<{
-  platform: 'pinterest' | 'instagram' | 'tiktok' | 'facebook';
+  platform: 'pinterest' | 'instagram' | 'linktree' | 'kofi' | 'tiktok' | 'facebook';
   className?: string;
   size?: number;
 }> = ({ platform, className = '', size = 18 }) => {
@@ -364,6 +398,10 @@ export const SocialPlatformIcon: React.FC<{
       return <PinterestIcon size={size} className={className} />;
     case 'instagram':
       return <InstagramIcon size={size} className={className} />;
+    case 'linktree':
+      return <LinktreeIcon size={size} className={className} />;
+    case 'kofi':
+      return <KofiIcon size={size} className={className} />;
     case 'tiktok':
       return <TikTokIcon size={size} className={className} />;
     case 'facebook':

@@ -174,8 +174,10 @@ const defaultStore: AppStore = {
       testMode: true,
     },
     socialMedia: {
-      pinterest: { enabled: false, url: '' },
-      instagram: { enabled: false, url: '' },
+      pinterest: { enabled: true, url: 'https://ph.pinterest.com/FreecafeDecals/' },
+      instagram: { enabled: true, url: 'https://www.instagram.com/meitzii.art' },
+      linktree: { enabled: true, url: 'https://linktr.ee/Cheumeitzii' },
+      kofi: { enabled: true, url: 'https://ko-fi.com/cheumeitzii' },
       tiktok: { enabled: false, url: '' },
       facebook: { enabled: false, url: '' },
     },
@@ -643,14 +645,18 @@ function isValidSocialHttpUrl(rawUrl: string): boolean {
 function sanitizeSocialMedia(raw: any): {
   pinterest: { enabled: boolean; url: string };
   instagram: { enabled: boolean; url: string };
+  linktree: { enabled: boolean; url: string };
+  kofi: { enabled: boolean; url: string };
   tiktok: { enabled: boolean; url: string };
   facebook: { enabled: boolean; url: string };
 } {
   const src = raw && typeof raw === 'object' ? raw : {};
-  const keys = ['pinterest', 'instagram', 'tiktok', 'facebook'] as const;
+  const keys = ['pinterest', 'instagram', 'linktree', 'kofi', 'tiktok', 'facebook'] as const;
   const result = {
     pinterest: { enabled: false, url: '' },
     instagram: { enabled: false, url: '' },
+    linktree: { enabled: false, url: '' },
+    kofi: { enabled: false, url: '' },
     tiktok: { enabled: false, url: '' },
     facebook: { enabled: false, url: '' },
   };
@@ -757,14 +763,21 @@ app.put('/api/admin/settings', async (req: Request, res: Response) => {
   const body = req.body && typeof req.body === 'object' ? req.body : {};
 
   if (body.socialMedia && typeof body.socialMedia === 'object') {
-    const socialKeys = ['pinterest', 'instagram', 'tiktok', 'facebook'] as const;
-    for (const key of socialKeys) {
+    const socialLabels: Record<string, string> = {
+      pinterest: 'Pinterest',
+      instagram: 'Instagram',
+      linktree: 'Linktree',
+      kofi: 'Ko-fi',
+      tiktok: 'TikTok',
+      facebook: 'Facebook',
+    };
+    for (const [key, label] of Object.entries(socialLabels)) {
       const rawEntry = body.socialMedia[key];
       if (rawEntry && typeof rawEntry === 'object' && typeof rawEntry.url === 'string') {
         const trimmedUrl = rawEntry.url.trim();
         if (trimmedUrl && !isValidSocialHttpUrl(trimmedUrl)) {
           return res.status(400).json({
-            error: `Please enter a valid http:// or https:// URL for ${key.charAt(0).toUpperCase() + key.slice(1)}.`,
+            error: `Please enter a valid http:// or https:// URL for ${label}.`,
           });
         }
       }
