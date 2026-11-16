@@ -124,6 +124,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
           >
             About Me
           </button>
+          <button
+            onClick={() => navigateTo('faq')}
+            className="hover:text-[#A64B3C] transition-colors py-1 border-b-2 border-transparent hover:border-[#A64B3C] cursor-pointer"
+          >
+            FAQ
+          </button>
         </nav>
 
         {/* Right: Search + Account + Cart + Admin trigger */}

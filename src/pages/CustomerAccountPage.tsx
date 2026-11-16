@@ -663,41 +663,111 @@ export const CustomerAccountPage: React.FC = () => {
                   .map(item => {
                     const key = `${item.order.downloadToken}:${item.productId}`;
                     const isDownloading = downloadingKey === key;
+                    const catalogProduct = products.find(p => p.id === item.productId);
+                    const childIds = Array.isArray(item.bundleProductIds) && item.bundleProductIds.length > 0
+                      ? item.bundleProductIds
+                      : Array.isArray(catalogProduct?.bundleProductIds)
+                        ? catalogProduct.bundleProductIds
+                        : [];
+                    const childProducts = childIds
+                      .map(cid => products.find(p => p.id === cid))
+                      .filter((p): p is NonNullable<typeof p> => Boolean(p));
+
                     return (
                       <div
                         key={key}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8]"
+                        className="p-4 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] space-y-3"
                       >
-                        <div className="flex items-center gap-4">
-                          <img
-                            src={item.image}
-                            alt={item.title}
-                            className="w-16 h-16 object-cover rounded-xl shrink-0 border border-[#EADCC8]"
-                          />
-                          <div>
-                            <h3 className="font-heading font-bold text-sm sm:text-base text-[#292929]">
-                              {item.title}
-                            </h3>
-                            <p className="text-xs text-[#777777] font-medium mt-0.5">
-                              From Order {item.order.orderNumber} · Verified {new Date(item.order.paidAt || item.order.createdAt).toLocaleDateString()}
-                            </p>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <img
+                              src={item.image}
+                              alt={item.title}
+                              className="w-16 h-16 object-cover rounded-xl shrink-0 border border-[#EADCC8]"
+                            />
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="font-heading font-bold text-sm sm:text-base text-[#292929]">
+                                  {item.title}
+                                </h3>
+                                {(item.isBundle || childProducts.length > 0) && (
+                                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#A64B3C]/10 text-[#A64B3C] border border-[#A64B3C]/20">
+                                    Bundle
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-[#777777] font-medium mt-0.5">
+                                From Order {item.order.orderNumber} · Verified {new Date(item.order.paidAt || item.order.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
                           </div>
+
+                          <button
+                            disabled={isDownloading}
+                            onClick={() =>
+                              handleDownloadFile(item.order.downloadToken, item.productId, item.title)
+                            }
+                            className="px-4 py-2.5 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 self-start sm:self-auto shrink-0 disabled:opacity-60 cursor-pointer"
+                          >
+                            {isDownloading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Download className="w-4 h-4" />
+                            )}
+                            <span>{isDownloading ? 'Preparing...' : (item.isBundle || childProducts.length > 0 ? 'Download Bundle Archive' : 'Download Files')}</span>
+                          </button>
                         </div>
 
-                        <button
-                          disabled={isDownloading}
-                          onClick={() =>
-                            handleDownloadFile(item.order.downloadToken, item.productId, item.title)
-                          }
-                          className="px-4 py-2.5 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 self-start sm:self-auto shrink-0 disabled:opacity-60 cursor-pointer"
-                        >
-                          {isDownloading ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Download className="w-4 h-4" />
-                          )}
-                          <span>{isDownloading ? 'Preparing...' : 'Download Files'}</span>
-                        </button>
+                        {childProducts.length > 0 && (
+                          <div className="pt-3 border-t border-[#EADCC8]/80 space-y-2">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-[#777777]">
+                              Included Bundle Downloads ({childProducts.length})
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {childProducts.map(child => {
+                                const childKey = `${item.order.downloadToken}:${child.id}`;
+                                const isChildBusy = downloadingKey === childKey;
+                                return (
+                                  <div
+                                    key={childKey}
+                                    className="flex items-center justify-between gap-2 p-2.5 bg-[#FFFCF7] rounded-xl border border-[#EADCC8]"
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <img
+                                        src={child.images[0]}
+                                        alt={child.title}
+                                        className="w-9 h-9 rounded-lg object-cover border border-[#EADCC8] shrink-0"
+                                      />
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-bold text-[#292929] truncate">
+                                          {child.title}
+                                        </p>
+                                        <p className="text-[10px] text-[#777777] capitalize truncate">
+                                          {child.deviceTypes.join(', ')}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      disabled={isChildBusy}
+                                      onClick={() =>
+                                        handleDownloadFile(item.order.downloadToken, child.id, child.title)
+                                      }
+                                      className="px-2.5 py-1.5 bg-[#FCF3E2] hover:bg-[#A64B3C] text-[#292929] hover:text-[#FFFCF7] border border-[#EADCC8] rounded-lg text-[11px] font-bold flex items-center gap-1 shrink-0 transition-colors cursor-pointer disabled:opacity-50"
+                                    >
+                                      {isChildBusy ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                      ) : (
+                                        <Download className="w-3 h-3" />
+                                      )}
+                                      <span>Download</span>
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

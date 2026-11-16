@@ -11,10 +11,12 @@ import { MobileTabletThemesSection } from './components/home/MobileTabletThemesS
 import { BrandIntroSection } from './components/home/BrandIntroSection.tsx';
 import { LiveActivityToast } from './components/common/LiveActivityToast.tsx';
 import { ScrollReveal } from './components/common/ScrollReveal.tsx';
+import { SeoManager } from './components/common/SeoManager.tsx';
 import { Footer } from './components/Footer.tsx';
 
 // Page components
 import { CollectionsPage } from './pages/CollectionsPage.tsx';
+import { CollectionPage } from './pages/CollectionPage.tsx';
 import { ProductDetailPage } from './pages/ProductDetailPage.tsx';
 import { CheckoutPage } from './pages/CheckoutPage.tsx';
 import { OrderConfirmationPage } from './pages/OrderConfirmationPage.tsx';
@@ -22,6 +24,10 @@ import { CustomerAccountPage } from './pages/CustomerAccountPage.tsx';
 import { ContactPage } from './pages/ContactPage.tsx';
 import { AboutMePage } from './pages/AboutMePage.tsx';
 import { ReturnPolicyPage } from './pages/ReturnPolicyPage.tsx';
+import { FaqPage } from './pages/FaqPage.tsx';
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage.tsx';
+import { TermsOfServicePage } from './pages/TermsOfServicePage.tsx';
+import { UnsubscribePage } from './pages/UnsubscribePage.tsx';
 import { AdminDashboard } from './pages/AdminDashboard.tsx';
 
 const MainLayout: React.FC = () => {
@@ -48,7 +54,8 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FFFCF7] text-[#292929] selection:bg-[#FCF3E2] selection:text-[#292929]">
-      
+      <SeoManager />
+
       {/* Sticky Header with Navigation, Search, Cart */}
       <Header onOpenMenu={() => setMobileMenuOpen(true)} />
 
@@ -96,7 +103,11 @@ const MainLayout: React.FC = () => {
           </>
         )}
 
-        {activeView === 'collections' && <CollectionsPage />}
+        {activeView === 'collections' && (
+          viewParam && !viewParam.includes('=')
+            ? <CollectionPage slug={viewParam} />
+            : <CollectionsPage />
+        )}
 
         {activeView === 'product' && (
           <ProductDetailPage slug={viewParam || ''} />
@@ -113,6 +124,14 @@ const MainLayout: React.FC = () => {
         {activeView === 'contact' && <ContactPage />}
 
         {activeView === 'about' && <AboutMePage />}
+
+        {activeView === 'faq' && <FaqPage />}
+
+        {activeView === 'privacy-policy' && <PrivacyPolicyPage />}
+
+        {activeView === 'terms-of-service' && <TermsOfServicePage />}
+
+        {activeView === 'unsubscribe' && <UnsubscribePage />}
 
         {activeView === 'policy' && <ReturnPolicyPage />}
 

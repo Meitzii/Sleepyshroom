@@ -109,6 +109,14 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClos
           </button>
 
           <button
+            onClick={() => handleNav('faq')}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-[#FCF3E2] transition-colors text-left cursor-pointer"
+          >
+            <FileText className="w-4 h-4 text-[#777777]" />
+            <span>FAQ &amp; Help Center</span>
+          </button>
+
+          <button
             onClick={() => handleNav('contact')}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-[#FCF3E2] transition-colors text-left cursor-pointer"
           >
@@ -122,6 +130,22 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClos
           >
             <FileText className="w-4 h-4 text-[#777777]" />
             <span>Return & Refund Policy</span>
+          </button>
+
+          <button
+            onClick={() => handleNav('privacy-policy')}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-[#FCF3E2] transition-colors text-left cursor-pointer"
+          >
+            <FileText className="w-4 h-4 text-[#777777]" />
+            <span>Privacy Policy</span>
+          </button>
+
+          <button
+            onClick={() => handleNav('terms-of-service')}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-[#FCF3E2] transition-colors text-left cursor-pointer"
+          >
+            <FileText className="w-4 h-4 text-[#777777]" />
+            <span>Terms of Service</span>
           </button>
 
           <div className="pt-4 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[#777777]">

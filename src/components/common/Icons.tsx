@@ -280,3 +280,95 @@ export const PaymentBadges: React.FC<{ className?: string; showAllCards?: boolea
   </div>
 );
 
+export const PinterestIcon: React.FC<{ className?: string; size?: number }> = ({
+  className = '',
+  size = 18,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 ${className}`}
+    aria-hidden="true"
+  >
+    <path d="M12.017 2C6.486 2 2 6.486 2 12.017c0 4.237 2.636 7.855 6.356 9.312-.088-.791-.167-2.005.035-2.868.181-.78 1.172-4.97 1.172-4.97s-.299-.6-.299-1.486c0-1.39.806-2.428 1.81-2.428.852 0 1.264.64 1.264 1.408 0 .858-.546 2.14-.828 3.33-.236.995.5 1.807 1.48 1.807 1.778 0 3.144-1.874 3.144-4.58 0-2.393-1.72-4.068-4.176-4.068-2.845 0-4.516 2.135-4.516 4.34 0 .859.331 1.781.745 2.281a.3.3 0 0 1 .069.288l-.278 1.133c-.044.183-.145.223-.335.134-1.249-.581-2.03-2.407-2.03-3.874 0-3.154 2.292-6.052 6.608-6.052 3.469 0 6.165 2.473 6.165 5.776 0 3.447-2.173 6.22-5.19 6.22-1.013 0-1.965-.525-2.291-1.148l-.623 2.378c-.226.869-.835 1.958-1.244 2.621.937.29 1.931.446 2.962.446 5.531 0 10.017-4.486 10.017-10.017C22.034 6.486 17.548 2 12.017 2z" />
+  </svg>
+);
+
+export const InstagramIcon: React.FC<{ className?: string; size?: number }> = ({
+  className = '',
+  size = 18,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 ${className}`}
+    aria-hidden="true"
+  >
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+  </svg>
+);
+
+export const TikTokIcon: React.FC<{ className?: string; size?: number }> = ({
+  className = '',
+  size = 18,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 ${className}`}
+    aria-hidden="true"
+  >
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298 0 .593.048.875.14V9.4a6.33 6.33 0 0 0-.875-.06A6.34 6.34 0 0 0 3.14 15.68 6.34 6.34 0 0 0 9.48 22a6.34 6.34 0 0 0 6.34-6.33V8.73a8.16 8.16 0 0 0 4.77 1.52V6.79c-.34 0-.67-.04-1-.1z" />
+  </svg>
+);
+
+export const FacebookIcon: React.FC<{ className?: string; size?: number }> = ({
+  className = '',
+  size = 18,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 ${className}`}
+    aria-hidden="true"
+  >
+    <path d="M22 12.061C22 6.505 17.523 2 12 2S2 6.505 2 12.061c0 5.022 3.657 9.184 8.438 9.939v-7.03H7.898v-2.909h2.54V9.845c0-2.522 1.492-3.915 3.777-3.915 1.094 0 2.238.197 2.238.197v2.476h-1.26c-1.243 0-1.63.775-1.63 1.57v1.888h2.773l-.443 2.908h-2.33V22c4.78-.755 8.437-4.917 8.437-9.939z" />
+  </svg>
+);
+
+export const SocialPlatformIcon: React.FC<{
+  platform: 'pinterest' | 'instagram' | 'tiktok' | 'facebook';
+  className?: string;
+  size?: number;
+}> = ({ platform, className = '', size = 18 }) => {
+  switch (platform) {
+    case 'pinterest':
+      return <PinterestIcon size={size} className={className} />;
+    case 'instagram':
+      return <InstagramIcon size={size} className={className} />;
+    case 'tiktok':
+      return <TikTokIcon size={size} className={className} />;
+    case 'facebook':
+      return <FacebookIcon size={size} className={className} />;
+  }
+};
+
+

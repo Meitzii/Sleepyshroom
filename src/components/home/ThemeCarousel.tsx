@@ -5,7 +5,7 @@ import type { CarouselSlide } from '../../types/index.ts';
 import { ProtectedArtworkPreview } from '../common/ProtectedArtworkPreview.tsx';
 
 export const ThemeCarousel: React.FC = () => {
-  const { carouselSlides, navigateTo } = useShop();
+  const { carouselSlides, collections, navigateTo } = useShop();
   
   // Filter visible slides
   const slides = carouselSlides.filter(s => s.visible && s.status === 'published');
@@ -70,9 +70,21 @@ export const ThemeCarousel: React.FC = () => {
   const currentSlide = slides[currentIndex];
 
   const handleExplore = (slide: CarouselSlide) => {
+    const matchedCollection = collections.find(
+      (c) =>
+        c.theme?.toLowerCase() === slide.themeTitle.toLowerCase() ||
+        c.name.toLowerCase() === slide.themeTitle.toLowerCase() ||
+        c.slug.toLowerCase() === slide.themeTitle.toLowerCase().replace(/\s+/g, '-')
+    );
+    if (matchedCollection) {
+      navigateTo('collections', matchedCollection.slug);
+      return;
+    }
     if (slide.linkDestination) {
-      // Parse route
-      if (slide.linkDestination.startsWith('/collections')) {
+      if (slide.linkDestination.startsWith('/collections/')) {
+        const slug = slide.linkDestination.replace('/collections/', '').split('?')[0];
+        navigateTo('collections', slug || null);
+      } else if (slide.linkDestination.startsWith('/collections')) {
         const query = slide.linkDestination.includes('?')
           ? slide.linkDestination.split('?')[1]
           : null;
@@ -214,6 +226,67 @@ export const ThemeCarousel: React.FC = () => {
           )}
 
         </div>
+
+        {/* Dedicated Theme Collection Quick Links */}
+        {collections.filter((c) => c.featured).length > 0 && (
+          <div className="mt-12 pt-10 border-t border-[#EADCC8]/70">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-heading font-bold text-lg sm:text-xl text-[#292929]">
+                Shop by Theme Collection
+              </h3>
+              <button
+                type="button"
+                onClick={() => navigateTo('collections')}
+                className="text-xs font-bold text-[#A64B3C] hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                <span>View All</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {collections
+                .filter((c) => c.featured)
+                .slice(0, 8)
+                .map((col) => (
+                  <button
+                    key={col.id}
+                    type="button"
+                    onClick={() => navigateTo('collections', col.slug)}
+                    className="group text-left bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] overflow-hidden hover:shadow-md transition-all cursor-pointer flex flex-col"
+                  >
+                    <div className="aspect-16/10 w-full overflow-hidden bg-[#EADCC8]/40 relative">
+                      <img
+                        src={col.coverImage}
+                        alt={col.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      {col.isNew && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-[#A64B3C] text-[#FFFCF7] text-[9px] font-extrabold">
+                          NEW
+                        </span>
+                      )}
+                      {col.isLimitedEdition && (
+                        <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#292929] text-[#FFFCF7] text-[9px] font-extrabold">
+                          LIMITED
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-3.5 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-heading font-bold text-xs sm:text-sm text-[#292929] group-hover:text-[#A64B3C] truncate">
+                          {col.name}
+                        </p>
+                        <p className="text-[11px] text-[#777777] font-semibold">
+                          {col.productCount ?? 0} designs
+                        </p>
+                      </div>
+                      <ArrowRight className="w-3.5 h-3.5 text-[#A64B3C] shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </button>
+                ))}
+            </div>
+          </div>
+        )}
 
       </div>
     </section>

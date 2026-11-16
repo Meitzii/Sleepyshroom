@@ -75,7 +75,10 @@ export interface Collection {
   bannerImage?: string;
   featured: boolean;
   isNew?: boolean;
-  status?: 'published' | 'draft';
+  isLimitedEdition?: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
+  status?: 'published' | 'draft' | 'archived';
   order: number;
   productCount?: number;
   createdAt?: string;
@@ -102,6 +105,22 @@ export interface ThemeBundle {
   createdAt: string;
 }
 
+export interface LegalPageContent {
+  title: string;
+  lastUpdated: string;
+  content: string;
+  ownerReviewRequiredNotice?: string;
+}
+
+export type SocialPlatformKey = 'pinterest' | 'instagram' | 'tiktok' | 'facebook';
+
+export interface SocialMediaLinkConfig {
+  enabled: boolean;
+  url: string;
+}
+
+export type SocialMediaSettings = Record<SocialPlatformKey, SocialMediaLinkConfig>;
+
 export interface WebsiteSettings {
   storeName: string;
   tagline: string;
@@ -125,10 +144,16 @@ export interface WebsiteSettings {
     paypalAllowCards: boolean;
     testMode: boolean;
   };
-  socialLinks: {
-    instagram: string;
-    twitter: string;
-    pinterest: string;
+  socialMedia?: SocialMediaSettings;
+  socialLinks?: {
+    instagram?: string;
+    twitter?: string;
+    pinterest?: string;
+  };
+  seo?: {
+    siteUrl?: string;
+    defaultTitle?: string;
+    defaultDescription?: string;
   };
   artworkProtection?: {
     watermarkEnabled: boolean;
@@ -149,6 +174,8 @@ export interface WebsiteSettings {
     lastUpdated: string;
     content: string;
   };
+  privacyPolicy?: LegalPageContent;
+  termsOfService?: LegalPageContent;
 }
 
 export interface BillingDetails {
@@ -169,6 +196,8 @@ export interface OrderItem {
   image: string;
   deviceTypes: DeviceType[];
   downloadFileName?: string;
+  isBundle?: boolean;
+  bundleProductIds?: string[];
 }
 
 export interface Order {
@@ -199,6 +228,7 @@ export interface Order {
   refundedAt?: string;
   refundReason?: string;
   failureReason?: string;
+  confirmationEmailSentAt?: string;
   downloadToken: string;
   downloadCount: number;
   createdAt: string;
@@ -247,3 +277,67 @@ export interface CartItem {
   product: Product;
   quantity: number;
 }
+
+export interface NewsletterSubscriber {
+  id: string;
+  email: string;
+  name?: string;
+  consent: boolean;
+  status: 'subscribed' | 'unsubscribed';
+  source?: string;
+  unsubscribeToken: string;
+  subscribedAt: string;
+  unsubscribedAt?: string | null;
+  createdAt?: string;
+}
+
+export interface EmailLog {
+  id: string;
+  emailType: 'order_confirmation_customer' | 'order_confirmation_store' | 'contact_reply' | 'contact_notification' | 'newsletter_welcome' | string;
+  recipientEmail: string;
+  orderId?: string | null;
+  orderNumber?: string | null;
+  subject: string;
+  provider: string;
+  providerMessageId?: string | null;
+  status: 'sent' | 'failed' | 'skipped';
+  errorMessage?: string | null;
+  attemptedAt: string;
+  deliveredAt?: string | null;
+}
+
+export interface ProductReview {
+  id: string;
+  productId: string;
+  productTitle?: string;
+  orderId?: string | null;
+  userId: string;
+  reviewerName: string;
+  rating: number;
+  title?: string;
+  comment: string;
+  verifiedPurchase: boolean;
+  status: 'published' | 'hidden';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type FaqCategory =
+  | 'Orders and Payments'
+  | 'Downloads and Access'
+  | 'Wallpaper Compatibility'
+  | 'Licensing and Usage'
+  | 'Refunds and Cancellations'
+  | 'Account and Technical Support';
+
+export interface FaqItem {
+  id: string;
+  category: FaqCategory | string;
+  question: string;
+  answer: string;
+  sortOrder: number;
+  isPublished: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+

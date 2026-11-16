@@ -23,10 +23,11 @@ export const initialSettings: WebsiteSettings = {
     "paypalAllowCards": true,
     "testMode": false
   },
-  "socialLinks": {
-    "instagram": "https://instagram.com/sleepyshroom",
-    "twitter": "https://twitter.com/sleepyshroom",
-    "pinterest": "https://pinterest.com/sleepyshroom"
+  "socialMedia": {
+    "pinterest": { "enabled": false, "url": "" },
+    "instagram": { "enabled": false, "url": "" },
+    "tiktok": { "enabled": false, "url": "" },
+    "facebook": { "enabled": false, "url": "" }
   },
   "aboutMe": {
     "heading": "Hello, welcome to my little corner!",

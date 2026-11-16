@@ -19,23 +19,33 @@ import {
   ArrowDown, 
   Save, 
   Check, 
-  Sparkles, 
   AlertCircle,
-  DollarSign,
-  Users,
   ImagePlus,
   Lock,
   Loader2,
   RefreshCw,
   RotateCcw,
   Search,
+  Mail,
+  Star,
+  Globe,
+  FileText,
+  ExternalLink,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { supabase } from '../lib/supabase.ts';
 import { parseJsonResponse } from '../utils/apiClient.ts';
 import { formatOrderMoney, formatUsd } from '../utils/currency.ts';
+import {
+  SOCIAL_PLATFORMS_META,
+  isValidSocialHttpUrl,
+  normalizeSocialMediaSettings,
+} from '../utils/socialMedia.ts';
 import { ContactMessagesPanel } from '../components/admin/ContactMessagesPanel.tsx';
-import { PaypalIcon } from '../components/common/Icons.tsx';
+import { CollectionsBundlesAdminPanel } from '../components/admin/CollectionsBundlesAdminPanel.tsx';
+import { NewsletterEmailsAdminPanel } from '../components/admin/NewsletterEmailsAdminPanel.tsx';
+import { ReviewsFaqsAdminPanel } from '../components/admin/ReviewsFaqsAdminPanel.tsx';
+import { PaypalIcon, SocialPlatformIcon } from '../components/common/Icons.tsx';
 import type { 
   Product, 
   CarouselSlide, 
@@ -49,7 +59,18 @@ import type {
 export const AdminDashboard: React.FC = () => {
   const { user, navigateTo, refreshData } = useShop();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'carousel' | 'products' | 'homepage' | 'collections' | 'orders' | 'messages' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    | 'overview'
+    | 'carousel'
+    | 'products'
+    | 'collections'
+    | 'homepage'
+    | 'orders'
+    | 'messages'
+    | 'newsletter'
+    | 'reviews_faqs'
+    | 'settings'
+  >('overview');
   const [stats, setStats] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [verifyingAdmin, setVerifyingAdmin] = useState(true);
@@ -90,10 +111,6 @@ export const AdminDashboard: React.FC = () => {
   // Product modal state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-
-  // Collection modal state
-  const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
-  const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
 
   const isAuthorizedAdminUser = Boolean(
     user &&
@@ -165,7 +182,7 @@ export const AdminDashboard: React.FC = () => {
         fetch('/api/admin/stats', { headers: authHeaders }),
         fetch('/api/admin/content', { headers: authHeaders }),
         fetch('/api/products?includeDrafts=true'),
-        fetch('/api/collections'),
+        fetch('/api/collections?includeAll=true'),
         fetch('/api/orders', { headers: authHeaders }),
         fetch('/api/checkout'),
       ]);
@@ -340,13 +357,17 @@ export const AdminDashboard: React.FC = () => {
 
   const handleSaveCarousel = async (publishAll = false) => {
     try {
+      const token = await getFreshAdminToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
       const payload = publishAll
         ? slides.map(s => ({ ...s, status: 'published' }))
         : slides;
 
       const res = await fetch('/api/admin/slides', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload),
       });
 
@@ -355,10 +376,11 @@ export const AdminDashboard: React.FC = () => {
         triggerSaveNotification(publishAll ? 'Carousel changes published to live site!' : 'Carousel draft saved successfully!');
         refreshData();
       } else {
-        throw new Error('Save failed');
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || 'Save failed');
       }
-    } catch {
-      setErrorMessage('Could not update carousel slides.');
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Could not update carousel slides.');
     }
   };
 
@@ -370,9 +392,13 @@ export const AdminDashboard: React.FC = () => {
     const reader = new FileReader();
     reader.onload = async () => {
       try {
+        const token = await getFreshAdminToken();
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers.Authorization = `Bearer ${token}`;
+
         const res = await fetch('/api/upload', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             dataUrl: reader.result,
             filename: file.name,
@@ -401,8 +427,11 @@ export const AdminDashboard: React.FC = () => {
       description: '',
       price: 4.00,
       compareAtPrice: 5.00,
-      theme: 'Mushroom Dreams',
-      collection: 'Dreamy Night',
+      theme: allCollections[0]?.name || 'Mushroom Dreams',
+      collection: allCollections[0]?.name || 'Dreamy Night',
+      collectionId: allCollections[0]?.id || '',
+      category: 'desktop',
+      productType: 'wallpaper',
       deviceTypes: ['desktop'],
       resolutions: ['4K UHD (3840 x 2160)', '5K Retina'],
       fileFormat: 'Lossless PNG (300 DPI)',
@@ -426,21 +455,28 @@ export const AdminDashboard: React.FC = () => {
     }
 
     try {
+      const token = await getFreshAdminToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
       const isExisting = allProducts.some(p => p.id === editingProduct.id);
       const url = isExisting ? `/api/admin/products/${editingProduct.id}` : '/api/admin/products';
       const method = isExisting ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(editingProduct),
       });
 
       if (res.ok) {
         setIsProductModalOpen(false);
         triggerSaveNotification(`Product "${editingProduct.title}" saved successfully!`);
-        loadAdminData();
+        void loadAdminData(token);
         refreshData();
+      } else {
+        const errData = await res.json().catch(() => null);
+        setErrorMessage(errData?.error || 'Error saving product');
       }
     } catch {
       setErrorMessage('Error saving product');
@@ -450,11 +486,18 @@ export const AdminDashboard: React.FC = () => {
   const handleDeleteProduct = async (id: string, title: string) => {
     if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
     try {
-      const res = await fetch(`/api/admin/products/${id}`, { method: 'DELETE' });
+      const token = await getFreshAdminToken();
+      const headers: Record<string, string> = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const res = await fetch(`/api/admin/products/${id}`, { method: 'DELETE', headers });
       if (res.ok) {
         triggerSaveNotification(`Deleted product "${title}"`);
-        loadAdminData();
+        void loadAdminData(token);
         refreshData();
+      } else {
+        const errData = await res.json().catch(() => null);
+        setErrorMessage(errData?.error || 'Error deleting product');
       }
     } catch {
       setErrorMessage('Error deleting product');
@@ -464,22 +507,40 @@ export const AdminDashboard: React.FC = () => {
   // 3. HOMEPAGE & WEBSITE SETTINGS
   const handleSaveSettings = async () => {
     if (!settings) return;
+    setErrorMessage(null);
+
+    const normalizedSocial = normalizeSocialMediaSettings(settings.socialMedia);
+    for (const meta of SOCIAL_PLATFORMS_META) {
+      const entry = normalizedSocial[meta.key];
+      if (entry.url && !isValidSocialHttpUrl(entry.url)) {
+        setErrorMessage(
+          `Please enter a valid http:// or https:// profile URL for ${meta.label} (for example, ${meta.placeholder}).`
+        );
+        return;
+      }
+    }
+
     try {
       const token = await getFreshAdminToken();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers.Authorization = `Bearer ${token}`;
 
+      const payload: WebsiteSettings = {
+        ...settings,
+        socialMedia: normalizedSocial,
+      };
+
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers,
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
-      if (res.ok) {
-        const parsed = await res.json().catch(() => null);
-        if (parsed?.settings) {
-          setSettings(parsed.settings);
+      const parsed = await parseJsonResponse<{ settings?: WebsiteSettings; error?: string }>(res);
+      if (parsed.ok) {
+        if (parsed.data?.settings) {
+          setSettings(parsed.data.settings);
         }
-        triggerSaveNotification('Settings and PayPal checkout preferences saved!');
+        triggerSaveNotification('Settings, social links, and storefront preferences saved!');
         refreshData();
         const cfgRes = await fetch('/api/checkout');
         const cfgParsed = await parseJsonResponse<typeof gatewayStatus>(cfgRes);
@@ -487,7 +548,7 @@ export const AdminDashboard: React.FC = () => {
           setGatewayStatus(cfgParsed.data);
         }
       } else {
-        setErrorMessage('Error updating settings');
+        setErrorMessage(parsed.data?.error || 'Error updating settings');
       }
     } catch {
       setErrorMessage('Error updating settings');
@@ -592,9 +653,13 @@ export const AdminDashboard: React.FC = () => {
     const reader = new FileReader();
     reader.onload = async () => {
       try {
+        const token = await getFreshAdminToken();
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers.Authorization = `Bearer ${token}`;
+
         const res = await fetch('/api/upload', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ dataUrl: reader.result, filename: file.name }),
         });
         const parsed = await parseJsonResponse<{ url?: string; error?: string }>(res);
@@ -748,6 +813,18 @@ export const AdminDashboard: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('collections')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
+              activeTab === 'collections'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'text-[#292929] hover:bg-[#FCF3E2]'
+            }`}
+          >
+            <FolderKanban className="w-4 h-4" />
+            <span>Collections &amp; Bundles</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('homepage')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
               activeTab === 'homepage'
@@ -792,6 +869,30 @@ export const AdminDashboard: React.FC = () => {
                 {newMessagesCount}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('newsletter')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
+              activeTab === 'newsletter'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'text-[#292929] hover:bg-[#FCF3E2]'
+            }`}
+          >
+            <Mail className="w-4 h-4" />
+            <span>Newsletter &amp; Emails</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('reviews_faqs')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
+              activeTab === 'reviews_faqs'
+                ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
+                : 'text-[#292929] hover:bg-[#FCF3E2]'
+            }`}
+          >
+            <Star className="w-4 h-4" />
+            <span>Reviews &amp; FAQs</span>
           </button>
 
           <button
@@ -1731,6 +1832,21 @@ export const AdminDashboard: React.FC = () => {
           );
         })()}
 
+        {/* TAB: COLLECTIONS & BUNDLES */}
+        {activeTab === 'collections' && (
+          <CollectionsBundlesAdminPanel
+            collections={allCollections}
+            allProducts={allProducts}
+            getToken={getFreshAdminToken}
+            onNotify={triggerSaveNotification}
+            onError={msg => setErrorMessage(msg)}
+            onRefresh={async () => {
+              await loadAdminData();
+              await refreshData();
+            }}
+          />
+        )}
+
         {/* TAB 6: INCOMING MESSAGES */}
         {activeTab === 'messages' && (
           <ContactMessagesPanel
@@ -1744,6 +1860,26 @@ export const AdminDashboard: React.FC = () => {
             onUpdateStatus={handleUpdateMessageStatus}
             onDelete={handleDeleteMessage}
             onSendReply={handleSendReply}
+          />
+        )}
+
+        {/* TAB: NEWSLETTER & EMAIL LOGS */}
+        {activeTab === 'newsletter' && (
+          <NewsletterEmailsAdminPanel
+            orders={orders}
+            getToken={getFreshAdminToken}
+            onNotify={triggerSaveNotification}
+            onError={msg => setErrorMessage(msg)}
+          />
+        )}
+
+        {/* TAB: CUSTOMER REVIEWS & FAQs */}
+        {activeTab === 'reviews_faqs' && (
+          <ReviewsFaqsAdminPanel
+            allProducts={allProducts}
+            getToken={getFreshAdminToken}
+            onNotify={triggerSaveNotification}
+            onError={msg => setErrorMessage(msg)}
           />
         )}
 
@@ -1814,6 +1950,148 @@ export const AdminDashboard: React.FC = () => {
                 </p>
               </div>
             </div>
+
+            {/* Social Media Accounts Management */}
+            {(() => {
+              const currentSocial = normalizeSocialMediaSettings(settings.socialMedia);
+              const activeCount = SOCIAL_PLATFORMS_META.filter(meta => {
+                const entry = currentSocial[meta.key];
+                return entry.enabled && isValidSocialHttpUrl(entry.url);
+              }).length;
+
+              return (
+                <div className="border-t border-[#E8C9C1]/50 pt-6 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B6F7A]">
+                        Social Media Accounts (Footer)
+                      </h3>
+                      <p className="text-[11px] text-[#45313D] mt-0.5">
+                        Configure your official Sleepyshroom profile links. Only enabled platforms with a valid URL appear in the storefront footer.
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold text-[#292929] tabular-nums">
+                      {activeCount} of {SOCIAL_PLATFORMS_META.length} active in footer
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {SOCIAL_PLATFORMS_META.map(meta => {
+                      const entry = currentSocial[meta.key];
+                      const hasValue = entry.url.trim().length > 0;
+                      const urlValid = isValidSocialHttpUrl(entry.url);
+                      const showUrlWarning = hasValue && !urlValid;
+                      const isLiveInFooter = entry.enabled && urlValid;
+
+                      return (
+                        <div
+                          key={meta.key}
+                          className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-[#FCF3E2] border border-[#EADCC8] flex items-center justify-center text-[#A64B3C]">
+                                <SocialPlatformIcon platform={meta.key} size={17} />
+                              </div>
+                              <div>
+                                <span className="block text-xs font-bold text-[#1E1419]">
+                                  {meta.label}
+                                </span>
+                                <span
+                                  className={`block text-[11px] font-semibold ${
+                                    showUrlWarning
+                                      ? 'text-red-700'
+                                      : isLiveInFooter
+                                      ? 'text-emerald-800'
+                                      : entry.enabled
+                                      ? 'text-amber-800'
+                                      : 'text-[#777777]'
+                                  }`}
+                                >
+                                  {showUrlWarning
+                                    ? 'Invalid URL (use https://...)'
+                                    : isLiveInFooter
+                                    ? 'Shown in footer'
+                                    : entry.enabled
+                                    ? 'Enabled · Add URL to display'
+                                    : 'Hidden in footer'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-[#1E1419] bg-[#F9F6F0] px-3 py-1.5 rounded-xl border border-[#E8C9C1]">
+                              <input
+                                type="checkbox"
+                                checked={entry.enabled}
+                                onChange={e =>
+                                  setSettings({
+                                    ...settings,
+                                    socialMedia: {
+                                      ...currentSocial,
+                                      [meta.key]: {
+                                        ...entry,
+                                        enabled: e.target.checked,
+                                      },
+                                    },
+                                  })
+                                }
+                                className="accent-[#A64B3C] w-3.5 h-3.5 cursor-pointer"
+                              />
+                              <span>Enabled</span>
+                            </label>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label
+                              htmlFor={`social-url-${meta.key}`}
+                              className="block text-[11px] font-bold text-[#1E1419]"
+                            >
+                              {meta.label} Profile URL
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                id={`social-url-${meta.key}`}
+                                type="url"
+                                placeholder={meta.placeholder}
+                                value={entry.url}
+                                onChange={e =>
+                                  setSettings({
+                                    ...settings,
+                                    socialMedia: {
+                                      ...currentSocial,
+                                      [meta.key]: {
+                                        ...entry,
+                                        url: e.target.value,
+                                      },
+                                    },
+                                  })
+                                }
+                                className={`flex-1 px-3 py-2 text-xs bg-[#F9F6F0] border rounded-xl text-[#1E1419] placeholder-[#777777]/70 focus:outline-none focus:ring-2 ${
+                                  showUrlWarning
+                                    ? 'border-red-300 focus:ring-red-200'
+                                    : 'border-[#E8C9C1] focus:ring-[#A64B3C]/30'
+                                }`}
+                              />
+                              {urlValid && (
+                                <a
+                                  href={entry.url.trim()}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={`Preview ${meta.label} link in a new tab`}
+                                  className="p-2 bg-[#FCF3E2] hover:bg-[#A64B3C] text-[#292929] hover:text-[#FFFCF7] border border-[#EADCC8] rounded-xl transition-colors"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* PayPal Payment Gateway Configuration */}
             <div className="border-t border-[#E8C9C1]/50 pt-6 space-y-4">
@@ -2075,6 +2353,172 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* SEO & Metadata Settings */}
+            <div className="border-t border-[#E8C9C1]/50 pt-6 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B6F7A] flex items-center gap-1.5">
+                <Globe className="w-4 h-4 text-[#A64B3C]" />
+                <span>SEO &amp; Storefront Metadata</span>
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <label className="block font-bold text-[#1E1419] mb-1">Canonical Store URL</label>
+                  <input
+                    type="text"
+                    value={settings.seo?.siteUrl || 'https://sleepyshroom.vercel.app'}
+                    onChange={e => setSettings({
+                      ...settings,
+                      seo: { ...settings.seo, siteUrl: e.target.value }
+                    })}
+                    className="w-full px-3.5 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-[#1E1419] mb-1">Default Meta Title</label>
+                  <input
+                    type="text"
+                    value={settings.seo?.defaultTitle || ''}
+                    onChange={e => setSettings({
+                      ...settings,
+                      seo: { ...settings.seo, defaultTitle: e.target.value }
+                    })}
+                    className="w-full px-3.5 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block font-bold text-[#1E1419] mb-1">Default Meta Description</label>
+                  <textarea
+                    rows={2}
+                    value={settings.seo?.defaultDescription || ''}
+                    onChange={e => setSettings({
+                      ...settings,
+                      seo: { ...settings.seo, defaultDescription: e.target.value }
+                    })}
+                    className="w-full px-3.5 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Editable Privacy Policy & Terms of Service */}
+            <div className="border-t border-[#E8C9C1]/50 pt-6 space-y-6">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B6F7A] flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-[#A64B3C]" />
+                <span>Privacy Policy &amp; Terms of Service Editors</span>
+              </h3>
+
+              <div className="space-y-3 bg-white p-4 rounded-2xl border border-[#E8C9C1] text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-[#1E1419] mb-1">Privacy Policy Title</label>
+                    <input
+                      type="text"
+                      value={settings.privacyPolicy?.title || 'Privacy Policy'}
+                      onChange={e => setSettings({
+                        ...settings,
+                        privacyPolicy: {
+                          title: e.target.value,
+                          lastUpdated: settings.privacyPolicy?.lastUpdated || new Date().toISOString().split('T')[0],
+                          content: settings.privacyPolicy?.content || '',
+                          ownerReviewRequiredNotice: settings.privacyPolicy?.ownerReviewRequiredNotice,
+                        }
+                      })}
+                      className="w-full px-3 py-2 bg-[#F9F6F0] border border-[#E8C9C1] rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-[#1E1419] mb-1">Privacy Last Updated</label>
+                    <input
+                      type="text"
+                      value={settings.privacyPolicy?.lastUpdated || ''}
+                      onChange={e => setSettings({
+                        ...settings,
+                        privacyPolicy: {
+                          title: settings.privacyPolicy?.title || 'Privacy Policy',
+                          lastUpdated: e.target.value,
+                          content: settings.privacyPolicy?.content || '',
+                          ownerReviewRequiredNotice: settings.privacyPolicy?.ownerReviewRequiredNotice,
+                        }
+                      })}
+                      className="w-full px-3 py-2 bg-[#F9F6F0] border border-[#E8C9C1] rounded-xl"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block font-bold text-[#1E1419] mb-1">Privacy Policy Body</label>
+                  <textarea
+                    rows={8}
+                    value={settings.privacyPolicy?.content || ''}
+                    onChange={e => setSettings({
+                      ...settings,
+                      privacyPolicy: {
+                        title: settings.privacyPolicy?.title || 'Privacy Policy',
+                        lastUpdated: settings.privacyPolicy?.lastUpdated || new Date().toISOString().split('T')[0],
+                        content: e.target.value,
+                        ownerReviewRequiredNotice: settings.privacyPolicy?.ownerReviewRequiredNotice,
+                      }
+                    })}
+                    className="w-full px-3.5 py-2 bg-[#F9F6F0] border border-[#E8C9C1] rounded-xl font-mono leading-relaxed"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 bg-white p-4 rounded-2xl border border-[#E8C9C1] text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-[#1E1419] mb-1">Terms of Service Title</label>
+                    <input
+                      type="text"
+                      value={settings.termsOfService?.title || 'Terms of Service'}
+                      onChange={e => setSettings({
+                        ...settings,
+                        termsOfService: {
+                          title: e.target.value,
+                          lastUpdated: settings.termsOfService?.lastUpdated || new Date().toISOString().split('T')[0],
+                          content: settings.termsOfService?.content || '',
+                          ownerReviewRequiredNotice: settings.termsOfService?.ownerReviewRequiredNotice,
+                        }
+                      })}
+                      className="w-full px-3 py-2 bg-[#F9F6F0] border border-[#E8C9C1] rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-[#1E1419] mb-1">Terms Last Updated</label>
+                    <input
+                      type="text"
+                      value={settings.termsOfService?.lastUpdated || ''}
+                      onChange={e => setSettings({
+                        ...settings,
+                        termsOfService: {
+                          title: settings.termsOfService?.title || 'Terms of Service',
+                          lastUpdated: e.target.value,
+                          content: settings.termsOfService?.content || '',
+                          ownerReviewRequiredNotice: settings.termsOfService?.ownerReviewRequiredNotice,
+                        }
+                      })}
+                      className="w-full px-3 py-2 bg-[#F9F6F0] border border-[#E8C9C1] rounded-xl"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block font-bold text-[#1E1419] mb-1">Terms of Service Body</label>
+                  <textarea
+                    rows={8}
+                    value={settings.termsOfService?.content || ''}
+                    onChange={e => setSettings({
+                      ...settings,
+                      termsOfService: {
+                        title: settings.termsOfService?.title || 'Terms of Service',
+                        lastUpdated: settings.termsOfService?.lastUpdated || new Date().toISOString().split('T')[0],
+                        content: e.target.value,
+                        ownerReviewRequiredNotice: settings.termsOfService?.ownerReviewRequiredNotice,
+                      }
+                    })}
+                    className="w-full px-3.5 py-2 bg-[#F9F6F0] border border-[#E8C9C1] rounded-xl font-mono leading-relaxed"
+                  />
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 
@@ -2102,9 +2546,59 @@ export const AdminDashboard: React.FC = () => {
                   />
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block font-bold text-[#1E1419] mb-1">Theme Collection</label>
+                    <select
+                      value={editingProduct.collectionId || ''}
+                      onChange={e => {
+                        const col = allCollections.find(c => c.id === e.target.value);
+                        setEditingProduct({
+                          ...editingProduct,
+                          collectionId: e.target.value || undefined,
+                          collection: col ? col.name : editingProduct.collection,
+                          theme: col ? col.name : editingProduct.theme,
+                        });
+                      }}
+                      className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                    >
+                      <option value="">Custom / Manual</option>
+                      {allCollections.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-[#1E1419] mb-1">Category Filter</label>
+                    <select
+                      value={editingProduct.category || 'desktop'}
+                      onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                    >
+                      <option value="desktop">Desktop Wallpapers</option>
+                      <option value="phone_tablet">Phone &amp; Tablet Wallpapers</option>
+                      <option value="icon_pack">Icon Packs</option>
+                      <option value="bundle">Bundles</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-[#1E1419] mb-1">Product Type</label>
+                    <select
+                      value={editingProduct.productType || 'wallpaper'}
+                      onChange={e => setEditingProduct({ ...editingProduct, productType: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                    >
+                      <option value="wallpaper">Wallpaper</option>
+                      <option value="icon_pack">Icon Pack</option>
+                      <option value="bundle">Bundle</option>
+                      <option value="stationery">Stationery</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-bold text-[#1E1419] mb-1">Theme</label>
+                    <label className="block font-bold text-[#1E1419] mb-1">Theme Label</label>
                     <input
                       type="text"
                       value={editingProduct.theme}
@@ -2113,7 +2607,7 @@ export const AdminDashboard: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block font-bold text-[#1E1419] mb-1">Collection</label>
+                    <label className="block font-bold text-[#1E1419] mb-1">Collection Label</label>
                     <input
                       type="text"
                       value={editingProduct.collection}

@@ -190,10 +190,15 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // If no hash present, inspect path name (e.g. /collections/ghost, /collection/cottagecore)
+      // If no hash present, inspect path name (e.g. /collections/ghost, /faq, /privacy-policy, /terms-of-service)
       if (!hash) {
         const rawPath = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
-        if (rawPath.startsWith('collections/') || rawPath.startsWith('collection/') || rawPath === 'collections') {
+        if (
+          rawPath &&
+          rawPath !== 'index.html' &&
+          !rawPath.startsWith('auth/') &&
+          !rawPath.startsWith('api/')
+        ) {
           hash = rawPath;
         }
       }
@@ -205,8 +210,13 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const parts = hash.split('/');
-      const view = parts[0] || 'home';
-      const param = parts[1] ? decodeURIComponent(parts[1]) : null;
+      let view = (parts[0] || 'home').toLowerCase();
+      let param = parts[1] ? decodeURIComponent(parts[1]) : null;
+
+      if (view === 'collection') view = 'collections';
+      if (view === 'privacy') view = 'privacy-policy';
+      if (view === 'terms') view = 'terms-of-service';
+      if (view === 'faqs') view = 'faq';
 
       setActiveView(view);
       setViewParam(param);
@@ -223,7 +233,15 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveView(view);
     setViewParam(param);
     const hash = param ? `#${view}/${encodeURIComponent(param)}` : `#${view}`;
-    window.location.hash = hash;
+    if (window.location.pathname !== '/' && window.location.pathname !== '') {
+      try {
+        window.history.pushState(null, '', `/${hash}`);
+      } catch {
+        window.location.hash = hash;
+      }
+    } else {
+      window.location.hash = hash;
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -292,18 +310,40 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshData();
   }, []);
 
-  // Cart actions
+  // Cart actions (with bundle/child deduplication so digital buyers are never double-charged)
   const addToCart = (product: Product, quantity = 1, openDrawer = true) => {
     setCart(prev => {
-      const existing = prev.find(item => item.product.id === product.id);
-      if (existing) {
-        return prev.map(item =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
+      // Check if an existing bundle in cart already includes this product
+      const coveringBundle = prev.find(
+        item =>
+          item.product.isBundle &&
+          Array.isArray(item.product.bundleProductIds) &&
+          item.product.bundleProductIds.includes(product.id)
+      );
+      if (coveringBundle) {
+        setLiveToast(`Already included in "${coveringBundle.product.title}" in your bag!`);
+        setTimeout(() => setLiveToast(null), 4000);
+        return prev;
       }
-      return [...prev, { product, quantity }];
+
+      let filtered = prev;
+      // If adding a bundle, strip individual child items already covered by that bundle
+      if (product.isBundle && Array.isArray(product.bundleProductIds) && product.bundleProductIds.length > 0) {
+        const coveredSet = new Set(product.bundleProductIds);
+        const removedCount = prev.filter(item => coveredSet.has(item.product.id)).length;
+        filtered = prev.filter(item => !coveredSet.has(item.product.id));
+        if (removedCount > 0) {
+          setLiveToast(`Replaced ${removedCount} overlapping item(s) with the Complete Bundle so you save more!`);
+          setTimeout(() => setLiveToast(null), 4500);
+        }
+      }
+
+      const existing = filtered.find(item => item.product.id === product.id);
+      if (existing) {
+        // Digital items are single-license per product; keep quantity at 1 to prevent accidental double charging
+        return filtered;
+      }
+      return [...filtered, { product, quantity: Math.max(1, Math.min(1, quantity)) }];
     });
     if (openDrawer) {
       setIsCartOpen(true);

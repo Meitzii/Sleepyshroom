@@ -18,6 +18,8 @@ import type {
   ThemeBundle
 } from './src/types/index.ts';
 import {
+  verifyAdminRequest,
+  resolveSupabaseServerConfig,
   handleContactSubmission,
   handleAdminListMessages,
   handleAdminUpdateMessageStatus,
@@ -33,7 +35,34 @@ import {
   handleGetOrderByToken,
   handleOrderAction,
   handleAuthorizedDownload,
+  handleAdminListEmailLogs,
+  handleAdminResendOrderConfirmation,
 } from './lib/checkout-service.js';
+import {
+  handleNewsletterSubscribe,
+  handleNewsletterUnsubscribe,
+  handleAdminListSubscribers,
+  handleAdminUpdateSubscriber,
+  handleAdminDeleteSubscriber,
+} from './lib/newsletter-service.js';
+import {
+  handleGetProductReviews,
+  handleSubmitOrUpdateReview,
+  handleAdminListReviews,
+  handleAdminModerateReview,
+  handleAdminDeleteReview,
+} from './lib/reviews-service.js';
+import {
+  handleListFaqs,
+  handleAdminListFaqs,
+  handleAdminSaveFaq,
+  handleAdminDeleteFaq,
+} from './lib/faqs-service.js';
+import {
+  DEFAULT_PRIVACY_POLICY,
+  DEFAULT_TERMS_OF_SERVICE,
+  isCollectionCurrentlyActive,
+} from './lib/shop-data.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -144,10 +173,17 @@ const defaultStore: AppStore = {
       paypalAllowCards: true,
       testMode: true,
     },
-    socialLinks: {
-      instagram: 'https://instagram.com/sleepyshroom',
-      twitter: 'https://twitter.com/sleepyshroom',
-      pinterest: 'https://pinterest.com/sleepyshroom',
+    socialMedia: {
+      pinterest: { enabled: false, url: '' },
+      instagram: { enabled: false, url: '' },
+      tiktok: { enabled: false, url: '' },
+      facebook: { enabled: false, url: '' },
+    },
+    seo: {
+      siteUrl: 'https://sleepyshroom.vercel.app',
+      defaultTitle: 'sleepyshroom | Cozy Cottagecore Digital Wallpapers & Stationery',
+      defaultDescription:
+        'Discover cozy, hand-crafted cottagecore digital wallpapers, dreamy icon packs, and curated seasonal bundles for desktop, iPad, and mobile screens.',
     },
     aboutMe: {
       heading: 'Hello, welcome to my little corner!',
@@ -175,8 +211,10 @@ In the rare event that a downloaded file is corrupted or fails to unpack, please
 If you need help setting up your wallpaper on a specific iOS, Android, macOS, or Windows device, reach out anytime! We provide step-by-step setup guides for both Lock Screens and Home Screens.
 
 ## 6. How to Contact Us
-For any questions or assistance with your order, email us at shop.sleepyshroom@gmail.com or use our Contact Form. We typically respond within 24-48 hours.`,
+For any questions or assistance with your order, email us at sleepyshroom@gmail.com or use our Contact Form. We typically respond within 24-48 hours.`,
     },
+    privacyPolicy: DEFAULT_PRIVACY_POLICY,
+    termsOfService: DEFAULT_TERMS_OF_SERVICE,
   },
   carouselSlides: [
     {
@@ -589,6 +627,46 @@ function sanitizePaymentProviders(raw: any) {
   };
 }
 
+function isValidSocialHttpUrl(rawUrl: string): boolean {
+  const trimmed = String(rawUrl || '').trim();
+  if (!trimmed) return false;
+  try {
+    const parsed = new URL(trimmed);
+    const protocolOk = parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    const hostOk = Boolean(parsed.hostname && parsed.hostname.includes('.'));
+    return protocolOk && hostOk;
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeSocialMedia(raw: any): {
+  pinterest: { enabled: boolean; url: string };
+  instagram: { enabled: boolean; url: string };
+  tiktok: { enabled: boolean; url: string };
+  facebook: { enabled: boolean; url: string };
+} {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const keys = ['pinterest', 'instagram', 'tiktok', 'facebook'] as const;
+  const result = {
+    pinterest: { enabled: false, url: '' },
+    instagram: { enabled: false, url: '' },
+    tiktok: { enabled: false, url: '' },
+    facebook: { enabled: false, url: '' },
+  };
+  for (const key of keys) {
+    const entry = src[key];
+    if (entry && typeof entry === 'object') {
+      const cleanUrl = typeof entry.url === 'string' ? entry.url.trim() : '';
+      result[key] = {
+        enabled: Boolean(entry.enabled),
+        url: cleanUrl && isValidSocialHttpUrl(cleanUrl) ? cleanUrl : '',
+      };
+    }
+  }
+  return result;
+}
+
 // Initialize or read store
 function readStore(): AppStore {
   try {
@@ -599,6 +677,13 @@ function readStore(): AppStore {
         parsed.settings = {
           ...defaultStore.settings,
           ...(parsed.settings || {}),
+          seo: {
+            ...(defaultStore.settings.seo || {}),
+            ...(parsed.settings?.seo || {}),
+          },
+          socialMedia: sanitizeSocialMedia(parsed.settings?.socialMedia),
+          privacyPolicy: parsed.settings?.privacyPolicy || DEFAULT_PRIVACY_POLICY,
+          termsOfService: parsed.settings?.termsOfService || DEFAULT_TERMS_OF_SERVICE,
           paymentProviders: sanitizePaymentProviders(parsed.settings?.paymentProviders),
         };
         if (!Array.isArray(parsed.orders)) {
@@ -666,12 +751,34 @@ app.get('/api/admin/content', (_req: Request, res: Response) => {
   });
 });
 
-app.put('/api/admin/settings', (req: Request, res: Response) => {
+app.put('/api/admin/settings', async (req: Request, res: Response) => {
+  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
   const store = readStore();
   const body = req.body && typeof req.body === 'object' ? req.body : {};
+
+  if (body.socialMedia && typeof body.socialMedia === 'object') {
+    const socialKeys = ['pinterest', 'instagram', 'tiktok', 'facebook'] as const;
+    for (const key of socialKeys) {
+      const rawEntry = body.socialMedia[key];
+      if (rawEntry && typeof rawEntry === 'object' && typeof rawEntry.url === 'string') {
+        const trimmedUrl = rawEntry.url.trim();
+        if (trimmedUrl && !isValidSocialHttpUrl(trimmedUrl)) {
+          return res.status(400).json({
+            error: `Please enter a valid http:// or https:// URL for ${key.charAt(0).toUpperCase() + key.slice(1)}.`,
+          });
+        }
+      }
+    }
+  }
+
   const nextSettings: WebsiteSettings = {
     ...store.settings,
     ...body,
+    seo: {
+      ...(store.settings.seo || {}),
+      ...(body.seo || {}),
+    },
+    socialMedia: sanitizeSocialMedia(body.socialMedia ?? store.settings.socialMedia),
     paymentProviders: sanitizePaymentProviders(
       body.paymentProviders ?? store.settings.paymentProviders
     ),
@@ -687,7 +794,8 @@ app.get('/api/slides', (_req: Request, res: Response) => {
   res.json(store.carouselSlides);
 });
 
-app.put('/api/admin/slides', (req: Request, res: Response) => {
+app.put('/api/admin/slides', async (req: Request, res: Response) => {
+  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
   const store = readStore();
   const slides = req.body as CarouselSlide[];
   if (Array.isArray(slides)) {
@@ -699,7 +807,8 @@ app.put('/api/admin/slides', (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/admin/slides', (req: Request, res: Response) => {
+app.post('/api/admin/slides', async (req: Request, res: Response) => {
+  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
   const store = readStore();
   const newSlide: CarouselSlide = {
     id: `slide-${Date.now()}`,
@@ -717,7 +826,8 @@ app.post('/api/admin/slides', (req: Request, res: Response) => {
   res.json({ success: true, slide: newSlide });
 });
 
-app.delete('/api/admin/slides/:id', (req: Request, res: Response) => {
+app.delete('/api/admin/slides/:id', async (req: Request, res: Response) => {
+  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
   const store = readStore();
   store.carouselSlides = store.carouselSlides.filter(s => s.id !== req.params.id);
   // Re-number orders
@@ -786,7 +896,8 @@ app.get('/api/products/:idOrSlug', (req: Request, res: Response) => {
   res.json(product);
 });
 
-app.post('/api/admin/products', (req: Request, res: Response) => {
+app.post('/api/admin/products', async (req: Request, res: Response) => {
+  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
   const store = readStore();
   const body = req.body;
   const newProduct: Product = {
@@ -798,6 +909,9 @@ app.post('/api/admin/products', (req: Request, res: Response) => {
     compareAtPrice: body.compareAtPrice ? Number(body.compareAtPrice) : undefined,
     theme: body.theme || 'Mushroom Dreams',
     collection: body.collection || 'Dreamy Night',
+    collectionId: body.collectionId || undefined,
+    category: body.category || undefined,
+    productType: body.productType || 'wallpaper',
     deviceTypes: body.deviceTypes && body.deviceTypes.length > 0 ? body.deviceTypes : ['desktop'],
     resolutions: body.resolutions || ['4K UHD (3840 x 2160)'],
     fileFormat: body.fileFormat || 'High-res lossless PNG (300 DPI)',
@@ -820,7 +934,8 @@ app.post('/api/admin/products', (req: Request, res: Response) => {
   res.json({ success: true, product: newProduct });
 });
 
-app.put('/api/admin/products/:id', (req: Request, res: Response) => {
+app.put('/api/admin/products/:id', async (req: Request, res: Response) => {
+  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
   const store = readStore();
   const idx = store.products.findIndex(p => p.id === req.params.id);
   if (idx === -1) {
@@ -839,19 +954,42 @@ app.put('/api/admin/products/:id', (req: Request, res: Response) => {
   res.json({ success: true, product: store.products[idx] });
 });
 
-app.delete('/api/admin/products/:id', (req: Request, res: Response) => {
+app.delete('/api/admin/products/:id', async (req: Request, res: Response) => {
+  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
   const store = readStore();
   store.products = store.products.filter(p => p.id !== req.params.id);
   saveStore(store);
   res.json({ success: true });
 });
 
+async function requireAdminIfSupabaseConfigured(req: Request, res: Response): Promise<boolean> {
+  const cfg = resolveSupabaseServerConfig();
+  if (!cfg.configured) {
+    return true;
+  }
+  const auth = await verifyAdminRequest(req);
+  if (!auth.ok) {
+    res.status(auth.status || 403).json({ success: false, error: auth.error || 'Administrator privileges required.' });
+    return false;
+  }
+  return true;
+}
+
 // 4. Collections & Theme Bundles
-app.get('/api/collections', (_req: Request, res: Response) => {
+app.get('/api/collections', (req: Request, res: Response) => {
   const store = readStore();
-  const list = store.collections.map(c => {
+  const includeAll = String(req.query.includeAll || '').toLowerCase() === 'true';
+  const baseList = includeAll
+    ? store.collections
+    : store.collections.filter((c) => isCollectionCurrentlyActive(c));
+
+  const list = baseList.map((c) => {
     const count = store.products.filter(
-      p => (p.collectionId === c.id || p.collection.toLowerCase() === c.name.toLowerCase() || p.theme?.toLowerCase() === c.name.toLowerCase()) && p.status === 'published'
+      (p) =>
+        (p.collectionId === c.id ||
+          p.collection.toLowerCase() === c.name.toLowerCase() ||
+          p.theme?.toLowerCase() === c.name.toLowerCase()) &&
+        p.status === 'published'
     ).length;
     return { ...c, productCount: count };
   });
@@ -862,30 +1000,58 @@ app.get('/api/collections/:slugOrId', (req: Request, res: Response) => {
   const store = readStore();
   const rawParam = String(req.params.slugOrId || '').trim();
   const lowerParam = rawParam.toLowerCase();
-  
+  const includeInactive = String(req.query.includeInactive || '').toLowerCase() === 'true';
+
   const collection = store.collections.find(
-    c => c.slug.toLowerCase() === lowerParam || c.id.toLowerCase() === lowerParam || c.name.toLowerCase() === lowerParam
+    (c) => c.slug.toLowerCase() === lowerParam || c.id.toLowerCase() === lowerParam || c.name.toLowerCase() === lowerParam
   );
-  
+
   if (!collection) {
     res.status(404).json({ error: 'Collection not found' });
     return;
   }
-  
+
+  const currentlyActive = isCollectionCurrentlyActive(collection);
+  if (!includeInactive && !currentlyActive) {
+    res.status(410).json({
+      error: 'This limited theme collection is no longer active.',
+      expired: true,
+      collection: {
+        id: collection.id,
+        name: collection.name,
+        slug: collection.slug,
+        isLimitedEdition: collection.isLimitedEdition,
+        startDate: collection.startDate || null,
+        endDate: collection.endDate || null,
+      },
+    });
+    return;
+  }
+
   const matchingProducts = store.products.filter(
-    p => (p.collectionId === collection.id || p.collection.toLowerCase() === collection.name.toLowerCase() || p.theme?.toLowerCase() === collection.name.toLowerCase()) && p.status === 'published'
+    (p) =>
+      (p.collectionId === collection.id ||
+        p.collection.toLowerCase() === collection.name.toLowerCase() ||
+        p.theme?.toLowerCase() === collection.name.toLowerCase()) &&
+      p.status === 'published'
   );
-  
+
   const matchingBundles = (store.bundles || []).filter(
-    b => (b.collectionId === collection.id || b.collectionSlug === collection.slug) && (b.status === undefined || b.status === 'published')
+    (b) =>
+      (b.collectionId === collection.id || b.collectionSlug === collection.slug) &&
+      (b.status === undefined || b.status === 'published')
   );
-  
+
   const relatedCollections = store.collections
-    .filter(c => c.id !== collection.id && (c.status === undefined || c.status === 'published'))
+    .filter((c) => c.id !== collection.id && isCollectionCurrentlyActive(c))
     .slice(0, 4)
-    .map(c => {
+    .map((c) => {
       const count = store.products.filter(
-        p => (p.collectionId === c.id || p.collection.toLowerCase() === c.name.toLowerCase() || p.theme?.toLowerCase() === c.name.toLowerCase()) && p.status === 'published'
+        (p) =>
+          (p.collectionId === c.id ||
+            p.collection.toLowerCase() === c.name.toLowerCase() ||
+            p.theme?.toLowerCase() === c.name.toLowerCase()) &&
+          p.status === 'published'
       ).length;
       return { ...c, productCount: count };
     });
@@ -901,7 +1067,8 @@ app.get('/api/collections/:slugOrId', (req: Request, res: Response) => {
   });
 });
 
-app.post('/api/admin/collections', (req: Request, res: Response) => {
+app.post('/api/admin/collections', async (req: Request, res: Response) => {
+  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
   const store = readStore();
   const body = req.body;
   const newCol: Collection = {
@@ -913,6 +1080,9 @@ app.post('/api/admin/collections', (req: Request, res: Response) => {
     bannerImage: body.bannerImage || body.coverImage || '/src/assets/images/hero_mushroom_cottage_1794020164209.jpg',
     featured: Boolean(body.featured),
     isNew: Boolean(body.isNew),
+    isLimitedEdition: Boolean(body.isLimitedEdition),
+    startDate: body.startDate || null,
+    endDate: body.endDate || null,
     status: body.status || 'published',
     order: store.collections.length + 1,
     productCount: 0,
@@ -924,7 +1094,8 @@ app.post('/api/admin/collections', (req: Request, res: Response) => {
   res.json({ success: true, collection: newCol });
 });
 
-app.put('/api/admin/collections/:id', (req: Request, res: Response) => {
+app.put('/api/admin/collections/:id', async (req: Request, res: Response) => {
+  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
   const store = readStore();
   const idx = store.collections.findIndex(c => c.id === req.params.id);
   if (idx === -1) {
@@ -936,7 +1107,8 @@ app.put('/api/admin/collections/:id', (req: Request, res: Response) => {
   res.json({ success: true, collection: store.collections[idx] });
 });
 
-app.delete('/api/admin/collections/:id', (req: Request, res: Response) => {
+app.delete('/api/admin/collections/:id', async (req: Request, res: Response) => {
+  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
   const store = readStore();
   store.collections = store.collections.filter(c => c.id !== req.params.id);
   saveStore(store);
@@ -963,59 +1135,80 @@ app.get('/api/bundles/:slugOrId', (req: Request, res: Response) => {
   res.json(bundle);
 });
 
-app.post('/api/admin/bundles', (req: Request, res: Response) => {
+app.post('/api/admin/bundles', async (req: Request, res: Response) => {
+  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
   const store = readStore();
   if (!Array.isArray(store.bundles)) store.bundles = [];
-  const body = req.body;
+  const body = req.body || {};
+  const productIds = Array.isArray(body.productIds)
+    ? body.productIds
+    : Array.isArray(body.includedProductIds)
+      ? body.includedProductIds
+      : [];
+  const includedItems = Array.isArray(body.includedItems)
+    ? body.includedItems
+    : Array.isArray(body.includedItemsSummary)
+      ? body.includedItemsSummary
+      : [];
+  const previewImage =
+    body.previewImage || body.coverImage || '/src/assets/images/hero_mushroom_cottage_1794020164209.jpg';
   const originalPrice = Number(body.originalPrice) || 0;
   const bundlePrice = Number(body.bundlePrice) || 0;
   const savingsAmount = originalPrice > bundlePrice ? Number((originalPrice - bundlePrice).toFixed(2)) : 0;
   const savingsPercent = originalPrice > 0 ? Math.round((savingsAmount / originalPrice) * 100) : 0;
+  const linkedCollection = store.collections.find(
+    (c) => c.id === body.collectionId || c.slug === body.collectionSlug
+  );
 
   const newBundle: ThemeBundle = {
     id: `bundle-${Date.now()}`,
     title: body.title || 'New Theme Bundle',
     slug: (body.slug || body.title || 'new-bundle').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-    collectionId: body.collectionId || '',
-    collectionSlug: body.collectionSlug || '',
+    collectionId: body.collectionId || linkedCollection?.id || '',
+    collectionSlug: body.collectionSlug || linkedCollection?.slug || '',
+    collectionName: body.collectionName || linkedCollection?.name || 'Theme Bundles',
     description: body.description || '',
-    coverImage: body.coverImage || '/src/assets/images/hero_mushroom_cottage_1794020164209.jpg',
-    badgeText: body.badgeText || 'SPECIAL BUNDLE',
+    previewImage,
     originalPrice,
     bundlePrice,
     savingsAmount,
     savingsPercent,
-    includedProductIds: Array.isArray(body.includedProductIds) ? body.includedProductIds : [],
-    includedItemsSummary: Array.isArray(body.includedItemsSummary) ? body.includedItemsSummary : [],
+    productIds,
+    includedItems,
     status: body.status || 'published',
-    order: store.bundles.length + 1,
+    featured: body.featured !== false,
     createdAt: new Date().toISOString(),
   };
 
-  // Also create or sync corresponding product so bundle can be purchased directly via standard cart
+  // Sync corresponding product so bundle can be purchased cleanly through standard cart & checkout
   const bundleProduct: Product = {
     id: `prod-bundle-${newBundle.id}`,
     title: newBundle.title,
     slug: newBundle.slug,
     description: newBundle.description,
     price: newBundle.bundlePrice,
-    originalPrice: newBundle.originalPrice,
-    theme: body.theme || newBundle.title,
-    collection: body.collectionName || 'Theme Bundles',
+    compareAtPrice: newBundle.originalPrice || undefined,
+    theme: linkedCollection?.name || newBundle.collectionName,
+    collection: newBundle.collectionName,
     collectionId: newBundle.collectionId,
     category: 'bundle',
     productType: 'bundle',
     isBundle: true,
-    bundleItemCount: newBundle.includedProductIds.length,
-    bundleProductIds: newBundle.includedProductIds,
+    bundleItemCount: newBundle.productIds.length,
+    bundleProductIds: newBundle.productIds,
     bundleSavingsPercent: newBundle.savingsPercent,
     deviceTypes: ['desktop', 'mobile', 'tablet'],
     resolutions: ['4K Desktop', 'Retina Mobile', 'High-Res Tablet', 'ZIP Archive'],
     fileFormat: 'All formats included (ZIP containing PNG & HEIC)',
     fileSize: '45.0 MB',
-    whatsIncluded: newBundle.includedItemsSummary.length > 0 ? newBundle.includedItemsSummary : ['Complete Theme Set', 'All Resolutions', 'Commercial/Personal Use'],
-    images: [newBundle.coverImage],
-    status: 'published',
+    whatsIncluded:
+      newBundle.includedItems.length > 0
+        ? newBundle.includedItems
+        : ['Complete Theme Set', 'All Resolutions', 'Personal Use License'],
+    images: [newBundle.previewImage],
+    featured: Boolean(newBundle.featured),
+    isNew: true,
+    status: newBundle.status,
     downloadFileName: `${newBundle.slug}_complete_bundle.zip`,
     popularity: 95,
     createdAt: new Date().toISOString(),
@@ -1027,7 +1220,8 @@ app.post('/api/admin/bundles', (req: Request, res: Response) => {
   res.json({ success: true, bundle: newBundle, product: bundleProduct });
 });
 
-app.put('/api/admin/bundles/:id', (req: Request, res: Response) => {
+app.put('/api/admin/bundles/:id', async (req: Request, res: Response) => {
+  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
   const store = readStore();
   if (!Array.isArray(store.bundles)) store.bundles = [];
   const idx = store.bundles.findIndex(b => b.id === req.params.id);
@@ -1035,7 +1229,23 @@ app.put('/api/admin/bundles/:id', (req: Request, res: Response) => {
     res.status(404).json({ error: 'Bundle not found' });
     return;
   }
-  const updated = { ...store.bundles[idx], ...req.body };
+  const existing = store.bundles[idx];
+  const body = req.body || {};
+  const updated: ThemeBundle = {
+    ...existing,
+    ...body,
+    previewImage: body.previewImage || body.coverImage || existing.previewImage,
+    productIds: Array.isArray(body.productIds)
+      ? body.productIds
+      : Array.isArray(body.includedProductIds)
+        ? body.includedProductIds
+        : existing.productIds,
+    includedItems: Array.isArray(body.includedItems)
+      ? body.includedItems
+      : Array.isArray(body.includedItemsSummary)
+        ? body.includedItemsSummary
+        : existing.includedItems,
+  };
   if (updated.originalPrice && updated.bundlePrice) {
     const orig = Number(updated.originalPrice);
     const bun = Number(updated.bundlePrice);
@@ -1044,23 +1254,26 @@ app.put('/api/admin/bundles/:id', (req: Request, res: Response) => {
   }
   store.bundles[idx] = updated;
 
-  // Sync corresponding product if exists
   const prodIdx = store.products.findIndex(p => p.id === `prod-bundle-${updated.id}` || p.slug === updated.slug);
   if (prodIdx >= 0) {
     store.products[prodIdx].title = updated.title;
     store.products[prodIdx].price = updated.bundlePrice;
-    store.products[prodIdx].originalPrice = updated.originalPrice;
+    store.products[prodIdx].compareAtPrice = updated.originalPrice || undefined;
     store.products[prodIdx].description = updated.description;
     store.products[prodIdx].bundleSavingsPercent = updated.savingsPercent;
-    store.products[prodIdx].bundleItemCount = updated.includedProductIds?.length || 0;
-    if (updated.coverImage) store.products[prodIdx].images = [updated.coverImage];
+    store.products[prodIdx].bundleItemCount = updated.productIds?.length || 0;
+    store.products[prodIdx].bundleProductIds = updated.productIds || [];
+    store.products[prodIdx].whatsIncluded = updated.includedItems || store.products[prodIdx].whatsIncluded;
+    store.products[prodIdx].status = updated.status;
+    if (updated.previewImage) store.products[prodIdx].images = [updated.previewImage];
   }
 
   saveStore(store);
   res.json({ success: true, bundle: store.bundles[idx] });
 });
 
-app.delete('/api/admin/bundles/:id', (req: Request, res: Response) => {
+app.delete('/api/admin/bundles/:id', async (req: Request, res: Response) => {
+  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
   const store = readStore();
   if (!Array.isArray(store.bundles)) store.bundles = [];
   const target = store.bundles.find(b => b.id === req.params.id);
@@ -1635,6 +1848,199 @@ app.get(['/api/runtime-config', '/api/runtime-config.js'], (_req: Request, res: 
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.send(`window.__SLEEPYSHROOM_ENV__ = ${JSON.stringify(payload)};`);
+});
+
+// 14. Newsletter Subscription & Unsubscribe Routes
+app.post('/api/newsletter', async (req: Request, res: Response) => {
+  try {
+    const result = await handleNewsletterSubscribe(req);
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('[Newsletter Subscribe Error]', err);
+    res.status(500).json({ success: false, error: 'Unable to subscribe to newsletter.' });
+  }
+});
+
+app.all('/api/newsletter', async (req: Request, res: Response) => {
+  try {
+    const result = await handleNewsletterUnsubscribe(req);
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('[Newsletter Unsubscribe Error]', err);
+    res.status(500).json({ success: false, error: 'Unable to process unsubscribe request.' });
+  }
+});
+
+app.get('/api/admin/newsletter', async (req: Request, res: Response) => {
+  const result = await handleAdminListSubscribers(req);
+  res.status(result.status ?? 500).json(result.body);
+});
+
+app.patch('/api/admin/newsletter/:id', async (req: Request, res: Response) => {
+  const result = await handleAdminUpdateSubscriber(req, String(req.params.id || ''));
+  res.status(result.status ?? 500).json(result.body);
+});
+
+app.delete('/api/admin/newsletter/:id', async (req: Request, res: Response) => {
+  const result = await handleAdminDeleteSubscriber(req, String(req.params.id || ''));
+  res.status(result.status ?? 500).json(result.body);
+});
+
+// 15. Customer Reviews Routes (Verified Purchasers Only)
+app.get('/api/reviews', async (req: Request, res: Response) => {
+  try {
+    const result = await handleGetProductReviews(req);
+    res.status(result.status ?? 500).json(result.body);
+  } catch (err: any) {
+    console.error('[Reviews GET Error]', err);
+    res.status(500).json({ success: false, error: 'Unable to load product reviews.' });
+  }
+});
+
+app.post('/api/reviews', async (req: Request, res: Response) => {
+  try {
+    const result = await handleSubmitOrUpdateReview(req);
+    res.status(result.status ?? 500).json(result.body);
+  } catch (err: any) {
+    console.error('[Reviews POST Error]', err);
+    res.status(500).json({ success: false, error: 'Unable to save product review.' });
+  }
+});
+
+app.put('/api/reviews', async (req: Request, res: Response) => {
+  const result = await handleSubmitOrUpdateReview(req);
+  res.status(result.status ?? 500).json(result.body);
+});
+
+app.patch('/api/reviews', async (req: Request, res: Response) => {
+  const result = await handleSubmitOrUpdateReview(req);
+  res.status(result.status ?? 500).json(result.body);
+});
+
+app.get('/api/admin/reviews', async (req: Request, res: Response) => {
+  const result = await handleAdminListReviews(req);
+  res.status(result.status ?? 500).json(result.body);
+});
+
+app.patch('/api/admin/reviews/:id', async (req: Request, res: Response) => {
+  const result = await handleAdminModerateReview(req, String(req.params.id || ''));
+  res.status(result.status ?? 500).json(result.body);
+});
+
+app.delete('/api/admin/reviews/:id', async (req: Request, res: Response) => {
+  const result = await handleAdminDeleteReview(req, String(req.params.id || ''));
+  res.status(result.status ?? 500).json(result.body);
+});
+
+// 16. FAQs Routes
+app.get('/api/faqs', async (_req: Request, res: Response) => {
+  const result = await handleListFaqs({ includeUnpublished: false });
+  res.status(result.status ?? 500).json(result.body);
+});
+
+app.get('/api/admin/faqs', async (req: Request, res: Response) => {
+  const result = await handleAdminListFaqs(req);
+  res.status(result.status ?? 500).json(result.body);
+});
+
+app.post('/api/admin/faqs', async (req: Request, res: Response) => {
+  const result = await handleAdminSaveFaq(req, null);
+  res.status(result.status ?? 500).json(result.body);
+});
+
+app.put('/api/admin/faqs/:id', async (req: Request, res: Response) => {
+  const result = await handleAdminSaveFaq(req, String(req.params.id || ''));
+  res.status(result.status ?? 500).json(result.body);
+});
+
+app.patch('/api/admin/faqs/:id', async (req: Request, res: Response) => {
+  const result = await handleAdminSaveFaq(req, String(req.params.id || ''));
+  res.status(result.status ?? 500).json(result.body);
+});
+
+app.delete('/api/admin/faqs/:id', async (req: Request, res: Response) => {
+  const result = await handleAdminDeleteFaq(req, String(req.params.id || ''));
+  res.status(result.status ?? 500).json(result.body);
+});
+
+// 17. Email Delivery Logs & Order Confirmation Resend
+app.get('/api/admin/email-logs', async (req: Request, res: Response) => {
+  const result = await handleAdminListEmailLogs(req);
+  res.status(result.status ?? 500).json(result.body);
+});
+
+app.post('/api/admin/email-logs', async (req: Request, res: Response) => {
+  const orderIdOrToken = String(req.body?.orderId || req.body?.orderNumber || '');
+  const result = await handleAdminResendOrderConfirmation(req, orderIdOrToken);
+  res.status(result.status ?? 500).json(result.body);
+});
+
+app.post('/api/admin/orders/:idOrToken/resend-email', async (req: Request, res: Response) => {
+  const result = await handleAdminResendOrderConfirmation(req, String(req.params.idOrToken || ''));
+  res.status(result.status ?? 500).json(result.body);
+});
+
+// 18. Dynamic Sitemap XML & Robots TXT for SEO
+app.get('/robots.txt', (_req: Request, res: Response) => {
+  const store = readStore();
+  const baseUrl = (store.settings?.seo?.siteUrl || 'https://sleepyshroom.vercel.app').replace(/\/+$/, '');
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.send(
+    [
+      'User-agent: *',
+      'Allow: /',
+      'Disallow: /api/',
+      'Disallow: /#admin',
+      'Disallow: /#checkout',
+      'Disallow: /#confirmation',
+      `Sitemap: ${baseUrl}/sitemap.xml`,
+    ].join('\n')
+  );
+});
+
+app.get('/sitemap.xml', (_req: Request, res: Response) => {
+  const store = readStore();
+  const baseUrl = (store.settings?.seo?.siteUrl || 'https://sleepyshroom.vercel.app').replace(/\/+$/, '');
+  const nowDate = new Date().toISOString().split('T')[0];
+
+  const staticPaths = [
+    { loc: `${baseUrl}/`, priority: '1.0', changefreq: 'weekly' },
+    { loc: `${baseUrl}/#collections`, priority: '0.9', changefreq: 'weekly' },
+    { loc: `${baseUrl}/#faq`, priority: '0.8', changefreq: 'monthly' },
+    { loc: `${baseUrl}/#about`, priority: '0.7', changefreq: 'monthly' },
+    { loc: `${baseUrl}/#contact`, priority: '0.7', changefreq: 'monthly' },
+    { loc: `${baseUrl}/#policy`, priority: '0.5', changefreq: 'yearly' },
+    { loc: `${baseUrl}/#privacy-policy`, priority: '0.5', changefreq: 'yearly' },
+    { loc: `${baseUrl}/#terms-of-service`, priority: '0.5', changefreq: 'yearly' },
+  ];
+
+  const activeCollections = store.collections
+    .filter((c) => isCollectionCurrentlyActive(c))
+    .map((c) => ({
+      loc: `${baseUrl}/collections/${encodeURIComponent(c.slug)}`,
+      priority: '0.85',
+      changefreq: 'weekly',
+    }));
+
+  const publishedProducts = store.products
+    .filter((p) => p.status === 'published')
+    .map((p) => ({
+      loc: `${baseUrl}/#product/${encodeURIComponent(p.slug)}`,
+      priority: '0.8',
+      changefreq: 'weekly',
+    }));
+
+  const urls = [...staticPaths, ...activeCollections, ...publishedProducts];
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
+    .map(
+      (u) =>
+        `  <url>\n    <loc>${u.loc.replace(/&/g, '&amp;')}</loc>\n    <lastmod>${nowDate}</lastmod>\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`
+    )
+    .join('\n')}\n</urlset>`;
+
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(xml);
 });
 
 // Integrate with Vite Dev Server or Production Static Files

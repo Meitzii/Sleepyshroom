@@ -33,6 +33,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
     setLatestOrder,
     paypalReturnOrderId,
     clearPaypalReturnOrderId,
+    products,
   } = useShop();
 
   const [order, setOrder] = useState<Order | null>(null);
@@ -432,42 +433,109 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
           <div className="space-y-4">
             {order.items.map(item => {
               const isBusy = downloadingProductId === item.productId;
+              const catalogProd = products.find(p => p.id === item.productId);
+              const childIds =
+                Array.isArray(item.bundleProductIds) && item.bundleProductIds.length > 0
+                  ? item.bundleProductIds
+                  : Array.isArray(catalogProd?.bundleProductIds)
+                    ? catalogProd.bundleProductIds
+                    : [];
+              const childProducts = childIds
+                .map(cid => products.find(p => p.id === cid))
+                .filter((p): p is NonNullable<typeof p> => Boolean(p));
+
               return (
                 <div
                   key={item.productId}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8]"
+                  className="p-4 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8] space-y-3"
                 >
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      referrerPolicy="no-referrer"
-                      className="w-16 h-16 object-cover rounded-xl shrink-0 border border-[#EADCC8]"
-                    />
-                    <div>
-                      <h3 className="font-heading font-bold text-sm sm:text-base text-[#292929]">
-                        {item.title}
-                      </h3>
-                      <div className="flex items-center gap-2 text-xs text-[#777777] font-medium mt-0.5">
-                        <span>Lossless 300 DPI</span>
-                        <span aria-hidden="true">·</span>
-                        <span className="capitalize">{item.deviceTypes.join(', ')}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        referrerPolicy="no-referrer"
+                        className="w-16 h-16 object-cover rounded-xl shrink-0 border border-[#EADCC8]"
+                      />
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-heading font-bold text-sm sm:text-base text-[#292929]">
+                            {item.title}
+                          </h3>
+                          {(item.isBundle || childProducts.length > 0) && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#A64B3C]/10 text-[#A64B3C] border border-[#A64B3C]/20">
+                              Bundle
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-[#777777] font-medium mt-0.5">
+                          <span>Lossless 300 DPI</span>
+                          <span aria-hidden="true">·</span>
+                          <span className="capitalize">{item.deviceTypes.join(', ')}</span>
+                        </div>
                       </div>
                     </div>
+
+                    <button
+                      disabled={isBusy}
+                      onClick={() => handleDownloadFile(item.productId, item.title, item.downloadFileName)}
+                      className="px-5 py-3 bg-[#A64B3C] hover:bg-[#8E3E30] active:scale-98 text-[#FFFCF7] text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                    >
+                      {isBusy ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4" />
+                      )}
+                      <span>{isBusy ? 'Preparing File...' : (item.isBundle || childProducts.length > 0 ? 'Download Bundle Archive' : 'Download Files')}</span>
+                    </button>
                   </div>
 
-                  <button
-                    disabled={isBusy}
-                    onClick={() => handleDownloadFile(item.productId, item.title, item.downloadFileName)}
-                    className="px-5 py-3 bg-[#A64B3C] hover:bg-[#8E3E30] active:scale-98 text-[#FFFCF7] text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-60 cursor-pointer whitespace-nowrap"
-                  >
-                    {isBusy ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Download className="w-4 h-4" />
-                    )}
-                    <span>{isBusy ? 'Preparing File...' : 'Download Files'}</span>
-                  </button>
+                  {childProducts.length > 0 && (
+                    <div className="pt-3 border-t border-[#EADCC8]/80 space-y-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#777777]">
+                        Included Bundle Downloads ({childProducts.length})
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {childProducts.map(child => {
+                          const isChildBusy = downloadingProductId === child.id;
+                          return (
+                            <div
+                              key={child.id}
+                              className="flex items-center justify-between gap-2 p-2.5 bg-[#FCF3E2]/60 rounded-xl border border-[#EADCC8]"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <img
+                                  src={child.images[0]}
+                                  alt={child.title}
+                                  referrerPolicy="no-referrer"
+                                  className="w-9 h-9 rounded-lg object-cover border border-[#EADCC8] shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold text-[#292929] truncate">{child.title}</p>
+                                  <p className="text-[10px] text-[#777777] capitalize truncate">
+                                    {child.deviceTypes.join(', ')}
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                disabled={isChildBusy}
+                                onClick={() => handleDownloadFile(child.id, child.title, child.downloadFileName)}
+                                className="px-2.5 py-1.5 bg-[#FFFCF7] hover:bg-[#A64B3C] text-[#292929] hover:text-[#FFFCF7] border border-[#EADCC8] rounded-lg text-[11px] font-bold flex items-center gap-1 shrink-0 transition-colors cursor-pointer disabled:opacity-50"
+                              >
+                                {isChildBusy ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Download className="w-3 h-3" />
+                                )}
+                                <span>Download</span>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}

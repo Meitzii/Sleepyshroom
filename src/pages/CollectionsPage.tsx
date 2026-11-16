@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Filter, SlidersHorizontal, Monitor, Smartphone, Tablet, Sparkles, X, Check } from 'lucide-react';
+import { Filter, SlidersHorizontal, Monitor, Smartphone, Tablet, Sparkles, X, Check, ArrowRight } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { ProductCard } from '../components/common/ProductCard.tsx';
 
 export const CollectionsPage: React.FC = () => {
-  const { products, collections, viewParam } = useShop();
+  const { products, collections, viewParam, navigateTo } = useShop();
 
   // Parse viewParam (e.g. "device=desktop", "theme=Sleepy+Garden", "search=autumn")
   const initialParams = useMemo(() => {
@@ -136,6 +136,59 @@ export const CollectionsPage: React.FC = () => {
               : 'Explore high-resolution digital wallpapers crafted for peaceful and cozy screen spaces.'}
           </p>
         </div>
+
+        {/* Dedicated Theme Collection Landing Cards */}
+        {!hasActiveFilters && collections.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-heading font-bold text-lg text-[#292929]">
+                Browse Dedicated Theme Collections
+              </h2>
+              <span className="text-xs font-bold text-[#777777]">
+                Click any theme to view its bundles &amp; categories
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {collections.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => navigateTo('collections', c.slug)}
+                  className="group text-left bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] overflow-hidden hover:shadow-md transition-all cursor-pointer flex flex-col"
+                >
+                  <div className="aspect-16/10 w-full overflow-hidden bg-[#EADCC8]/40 relative">
+                    <img
+                      src={c.coverImage}
+                      alt={c.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    {c.isNew && (
+                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-[#A64B3C] text-[#FFFCF7] text-[10px] font-extrabold">
+                        NEW
+                      </span>
+                    )}
+                    {c.isLimitedEdition && (
+                      <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#292929] text-[#FFFCF7] text-[10px] font-extrabold">
+                        LIMITED
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-3.5 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-heading font-bold text-xs sm:text-sm text-[#292929] group-hover:text-[#A64B3C] truncate">
+                        {c.name}
+                      </p>
+                      <p className="text-[11px] text-[#777777] font-semibold">
+                        {c.productCount ?? 0} designs
+                      </p>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-[#A64B3C] shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Device Segmented Control Filter Bar */}
         <div className="flex flex-wrap items-center justify-center gap-2 mb-8">

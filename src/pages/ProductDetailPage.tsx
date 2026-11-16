@@ -19,6 +19,7 @@ import {
 import { useShop } from '../context/ShopContext.tsx';
 import { ProductCard } from '../components/common/ProductCard.tsx';
 import { ProtectedArtworkPreview } from '../components/common/ProtectedArtworkPreview.tsx';
+import { ProductReviewsSection } from '../components/product/ProductReviewsSection.tsx';
 
 interface ProductDetailPageProps {
   slug: string;
@@ -452,6 +453,43 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                   </ul>
                 </div>
 
+                {product.isBundle && Array.isArray(product.bundleProductIds) && product.bundleProductIds.length > 0 && (() => {
+                  const bundleChildren = product.bundleProductIds
+                    .map(cid => products.find(p => p.id === cid))
+                    .filter((p): p is NonNullable<typeof p> => Boolean(p));
+                  if (bundleChildren.length === 0) return null;
+                  return (
+                    <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs space-y-2">
+                      <p className="text-[#777777] font-bold flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-[#A64B3C]" />
+                        <span>Included Digital Products ({bundleChildren.length})</span>
+                      </p>
+                      <div className="space-y-1.5">
+                        {bundleChildren.map(child => (
+                          <button
+                            key={child.id}
+                            type="button"
+                            onClick={() => navigateTo('product', child.slug)}
+                            className="w-full flex items-center justify-between gap-2 p-2 rounded-lg bg-[#FCF3E2]/70 hover:bg-[#FCF3E2] border border-[#EADCC8] text-left transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <img
+                                src={child.images[0]}
+                                alt={child.title}
+                                className="w-8 h-8 rounded object-cover border border-[#EADCC8] shrink-0"
+                              />
+                              <span className="font-bold text-[#292929] truncate">{child.title}</span>
+                            </div>
+                            <span className="text-[11px] font-bold text-[#A64B3C] shrink-0">
+                              ${child.price.toFixed(2)}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Personal-Use License Notice */}
                 <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-[#292929]">
@@ -487,6 +525,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           </div>
 
         </div>
+
+        {/* Customer Reviews (Authenticated Verified Purchasers Only) */}
+        <ProductReviewsSection productId={product.id} productTitle={product.title} />
 
         {/* Related Wallpapers Section */}
         {relatedProducts.length > 0 && (

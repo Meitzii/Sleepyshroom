@@ -18,6 +18,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [downloading, setDownloading] = useState(false);
 
   const isFree = Boolean(product.isFree || product.price === 0);
+  const discountPercent =
+    !isFree && product.compareAtPrice && product.compareAtPrice > product.price
+      ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
+      : 0;
+  const categoryLabel =
+    product.isBundle || product.category === 'bundle'
+      ? 'Theme Bundle'
+      : product.category === 'icon_pack' || product.productType === 'icon_pack'
+        ? 'Icon Pack'
+        : product.deviceTypes.includes('desktop') && !product.deviceTypes.includes('mobile')
+          ? 'Desktop Wallpaper'
+          : 'Phone & Tablet';
 
   // Determine aspect ratio based on orientation
   const isPortrait = orientation === 'portrait' || (orientation === 'auto' && product.deviceTypes.includes('mobile') && !product.deviceTypes.includes('desktop'));
@@ -44,7 +56,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     <div
       onClick={handleCardClick}
       className={`group relative bg-[#FCF3E2] rounded-3xl border overflow-hidden shadow-xs hover:shadow-md transition-all duration-300 flex flex-col cursor-pointer ${
-        isFree ? 'border-[#A64B3C]/50 ring-2 ring-[#A64B3C]/20' : 'border-[#EADCC8]'
+        isFree || product.isBundle ? 'border-[#A64B3C]/50 ring-2 ring-[#A64B3C]/15' : 'border-[#EADCC8]'
       }`}
     >
       <div 
@@ -63,14 +75,27 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Subtle hover gradient */}
         <div className="absolute inset-0 bg-[#292929]/10 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-        {/* Device & Freebie Badges in Corner */}
-        <div className="absolute top-3 left-3 flex flex-wrap gap-1 items-center">
+        {/* Device & Freebie & Discount Badges in Corner */}
+        <div className="absolute top-3 left-3 flex flex-wrap gap-1 items-center max-w-[85%]">
           {isFree ? (
             <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#A64B3C] text-[#FFFCF7] shadow-xs flex items-center gap-1 border border-[#8E3E30]">
               <Gift className="w-3 h-3 text-[#FFFCF7]" />
               <span>Free Gift</span>
             </span>
           ) : null}
+
+          {product.isBundle && (
+            <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#292929] text-[#FFFCF7] shadow-xs flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-[#FCF3E2]" />
+              <span>Bundle</span>
+            </span>
+          )}
+
+          {discountPercent > 0 && (
+            <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#A64B3C] text-[#FFFCF7] shadow-xs">
+              Save {discountPercent}%
+            </span>
+          )}
 
           {product.deviceTypes.map(d => (
             <span
@@ -80,7 +105,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               {d}
             </span>
           ))}
-          {product.isNew && !isFree && (
+          {product.isNew && !isFree && discountPercent === 0 && (
             <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#A64B3C] text-[#FFFCF7]">
               New
             </span>
@@ -99,11 +124,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* Card Info */}
       <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
         
-        {/* Theme and Collection unboxed metadata */}
-        <div className="flex items-center gap-1.5 text-xs text-[#777777] font-bold mb-1">
-          <span>{product.theme}</span>
-          <span aria-hidden="true">·</span>
-          <span>{product.collection}</span>
+        {/* Theme and Category metadata */}
+        <div className="flex items-center justify-between gap-2 text-[11px] text-[#777777] font-bold mb-1">
+          <span className="truncate">{product.collection || product.theme}</span>
+          <span className="shrink-0 text-[#A64B3C] font-extrabold">{categoryLabel}</span>
         </div>
 
         {/* Product Title */}

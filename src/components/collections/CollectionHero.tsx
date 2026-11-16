@@ -66,6 +66,18 @@ export const CollectionHero: React.FC<CollectionHeroProps> = ({ collection, tota
                   FEATURED
                 </span>
               )}
+
+              {collection.isLimitedEdition && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-[#FFFCF7] text-[#A64B3C] border border-[#A64B3C]/40">
+                  LIMITED EDITION
+                  {collection.endDate
+                    ? ` · Until ${new Date(collection.endDate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}`
+                    : ''}
+                </span>
+              )}
             </div>
 
             {/* Collection Title */}
