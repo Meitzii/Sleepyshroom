@@ -742,6 +742,7 @@ app.use('/src/assets/images', express.static(path.join(__dirname, 'public', 'src
 
 // 1. Settings & Content
 app.get('/api/content', (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   const store = readStore();
   res.json({
     settings: store.settings,
@@ -750,6 +751,7 @@ app.get('/api/content', (_req: Request, res: Response) => {
 });
 
 app.get('/api/admin/content', (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   const store = readStore();
   res.json({
     settings: store.settings,

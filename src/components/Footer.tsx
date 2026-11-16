@@ -139,10 +139,10 @@ export const Footer: React.FC = () => {
           </form>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10 pb-10 border-b border-[#EADCC8]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-8 lg:gap-10 pb-10 border-b border-[#EADCC8]">
           
           {/* Brand Info */}
-          <div className={`${activeSocialPlatforms.length > 0 ? 'sm:col-span-2 lg:col-span-4' : 'sm:col-span-2 lg:col-span-5'} space-y-4`}>
+          <div className={`${activeSocialPlatforms.length > 0 ? 'sm:col-span-2 md:col-span-4' : 'sm:col-span-2 md:col-span-5'} space-y-4`}>
             <div className="flex items-center gap-3">
               <ShroomLogoIcon size={38} />
               <div>
@@ -166,7 +166,7 @@ export const Footer: React.FC = () => {
           </div>
 
           {/* Quick Links */}
-          <div className={`${activeSocialPlatforms.length > 0 ? 'sm:col-span-1 lg:col-span-2' : 'sm:col-span-1 lg:col-span-3'} space-y-3`}>
+          <div className={`${activeSocialPlatforms.length > 0 ? 'sm:col-span-1 md:col-span-2' : 'sm:col-span-1 md:col-span-3'} space-y-3`}>
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#292929]">
               Shop & Explore
             </h4>
@@ -199,7 +199,7 @@ export const Footer: React.FC = () => {
           </div>
 
           {/* Customer Care & Legal */}
-          <div className={`${activeSocialPlatforms.length > 0 ? 'sm:col-span-1 lg:col-span-3' : 'sm:col-span-1 lg:col-span-4'} space-y-3`}>
+          <div className={`${activeSocialPlatforms.length > 0 ? 'sm:col-span-1 md:col-span-3' : 'sm:col-span-1 md:col-span-4'} space-y-3`}>
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#292929]">
               Customer Care & Policies
             </h4>
@@ -291,7 +291,7 @@ export const Footer: React.FC = () => {
 
           {/* Dedicated Social Media Section */}
           {activeSocialPlatforms.length > 0 && (
-            <div className="sm:col-span-2 lg:col-span-3 space-y-3">
+            <div className="sm:col-span-2 md:col-span-3 space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#292929]">
                 Social Media
               </h4>
@@ -299,7 +299,7 @@ export const Footer: React.FC = () => {
                 Follow sleepyshroom for cozy wallpaper previews, behind-the-scenes sketches, and seasonal drops.
               </p>
               <nav aria-label="Sleepyshroom Social Media" className="pt-1">
-                <ul className="grid grid-cols-2 sm:flex sm:flex-wrap lg:grid lg:grid-cols-2 gap-2.5">
+                <ul className="grid grid-cols-2 sm:flex sm:flex-wrap md:grid md:grid-cols-1 lg:grid-cols-2 gap-2.5">
                   {activeSocialPlatforms.map(platform => (
                     <li key={platform.key}>
                       <a
@@ -307,7 +307,7 @@ export const Footer: React.FC = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={`Follow ${settings?.storeName || 'sleepyshroom'} on ${platform.label} (opens in a new tab)`}
-                        className="group w-full sm:w-auto lg:w-full inline-flex items-center justify-center sm:justify-start gap-2.5 px-3.5 py-2.5 min-h-[44px] bg-[#FFFCF7] hover:bg-[#A64B3C] text-[#292929] hover:text-[#FFFCF7] border border-[#EADCC8] hover:border-[#A64B3C] rounded-2xl shadow-2xs transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A64B3C]/50"
+                        className="group w-full sm:w-auto md:w-full inline-flex items-center justify-center sm:justify-start gap-2.5 px-3.5 py-2.5 min-h-[44px] bg-[#FFFCF7] hover:bg-[#A64B3C] text-[#292929] hover:text-[#FFFCF7] border border-[#EADCC8] hover:border-[#A64B3C] rounded-2xl shadow-2xs transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A64B3C]/50"
                       >
                         <SocialPlatformIcon
                           platform={platform.key}

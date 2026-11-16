@@ -271,10 +271,10 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshData = async () => {
     try {
       const [contentRes, prodsRes, colsRes, bundlesRes] = await Promise.all([
-        fetch('/api/content'),
-        fetch('/api/products?includeDrafts=false'),
-        fetch('/api/collections'),
-        fetch('/api/bundles'),
+        fetch('/api/content', { cache: 'no-store' }),
+        fetch('/api/products?includeDrafts=false', { cache: 'no-store' }),
+        fetch('/api/collections', { cache: 'no-store' }),
+        fetch('/api/bundles', { cache: 'no-store' }),
       ]);
 
       const [contentParsed, prodsParsed, colsParsed, bundlesParsed] = await Promise.all([
@@ -285,7 +285,16 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ]);
 
       if (contentParsed.ok && contentParsed.isJson && contentParsed.data) {
-        if (contentParsed.data.settings) setSettings(contentParsed.data.settings);
+        if (contentParsed.data.settings) {
+          setSettings(prev => ({
+            ...(prev || initialSettings),
+            ...contentParsed.data.settings,
+            socialMedia:
+              contentParsed.data.settings.socialMedia ??
+              prev?.socialMedia ??
+              initialSettings.socialMedia,
+          }));
+        }
         if (Array.isArray(contentParsed.data.carouselSlides) && contentParsed.data.carouselSlides.length > 0) {
           setCarouselSlides(contentParsed.data.carouselSlides);
         }
