@@ -66,6 +66,10 @@
       "destination": "/api/admin/communications?route=orders-resend-email&idOrToken=:idOrToken"
     },
     {
+      "source": "/api/admin/content",
+      "destination": "/api/content"
+    },
+    {
       "source": "/api/admin/settings",
       "destination": "/api/admin/store?route=settings"
     },

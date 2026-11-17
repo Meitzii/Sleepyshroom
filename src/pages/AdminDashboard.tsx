@@ -54,6 +54,7 @@ import {
   MayaIcon,
   SocialPlatformIcon,
 } from '../components/common/Icons.tsx';
+import { initialSettings } from '../data/initialData.ts';
 import type { 
   Product, 
   CarouselSlide, 
@@ -65,7 +66,47 @@ import type {
 } from '../types/index.ts';
 
 export const AdminDashboard: React.FC = () => {
-  const { user, navigateTo, refreshData } = useShop();
+  const { user, settings: storefrontSettings, carouselSlides: storefrontSlides, navigateTo, refreshData } = useShop();
+
+  const normalizeAdminSettings = (raw: Partial<WebsiteSettings> | null | undefined): WebsiteSettings => {
+    const base: WebsiteSettings = {
+      ...initialSettings,
+      ...(storefrontSettings || {}),
+    };
+    const src = (raw || {}) as Partial<WebsiteSettings>;
+    return {
+      ...base,
+      ...src,
+      seo: {
+        ...(base.seo || {}),
+        ...(src.seo || {}),
+      },
+      paymentProviders: {
+        ...base.paymentProviders,
+        ...(src.paymentProviders || {}),
+      },
+      artworkProtection: {
+        watermarkEnabled: true,
+        watermarkOpacity: 0.22,
+        watermarkStyle: 'diagonal',
+        disableContextMenu: true,
+        disableDrag: true,
+        ...(base.artworkProtection || {}),
+        ...(src.artworkProtection || {}),
+      },
+      aboutMe: {
+        ...base.aboutMe,
+        ...(src.aboutMe || {}),
+      },
+      returnPolicy: {
+        ...base.returnPolicy,
+        ...(src.returnPolicy || {}),
+      },
+      socialMedia: src.socialMedia ?? base.socialMedia,
+      privacyPolicy: src.privacyPolicy ?? base.privacyPolicy,
+      termsOfService: src.termsOfService ?? base.termsOfService,
+    };
+  };
 
   const [activeTab, setActiveTab] = useState<
     | 'overview'
@@ -84,11 +125,11 @@ export const AdminDashboard: React.FC = () => {
   const [verifyingAdmin, setVerifyingAdmin] = useState(true);
   const [adminToken, setAdminToken] = useState<string | null>(null);
 
-  // Editable state loaded from server
-  const [slides, setSlides] = useState<CarouselSlide[]>([]);
+  // Editable state loaded from server (seeded with live storefront settings so Settings tab never stays blank)
+  const [slides, setSlides] = useState<CarouselSlide[]>(storefrontSlides || []);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
-  const [settings, setSettings] = useState<WebsiteSettings | null>(null);
+  const [settings, setSettings] = useState<WebsiteSettings | null>(() => normalizeAdminSettings(storefrontSettings));
   const [orders, setOrders] = useState<Order[]>([]);
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
@@ -209,8 +250,17 @@ export const AdminDashboard: React.FC = () => {
 
       if (statsParsed.ok && statsParsed.isJson && statsParsed.data) setStats(statsParsed.data);
       if (contentParsed.ok && contentParsed.isJson && contentParsed.data) {
-        if (contentParsed.data.settings) setSettings(contentParsed.data.settings);
+        if (contentParsed.data.settings) setSettings(normalizeAdminSettings(contentParsed.data.settings));
         if (Array.isArray(contentParsed.data.carouselSlides)) setSlides(contentParsed.data.carouselSlides);
+      } else {
+        const publicContentRes = await fetch('/api/content', { cache: 'no-store' });
+        const publicContentParsed = await parseJsonResponse<any>(publicContentRes);
+        if (publicContentParsed.ok && publicContentParsed.isJson && publicContentParsed.data) {
+          if (publicContentParsed.data.settings) setSettings(normalizeAdminSettings(publicContentParsed.data.settings));
+          if (Array.isArray(publicContentParsed.data.carouselSlides)) setSlides(publicContentParsed.data.carouselSlides);
+        } else if (storefrontSettings) {
+          setSettings(prev => prev || normalizeAdminSettings(storefrontSettings));
+        }
       }
       if (prodsParsed.ok && prodsParsed.isJson && Array.isArray(prodsParsed.data)) setAllProducts(prodsParsed.data);
       if (colsParsed.ok && colsParsed.isJson && Array.isArray(colsParsed.data)) setAllCollections(colsParsed.data);
@@ -549,7 +599,7 @@ export const AdminDashboard: React.FC = () => {
       const parsed = await parseJsonResponse<{ settings?: WebsiteSettings; error?: string }>(res);
       if (parsed.ok) {
         if (parsed.data?.settings) {
-          setSettings(parsed.data.settings);
+          setSettings(normalizeAdminSettings(parsed.data.settings));
         }
         triggerSaveNotification('Settings, social links, and storefront preferences saved!');
         refreshData();
@@ -907,7 +957,18 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`px-4 py-2 text-xs font-bold rounded-xl border flex items-center gap-1.5 transition-colors cursor-pointer ${
+                activeTab === 'settings'
+                  ? 'bg-[#A64B3C] text-[#FFFCF7] border-[#A64B3C]'
+                  : 'bg-[#FFFCF7] text-[#292929] border-[#EADCC8] hover:bg-[#FCF3E2]'
+              }`}
+            >
+              <SettingsIcon className={`w-4 h-4 ${activeTab === 'settings' ? 'text-[#FFFCF7]' : 'text-[#A64B3C]'}`} />
+              <span>Settings</span>
+            </button>
             <button
               onClick={() => navigateTo('home')}
               className="px-4 py-2 bg-[#FFFCF7] text-xs font-bold text-[#292929] rounded-xl border border-[#EADCC8] hover:bg-[#FCF3E2] flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -933,8 +994,8 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-[#EADCC8]">
+        {/* Navigation Tabs (wrapped so Website Settings & all tabs remain visible without horizontal scroll) */}
+        <div className="flex flex-wrap items-center gap-1.5 pb-3 border-b border-[#EADCC8]">
           <button
             onClick={() => setActiveTab('overview')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
@@ -1189,8 +1250,8 @@ export const AdminDashboard: React.FC = () => {
                 className="p-5 bg-white rounded-2xl border border-[#D5C2BB] text-left hover:border-[#8B6F7A] transition-colors cursor-pointer"
               >
                 <SettingsIcon className="w-5 h-5 text-[#8B6F7A] mb-2" />
-                <h4 className="font-bold text-sm text-[#1E1419]">Configure Store</h4>
-                <p className="text-xs text-[#33222C] font-medium mt-1">Payment providers, receiving email, and policies.</p>
+                <h4 className="font-bold text-sm text-[#1E1419]">Store &amp; Payment Settings</h4>
+                <p className="text-xs text-[#33222C] font-medium mt-1">PayPal, Google Pay, GCash &amp; Maya QR, social links, and policies.</p>
               </button>
             </div>
 
@@ -2175,6 +2236,23 @@ export const AdminDashboard: React.FC = () => {
         )}
 
         {/* TAB 7: WEBSITE SETTINGS */}
+        {activeTab === 'settings' && !settings && (
+          <div className="bg-[#F9F6F0] p-8 rounded-3xl border border-[#E8C9C1] text-center space-y-3">
+            <Loader2 className="w-6 h-6 text-[#A64B3C] animate-spin mx-auto" />
+            <p className="text-xs font-bold text-[#1E1419]">Loading store &amp; payment settings...</p>
+            <button
+              type="button"
+              onClick={() => {
+                const fallback = normalizeAdminSettings(storefrontSettings);
+                if (fallback) setSettings(fallback);
+                else void loadAdminData();
+              }}
+              className="px-4 py-2 bg-[#A64B3C] text-[#FFFCF7] text-xs font-bold rounded-xl cursor-pointer"
+            >
+              Load Settings
+            </button>
+          </div>
+        )}
         {activeTab === 'settings' && settings && (
           <div className="bg-[#F9F6F0] p-6 sm:p-8 rounded-3xl border border-[#E8C9C1] shadow-xs space-y-8">
             <div className="flex items-center justify-between border-b border-[#E8C9C1]/50 pb-4">
