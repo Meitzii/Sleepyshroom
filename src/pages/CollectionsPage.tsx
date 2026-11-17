@@ -128,7 +128,7 @@ export const CollectionsPage: React.FC = () => {
             }
           >
             {onlyFree
-              ? 'Complimentary Free Wallpapers'
+              ? 'Free Wallpapers'
               : selectedDevice === 'desktop'
               ? 'Desktop Themes'
               : selectedDevice === 'mobile'
@@ -244,7 +244,7 @@ export const CollectionsPage: React.FC = () => {
                 : 'bg-[#FCF3E2] text-[#A64B3C] border-2 border-[#EADCC8] hover:bg-[#EADCC8]/40'
             }`}
           >
-            <span>🎁 Freebies ($0)</span>
+            <span>🎁 Free Wallpaper ($0)</span>
           </button>
         </div>
 
