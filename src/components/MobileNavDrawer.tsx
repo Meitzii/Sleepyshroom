@@ -88,16 +88,16 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClos
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
           >
             <Sparkles className="w-4 h-4 text-[#777777]" />
-            <span>All Collections</span>
+            <span>Wallpaper Collections</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleNav('collections', 'free=true')}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-extrabold text-[#A64B3C] bg-neutral-50 border border-neutral-200 hover:bg-neutral-100 transition-colors text-left cursor-pointer"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#A64B3C] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
           >
-            <span className="text-base leading-none">🎁</span>
-            <span>Freebies ($0 Instant Access)</span>
+            <Sparkles className="w-4 h-4 text-[#A64B3C]" />
+            <span>Freebies</span>
           </button>
 
           <button
@@ -146,12 +146,12 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClos
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
           >
             <MessageCircle className="w-4 h-4 text-[#777777]" />
-            <span>Contact</span>
+            <span>Contact &amp; Support</span>
           </button>
 
           <button
             type="button"
-            onClick={() => handleNav('policy')}
+            onClick={() => handleNav('policy', 'refund')}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
           >
             <FileText className="w-4 h-4 text-[#777777]" />
@@ -174,6 +174,15 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClos
           >
             <FileText className="w-4 h-4 text-[#777777]" />
             <span>Terms of Service</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleNav('policy', 'copyright')}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
+          >
+            <FileText className="w-4 h-4 text-[#777777]" />
+            <span>Copyright &amp; License</span>
           </button>
 
           <div className="pt-4 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[#777777]">

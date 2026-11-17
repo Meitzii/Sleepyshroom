@@ -17,11 +17,7 @@ export const DesktopThemesSection: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Centered Section Header */}
         <div className="mb-10 text-center">
-          <SectionHeading
-            as="h2"
-            size="md"
-            subtitle="Give your workspace a little cozy magic."
-          >
+          <SectionHeading as="h2" size="md">
             Desktop Themes
           </SectionHeading>
 

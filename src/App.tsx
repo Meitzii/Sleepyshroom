@@ -34,13 +34,6 @@ const MainLayout: React.FC = () => {
   const { activeView, viewParam, settings, loading } = useShop();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const scrollToThemes = () => {
-    const el = document.getElementById('explore-themes');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#FFFFFF] text-[#292929] space-y-3">
@@ -74,7 +67,7 @@ const MainLayout: React.FC = () => {
           <>
             {settings?.showHero !== false && (
               <ScrollReveal direction="up" distance={14} durationMs={600} initialVisible={true}>
-                <HeroSection onScrollToThemes={scrollToThemes} />
+                <HeroSection />
               </ScrollReveal>
             )}
             {settings?.showCarousel !== false && (
@@ -87,14 +80,14 @@ const MainLayout: React.FC = () => {
                 <DesktopThemesSection />
               </ScrollReveal>
             )}
-            <ScrollReveal direction="up" distance={24} durationMs={700} threshold={0.08}>
-              <FreeWallpapersSection />
-            </ScrollReveal>
             {settings?.showMobileSection !== false && (
               <ScrollReveal direction="up" distance={24} durationMs={700} threshold={0.08}>
                 <MobileTabletThemesSection />
               </ScrollReveal>
             )}
+            <ScrollReveal direction="up" distance={24} durationMs={700} threshold={0.08}>
+              <FreeWallpapersSection />
+            </ScrollReveal>
             {settings?.showBrandIntro !== false && (
               <ScrollReveal direction="up" distance={24} durationMs={700} threshold={0.08}>
                 <BrandIntroSection />

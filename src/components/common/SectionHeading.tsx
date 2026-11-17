@@ -33,14 +33,14 @@ export const SectionHeading: React.FC<SectionHeadingProps> = ({
       >
         <span
           aria-hidden="true"
-          className="text-[0.54em] opacity-75 select-none shrink-0 leading-none"
+          className="text-[0.54em] text-[#A64B3C] select-none shrink-0 leading-none"
         >
           ✦
         </span>
         <span className="text-balance">{children}</span>
         <span
           aria-hidden="true"
-          className="text-[0.54em] opacity-75 select-none shrink-0 leading-none"
+          className="text-[0.54em] text-[#A64B3C] select-none shrink-0 leading-none"
         >
           ✦
         </span>

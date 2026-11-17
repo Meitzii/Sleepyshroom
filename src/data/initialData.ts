@@ -8,7 +8,7 @@ export const initialSettings: WebsiteSettings = {
   "currencySymbol": "$",
   "heroHeadline": "Cozy wallpapers for your dreamy days.",
   "heroSupportingText": "Find a little happiness in every screen. Discover cozy, cute, and dreamy digital wallpapers made with love.",
-  "heroPrimaryBtnText": "Explore Themes",
+  "heroPrimaryBtnText": "Explore All Themes",
   "heroSecondaryBtnText": "Browse Wallpapers",
   "heroImage": "/src/assets/images/hero_mushroom_cottage_1794020164209.jpg",
   "brandIntroHeading": "A little corner of cozy.",
@@ -47,7 +47,7 @@ export const initialSettings: WebsiteSettings = {
   },
   "aboutMe": {
     "heading": "Hello, welcome to my little corner!",
-    "introduction": "Hi! I'm the person behind sleepyshroom. I created this little shop to share cozy, dreamy, and lovely designs that make everyday screens feel a little more special.",
+    "introduction": "Hi, I'm Mei or Cheumeitzii the artist behind Sleepy Shroom!\nI’m a freelance digital artist and a graphic designer, who loves creating a cozy little worlds and cute characters. Each of my phone, tablet and desktop themes is a small slice of this world – a little scene that comes to life on your Home Screen!\n\nThank you for visiting my shop and helping me achieve my dreams of creating cute things and I hope you find something here that makes your days a little brighter!",
     "whyStarted": "In a world that can often feel rushed and noisy, I wanted our phones, tablets, and laptops to be calming sanctuaries. Each illustration starts with quiet pencil sketches of sleeping fungi, gentle forest creatures, and soothing pastel hues that bring peaceful moments throughout your day.",
     "designInspiration": "Inspired by gentle Japanese stationery, quiet rainy mornings, fairy-tale moss gardens, and the warmth of a hot cup of tea. Every digital download is crafted with care, high pixel density, and subtle grain textures that feel like real paper.",
     "profileImage": "/src/assets/images/theme_sleepy_garden_1794020165839.jpg"

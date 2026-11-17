@@ -72,19 +72,37 @@ export const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-14">
         {/* Main 3-Section Footer Grid: Helpful Links | Socials | Newsletter */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10 pb-10 border-b border-neutral-200">
-          {/* Section 1: Helpful Links */}
+          {/* Section 1: About & Help */}
           <div className="md:col-span-3 space-y-3.5">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#292929]">
-              Helpful Links
+              About &amp; Help
             </h4>
             <ul className="space-y-2.5 text-xs text-[#777777] font-semibold">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigateTo('about')}
+                  className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
+                >
+                  About Me
+                </button>
+              </li>
               <li>
                 <button
                   type="button"
                   onClick={() => navigateTo('faq')}
                   className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
                 >
-                  Frequently Asked Questions (FAQ)
+                  FAQ &amp; Help Center
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigateTo('contact')}
+                  className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
+                >
+                  Contact &amp; Support
                 </button>
               </li>
               <li>
@@ -93,7 +111,7 @@ export const Footer: React.FC = () => {
                   onClick={() => navigateTo('policy', 'refund')}
                   className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
                 >
-                  Digital Product Refund Policy
+                  Return &amp; Refund Policy
                 </button>
               </li>
               <li>
@@ -102,7 +120,7 @@ export const Footer: React.FC = () => {
                   onClick={() => navigateTo('privacy-policy')}
                   className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
                 >
-                  Privacy Policy (RA 10173)
+                  Privacy Policy
                 </button>
               </li>
               <li>
@@ -120,25 +138,7 @@ export const Footer: React.FC = () => {
                   onClick={() => navigateTo('policy', 'copyright')}
                   className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
                 >
-                  Copyright &amp; Personal License
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => navigateTo('about')}
-                  className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
-                >
-                  About Sleepyshroom Studio
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => navigateTo('contact')}
-                  className="hover:text-[#A64B3C] hover:underline transition-colors cursor-pointer"
-                >
-                  Contact &amp; Support
+                  Copyright &amp; License
                 </button>
               </li>
             </ul>

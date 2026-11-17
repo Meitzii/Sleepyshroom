@@ -17,11 +17,7 @@ export const MobileTabletThemesSection: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Centered Section Header */}
         <div className="mb-10 text-center">
-          <SectionHeading
-            as="h2"
-            size="md"
-            subtitle="Little cozy moments wherever you go."
-          >
+          <SectionHeading as="h2" size="md">
             Mobile &amp; Tablet Themes
           </SectionHeading>
 

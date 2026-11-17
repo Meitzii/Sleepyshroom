@@ -118,37 +118,20 @@ export const CollectionsPage: React.FC = () => {
         
         {/* Page Header */}
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-          <SectionHeading
-            as="h1"
-            size="lg"
-            subtitle={
-              onlyFree
-                ? 'Download our sweet complimentary wallpapers instantly — completely free.'
-                : 'Explore high-resolution digital wallpapers crafted for peaceful and cozy screen spaces.'
-            }
-          >
+          <SectionHeading as="h1" size="lg">
             {onlyFree
               ? 'Free Wallpapers'
               : selectedDevice === 'desktop'
               ? 'Desktop Themes'
               : selectedDevice === 'mobile'
               ? 'Mobile & Tablet Themes'
-              : 'All Wallpaper Collections'}
+              : 'Wallpaper Collections'}
           </SectionHeading>
         </div>
 
         {/* Dedicated Theme Collection Landing Cards */}
         {!hasActiveFilters && collections.length > 0 && (
           <div className="mb-12">
-            <div className="mb-6 text-center">
-              <SectionHeading
-                as="h2"
-                size="sm"
-                subtitle="Click any theme to view its bundles & categories"
-              >
-                Browse Dedicated Theme Collections
-              </SectionHeading>
-            </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {collections.map((c) => (
                 <button
@@ -344,42 +327,6 @@ export const CollectionsPage: React.FC = () => {
                     >
                       <span>{t}</span>
                       {selectedTheme.toLowerCase() === t.toLowerCase() && (
-                        <Check className="w-3.5 h-3.5 text-[#A64B3C]" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Collections Filter */}
-              <div className="border-t border-[#EADCC8] pt-4">
-                <h3 className="text-xs font-bold text-[#292929] mb-2.5">
-                  Collections
-                </h3>
-                <div className="space-y-1.5">
-                  <button
-                    onClick={() => setSelectedCollection('all')}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
-                      selectedCollection === 'all'
-                        ? 'bg-[#FFFCF7] text-[#292929] border border-[#EADCC8]'
-                        : 'text-[#777777] hover:bg-[#FFFCF7]/60'
-                    }`}
-                  >
-                    <span>All Collections</span>
-                    {selectedCollection === 'all' && <Check className="w-3.5 h-3.5 text-[#A64B3C]" />}
-                  </button>
-                  {collections.map(c => (
-                    <button
-                      key={c.id}
-                      onClick={() => setSelectedCollection(c.name)}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
-                        selectedCollection.toLowerCase() === c.name.toLowerCase()
-                          ? 'bg-[#FFFCF7] text-[#292929] border border-[#EADCC8]'
-                          : 'text-[#777777] hover:bg-[#FFFCF7]/60'
-                      }`}
-                    >
-                      <span>{c.name}</span>
-                      {selectedCollection.toLowerCase() === c.name.toLowerCase() && (
                         <Check className="w-3.5 h-3.5 text-[#A64B3C]" />
                       )}
                     </button>

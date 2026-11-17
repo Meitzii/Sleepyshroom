@@ -70,11 +70,7 @@ export const CollectionBundleSection: React.FC<CollectionBundleSectionProps> = (
     <section className="py-12 border-t border-neutral-200 bg-[#FFFFFF]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div className="text-center">
-          <SectionHeading
-            as="h2"
-            size="md"
-            subtitle="Unlock every screen size and icon pack in one instant download package."
-          >
+          <SectionHeading as="h2" size="md">
             Complete Collection Sets
           </SectionHeading>
         </div>

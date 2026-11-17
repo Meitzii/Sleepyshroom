@@ -94,14 +94,13 @@ export const ThemeCarousel: React.FC = () => {
   };
 
   return (
-    <section id="explore-themes" className="py-12 sm:py-16 bg-[#FFFFFF] border-y border-neutral-200">
+    <section id="explore-themes" className="pt-0.5 pb-12 sm:pt-1 sm:pb-16 bg-[#FFFFFF] border-b border-neutral-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Heading */}
         <SectionHeading
           as="h2"
           size="md"
-          subtitle="From sleepy chamomile meadows to warm autumn cottages, find a theme that matches your mood."
-          className="mb-8 sm:mb-12"
+          className="mb-6 sm:mb-10"
         >
           Explore the Themes
         </SectionHeading>
@@ -217,69 +216,6 @@ export const ThemeCarousel: React.FC = () => {
             </div>
           )}
         </div>
-
-        {/* Dedicated Theme Collection Quick Links */}
-        {collections.filter((c) => c.featured).length > 0 && (
-          <div className="mt-14 pt-12 border-t border-neutral-200">
-            <div className="mb-8 text-center">
-              <SectionHeading as="h3" size="sm">
-                Shop by Theme Collection
-              </SectionHeading>
-              <div className="mt-2">
-                <button
-                  type="button"
-                  onClick={() => navigateTo('collections')}
-                  className="text-xs font-bold text-[#A64B3C] hover:underline inline-flex items-center gap-1 cursor-pointer"
-                >
-                  <span>View All</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {collections
-                .filter((c) => c.featured)
-                .slice(0, 8)
-                .map((col) => (
-                  <button
-                    key={col.id}
-                    type="button"
-                    onClick={() => navigateTo('collections', col.slug)}
-                    className="group text-left bg-[#FFFFFF] rounded-2xl border border-neutral-200 overflow-hidden hover:shadow-md transition-all cursor-pointer flex flex-col"
-                  >
-                    <div className="aspect-16/10 w-full overflow-hidden bg-neutral-100 relative">
-                      <img
-                        src={col.coverImage}
-                        alt={col.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      {col.isNew && (
-                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-[#A64B3C] text-[#FFFFFF] text-[9px] font-extrabold">
-                          NEW
-                        </span>
-                      )}
-                      {col.isLimitedEdition && (
-                        <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#292929] text-[#FFFFFF] text-[9px] font-extrabold">
-                          LIMITED
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-3.5 flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-heading font-bold text-xs sm:text-sm text-[#292929] group-hover:text-[#A64B3C] truncate">
-                          {col.name}
-                        </p>
-                        <p className="text-[11px] text-[#777777] font-semibold">
-                          {col.productCount ?? 0} designs
-                        </p>
-                      </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-[#A64B3C] shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
-                  </button>
-                ))}
-            </div>
-          </div>
-        )}
       </div>
     </section>
   );
