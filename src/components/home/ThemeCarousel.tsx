@@ -97,13 +97,25 @@ export const ThemeCarousel: React.FC = () => {
     <section id="explore-themes" className="pt-0.5 pb-12 sm:pt-1 sm:pb-16 bg-[#FFFFFF] border-b border-neutral-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Heading */}
-        <SectionHeading
-          as="h2"
-          size="md"
-          className="mb-6 sm:mb-10"
-        >
-          Explore the Themes
-        </SectionHeading>
+        <div className="mb-6 sm:mb-10 text-center">
+          <SectionHeading as="h2" size="md">
+            Explore the Themes
+          </SectionHeading>
+
+          <div className="mt-3">
+            <a
+              href="#collections"
+              onClick={(e) => {
+                e.preventDefault();
+                navigateTo('collections');
+              }}
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#292929] hover:text-[#A64B3C] transition-colors group cursor-pointer"
+            >
+              <span>See All Themes</span>
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            </a>
+          </div>
+        </div>
 
         {/* Carousel Container */}
         <div
