@@ -17,11 +17,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollToThemes }) =>
   const secondaryBtn = settings?.heroSecondaryBtnText || 'Browse Wallpapers';
 
   return (
-    <section className="bg-[#FFFFFF] pt-8 pb-12 sm:pt-14 sm:pb-18">
+    <section className="bg-[#FFFFFF] pt-6 pb-10 sm:pt-10 sm:pb-14 overflow-x-clip">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
           {/* Left Column: Welcome Headline, Descriptions & CTAs */}
-          <div className="lg:col-span-6 text-center lg:text-left space-y-6">
+          <div className="lg:col-span-5 text-center lg:text-left space-y-6">
             {/* Subtle Tagline Kicker */}
             <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#A64B3C]">
               <Sparkles className="w-3.5 h-3.5" />
@@ -75,13 +75,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollToThemes }) =>
             </div>
           </div>
 
-          {/* Right Column: Seamless Mushroom Vector Illustration (No Borders, Outlines, or Frame) */}
-          <div className="lg:col-span-6 flex items-center justify-center">
-            <div className="w-full max-w-md sm:max-w-lg lg:max-w-xl bg-[#FFFFFF]">
+          {/* Right Column: Large Seamless Mushroom Vector Illustration (No Borders, Outlines, or Frame) */}
+          <div className="lg:col-span-7 flex items-center justify-center">
+            <div className="w-full max-w-xl sm:max-w-2xl lg:max-w-none bg-[#FFFFFF] overflow-hidden">
               <img
                 src="/assets/aistudio/image_b3079c64.png"
                 alt="Sleepyshroom cozy mushroom illustration"
-                className="w-full h-auto object-contain select-none mix-blend-multiply border-0 outline-none shadow-none"
+                className="w-full h-auto object-contain select-none mix-blend-multiply border-0 outline-none shadow-none scale-[1.24] sm:scale-[1.26] origin-center"
                 draggable={false}
               />
             </div>
