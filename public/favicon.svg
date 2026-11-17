@@ -1,0 +1,49 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Soft Warm Cream Backdrop -->
+  <circle cx="32" cy="32" r="30" fill="#FCF3E2" />
+
+  <!-- Cute Mushroom Stem -->
+  <path
+    d="M22 34C22 34 21 50 23 54.5C24 56.5 27 57.5 32 57.5C37 57.5 40 56.5 41 54.5C43 50 42 34 42 34"
+    fill="#FFFCF7"
+    stroke="#292929"
+    stroke-width="2.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Cute Sleeping Eyes -->
+  <path
+    d="M26.5 44C27.5 45.8 29.5 45.8 30.5 44"
+    stroke="#292929"
+    stroke-width="2.2"
+    stroke-linecap="round"
+  />
+  <path
+    d="M33.5 44C34.5 45.8 36.5 45.8 37.5 44"
+    stroke="#292929"
+    stroke-width="2.2"
+    stroke-linecap="round"
+  />
+
+  <!-- Rosy Cheeks -->
+  <circle cx="25" cy="47.5" r="2" fill="#A64B3C" fill-opacity="0.55" />
+  <circle cx="39" cy="47.5" r="2" fill="#A64B3C" fill-opacity="0.55" />
+
+  <!-- Mushroom Cap (#A64B3C) -->
+  <path
+    d="M9 34C9 17.5 19 8 32 8C45 8 55 17.5 55 34C55 36.5 52.5 37.5 48.5 36.5C43 35 37.5 36.5 32 35.8C26.5 36.5 21 35 15.5 36.5C11.5 37.5 9 36.5 9 34Z"
+    fill="#A64B3C"
+    stroke="#292929"
+    stroke-width="2.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Mushroom Cap Spots -->
+  <circle cx="20.5" cy="21" r="3.8" fill="#FFFCF7" />
+  <circle cx="33.5" cy="17" r="4.5" fill="#FFFCF7" />
+  <circle cx="44.5" cy="24" r="3.4" fill="#FFFCF7" />
+  <circle cx="16.5" cy="30" r="2.2" fill="#FCF3E2" />
+  <circle cx="30" cy="28" r="2.6" fill="#FCF3E2" />
+</svg>
