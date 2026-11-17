@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   loadScript,
+  loadCustomScript,
   type PayPalButtonsComponent,
 } from '@paypal/paypal-js';
 import {
@@ -20,21 +21,31 @@ import {
   Sparkles,
   Smartphone,
   Monitor,
-  RefreshCw,
+  QrCode,
+  Copy,
+  Maximize2,
+  Clock,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
-import type { Order } from '../types/index.ts';
+import type { Order, PaymentProviderKey } from '../types/index.ts';
 import {
   parseJsonResponse,
   extractApiErrorMessage,
   getOptionalSupabaseAuthHeader,
 } from '../utils/apiClient.ts';
-import { calculateCheckoutBreakdown, formatUsd } from '../utils/currency.ts';
+import {
+  calculateCheckoutBreakdown,
+  formatUsd,
+  formatOrderMoney,
+} from '../utils/currency.ts';
 import {
   PaypalIcon,
   VisaIcon,
   MastercardIcon,
   AmexIcon,
+  GooglePayIcon,
+  GcashIcon,
+  MayaIcon,
   ShieldLockIcon,
   ShroomLogoIcon,
 } from '../components/common/Icons.tsx';
@@ -67,6 +78,30 @@ interface PayPalCheckoutConfig {
   currency: string;
   currencySymbol: string;
   minOrderUsd: number;
+  googlePay?: {
+    enabled: boolean;
+    configured: boolean;
+    supportedViaPaypal: boolean;
+    merchantId: string;
+    merchantName: string;
+  };
+  phLocal?: {
+    gcashEnabled: boolean;
+    gcashConfigured: boolean;
+    gcashQrImage: string;
+    gcashAccountName: string;
+    gcashAccountNumber: string;
+    gcashInstructions: string;
+    mayaEnabled: boolean;
+    mayaConfigured: boolean;
+    mayaQrImage: string;
+    mayaAccountName: string;
+    mayaAccountNumber: string;
+    mayaInstructions: string;
+    phpExchangeRate: number;
+    currency: 'PHP';
+    currencySymbol: '₱';
+  };
 }
 
 export const CheckoutPage: React.FC = () => {
@@ -93,12 +128,25 @@ export const CheckoutPage: React.FC = () => {
   const [billingPostalCode, setBillingPostalCode] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
 
-  // Step 2: Server PayPal Gateway Config & SDK State
+  // Step 2: Payment Method Selector & Gateway State
+  const [selectedMethod, setSelectedMethod] = useState<PaymentProviderKey>('paypal');
   const [paymentConfig, setPaymentConfig] = useState<PayPalCheckoutConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
   const [sdkLoading, setSdkLoading] = useState(false);
   const [sdkReady, setSdkReady] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
+
+  // Google Pay SDK state
+  const [gpayLoading, setGpayLoading] = useState(false);
+  const [gpayError, setGpayError] = useState<string | null>(null);
+
+  // PH Local QR (GCash / Maya) state
+  const [manualReference, setManualReference] = useState('');
+  const [manualSenderName, setManualSenderName] = useState('');
+  const [manualProofNote, setManualProofNote] = useState('');
+  const [submittingManualQr, setSubmittingManualQr] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [enlargedQrModal, setEnlargedQrModal] = useState<{ title: string; url: string } | null>(null);
 
   // Promo code inside Checkout Order Summary
   const [promoInput, setPromoInput] = useState('');
@@ -113,6 +161,7 @@ export const CheckoutPage: React.FC = () => {
   const [showPolicyAccordion, setShowPolicyAccordion] = useState(false);
 
   const paypalContainerRef = useRef<HTMLDivElement | null>(null);
+  const googlePayContainerRef = useRef<HTMLDivElement | null>(null);
   const processedCancelTokenRef = useRef<string | null>(null);
   const activeOrderRef = useRef<{
     downloadToken: string;
@@ -141,7 +190,45 @@ export const CheckoutPage: React.FC = () => {
   const sdkEnvironment: 'sandbox' | 'production' =
     paymentConfig?.environment === 'live' ? 'production' : 'sandbox';
 
-  // Keep latest form & cart state in a ref so PayPal Buttons callbacks never force iframe teardown on typing
+  const isGooglePayEnabled =
+    paymentConfig?.googlePay?.enabled ??
+    (settings?.paymentProviders?.googlePayEnabled !== false && isPaypalEnabled);
+  const isGcashEnabled =
+    paymentConfig?.phLocal?.gcashEnabled ??
+    (settings?.paymentProviders?.gcashEnabled !== false);
+  const isMayaEnabled =
+    paymentConfig?.phLocal?.mayaEnabled ??
+    (settings?.paymentProviders?.mayaEnabled !== false);
+
+  const phLocalConfig = {
+    gcashQrImage:
+      paymentConfig?.phLocal?.gcashQrImage ?? settings?.paymentProviders?.gcashQrImage ?? '',
+    gcashAccountName:
+      paymentConfig?.phLocal?.gcashAccountName ?? settings?.paymentProviders?.gcashAccountName ?? '',
+    gcashAccountNumber:
+      paymentConfig?.phLocal?.gcashAccountNumber ?? settings?.paymentProviders?.gcashAccountNumber ?? '',
+    gcashInstructions:
+      paymentConfig?.phLocal?.gcashInstructions ??
+      settings?.paymentProviders?.gcashInstructions ??
+      'Scan the GCash QR code, pay the exact PHP total, then enter your GCash Reference Number below.',
+    mayaQrImage:
+      paymentConfig?.phLocal?.mayaQrImage ?? settings?.paymentProviders?.mayaQrImage ?? '',
+    mayaAccountName:
+      paymentConfig?.phLocal?.mayaAccountName ?? settings?.paymentProviders?.mayaAccountName ?? '',
+    mayaAccountNumber:
+      paymentConfig?.phLocal?.mayaAccountNumber ?? settings?.paymentProviders?.mayaAccountNumber ?? '',
+    mayaInstructions:
+      paymentConfig?.phLocal?.mayaInstructions ??
+      settings?.paymentProviders?.mayaInstructions ??
+      'Scan the Maya QR code, pay the exact PHP total, then enter your Maya Reference Number below.',
+    phpExchangeRate:
+      paymentConfig?.phLocal?.phpExchangeRate ?? settings?.paymentProviders?.phpExchangeRate ?? 56.5,
+  };
+
+  const phpTotal = Number((breakdown.totalUsd * phLocalConfig.phpExchangeRate).toFixed(2));
+  const isManualQrSelected = selectedMethod === 'gcash' || selectedMethod === 'maya';
+
+  // Keep latest form & cart state in a ref so PayPal / Google Pay callbacks never force iframe teardown on typing
   const checkoutStateRef = useRef({
     customerName,
     customerEmail,
@@ -189,7 +276,7 @@ export const CheckoutPage: React.FC = () => {
     return null;
   };
 
-  // Fetch live PayPal public config from server
+  // Fetch live payment gateway public config from server
   useEffect(() => {
     let active = true;
     (async () => {
@@ -198,6 +285,11 @@ export const CheckoutPage: React.FC = () => {
         const parsed = await parseJsonResponse<PayPalCheckoutConfig>(res);
         if (active && parsed.ok && parsed.isJson && parsed.data) {
           setPaymentConfig(parsed.data);
+          // Default to first enabled method if PayPal is paused
+          if (parsed.data.enabled === false) {
+            if (parsed.data.phLocal?.gcashEnabled) setSelectedMethod('gcash');
+            else if (parsed.data.phLocal?.mayaEnabled) setSelectedMethod('maya');
+          }
         }
       } catch {
         // Non-blocking fallback
@@ -275,7 +367,9 @@ export const CheckoutPage: React.FC = () => {
     cart,
   ]);
 
-  const createServerPaypalOrder = async (): Promise<{
+  const createServerPaypalOrder = async (
+    provider: 'paypal' | 'google_pay' = 'paypal'
+  ): Promise<{
     paypalOrderId: string;
     downloadToken: string;
     approveUrl: string;
@@ -297,6 +391,7 @@ export const CheckoutPage: React.FC = () => {
         ...authHeaders,
       },
       body: JSON.stringify({
+        paymentProvider: provider,
         customerEmail: latest.customerEmail.trim(),
         customerName: latest.customerName.trim(),
         billingDetails: {
@@ -361,12 +456,13 @@ export const CheckoutPage: React.FC = () => {
     return { paypalOrderId, downloadToken, approveUrl };
   };
 
-  // Load and render PayPal Smart Buttons (PayPal + Debit/Credit Card) when configured
+  // Load and render PayPal Smart Buttons (PayPal + Debit/Credit Card) when active
   useEffect(() => {
     const container = paypalContainerRef.current;
     if (!container) return;
 
     if (
+      selectedMethod !== 'paypal' ||
       configLoading ||
       !isPaypalEnabled ||
       !paymentConfig?.configured ||
@@ -570,6 +666,7 @@ export const CheckoutPage: React.FC = () => {
       }
     };
   }, [
+    selectedMethod,
     configLoading,
     isPaypalEnabled,
     paymentConfig?.configured,
@@ -577,6 +674,234 @@ export const CheckoutPage: React.FC = () => {
     sdkEnvironment,
     allowCards,
     meetsMinOrder,
+    clearCancelledCheckoutNotice,
+    clearCart,
+    navigateTo,
+    setLatestOrder,
+  ]);
+
+  // Load and render Google Pay button via Google Pay Web API + PayPal Orders v2 when active
+  useEffect(() => {
+    const container = googlePayContainerRef.current;
+    if (!container) return;
+
+    if (
+      selectedMethod !== 'google_pay' ||
+      configLoading ||
+      !isPaypalEnabled ||
+      !isGooglePayEnabled ||
+      !paymentConfig?.configured ||
+      !paymentConfig?.clientId ||
+      !meetsMinOrder
+    ) {
+      setGpayLoading(false);
+      setGpayError(null);
+      container.innerHTML = '';
+      return;
+    }
+
+    let cancelled = false;
+    setGpayLoading(true);
+    setGpayError(null);
+    container.innerHTML = '';
+
+    (async () => {
+      try {
+        await loadCustomScript({ url: 'https://pay.google.com/gp/p/js/pay.js' });
+        const paypalGp = await loadScript({
+          clientId: paymentConfig.clientId,
+          currency: 'USD',
+          intent: 'capture',
+          components: 'googlepay',
+          dataNamespace: 'paypalGooglePay',
+          environment: sdkEnvironment,
+        });
+
+        if (cancelled) return;
+
+        const googleApi = (window as any)?.google?.payments?.api;
+        const gpComponent = (paypalGp as any)?.Googlepay?.();
+        if (!googleApi || !gpComponent) {
+          setGpayError(
+            'Google Pay is unavailable in this browser or not yet activated on the connected merchant app. You can pay via Card or PayPal.'
+          );
+          setGpayLoading(false);
+          return;
+        }
+
+        const gpConfig = await gpComponent.config();
+        if (cancelled) return;
+
+        if (!gpConfig?.isEligible) {
+          setGpayError(
+            'Google Pay is not eligible for your PayPal merchant account or current device/browser. Please use PayPal, Debit/Credit Card, or PH Local QR.'
+          );
+          setGpayLoading(false);
+          return;
+        }
+
+        const paymentsClient = new googleApi.PaymentsClient({
+          environment: sdkEnvironment === 'production' ? 'PRODUCTION' : 'TEST',
+        });
+
+        const readiness = await paymentsClient.isReadyToPay({
+          apiVersion: 2,
+          apiVersionMinor: 0,
+          allowedPaymentMethods: gpConfig.allowedPaymentMethods,
+        });
+
+        if (cancelled) return;
+
+        if (!readiness?.result) {
+          setGpayError(
+            'Google Pay is not ready on this browser or device. Try Chrome with a Google account or pay via Card, PayPal, or PH Local QR.'
+          );
+          setGpayLoading(false);
+          return;
+        }
+
+        const gpButton = paymentsClient.createButton({
+          buttonColor: 'black',
+          buttonType: 'pay',
+          buttonRadius: 14,
+          buttonSizeMode: 'fill',
+          onClick: async () => {
+            const latest = checkoutStateRef.current;
+            const validationErr = validateBillingState(latest);
+            if (validationErr) {
+              setErrorMessage(validationErr);
+              return;
+            }
+            setErrorMessage(null);
+
+            try {
+              const paymentDataRequest = {
+                apiVersion: 2,
+                apiVersionMinor: 0,
+                allowedPaymentMethods: gpConfig.allowedPaymentMethods,
+                transactionInfo: {
+                  totalPriceStatus: 'FINAL',
+                  totalPrice: latest.breakdown.totalUsd.toFixed(2),
+                  currencyCode: 'USD',
+                  countryCode: gpConfig.countryCode || 'US',
+                },
+                merchantInfo: {
+                  ...(gpConfig.merchantInfo || {}),
+                  ...(paymentConfig.googlePay?.merchantId
+                    ? { merchantId: paymentConfig.googlePay.merchantId }
+                    : {}),
+                  merchantName:
+                    paymentConfig.googlePay?.merchantName ||
+                    settings?.storeName ||
+                    'sleepyshroom',
+                },
+              };
+
+              const paymentData = await paymentsClient.loadPaymentData(paymentDataRequest);
+              setCapturing(true);
+
+              const created = await createServerPaypalOrder('google_pay');
+              const confirmRes = await gpComponent.confirmOrder({
+                orderId: created.paypalOrderId,
+                paymentMethodData: paymentData.paymentMethodData,
+              });
+
+              if (
+                confirmRes?.status === 'PAYER_ACTION_REQUIRED' &&
+                typeof gpComponent.initiatePayerAction === 'function'
+              ) {
+                await gpComponent.initiatePayerAction({ orderId: created.paypalOrderId });
+              }
+
+              const authHeaders = await getOptionalSupabaseAuthHeader();
+              const captureRes = await fetch(
+                `/api/orders/${encodeURIComponent(created.downloadToken || created.paypalOrderId)}`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    ...authHeaders,
+                  },
+                  body: JSON.stringify({
+                    action: 'capture',
+                    paypalOrderId: created.paypalOrderId,
+                  }),
+                }
+              );
+
+              const capturedParsed = await parseJsonResponse<{
+                success?: boolean;
+                verifiedPaid?: boolean;
+                order?: Order;
+                error?: string;
+              }>(captureRes);
+
+              if (!capturedParsed.isJson || !capturedParsed.ok || !capturedParsed.data?.verifiedPaid) {
+                const msg = extractApiErrorMessage(
+                  capturedParsed,
+                  'Google Pay approved the payment, but capture verification failed.'
+                );
+                setErrorMessage(msg);
+                return;
+              }
+
+              clearCancelledCheckoutNotice();
+              if (capturedParsed.data.order) {
+                setLatestOrder(capturedParsed.data.order);
+              }
+              clearCart();
+              navigateTo(
+                'confirmation',
+                capturedParsed.data.order?.downloadToken || created.downloadToken
+              );
+            } catch (err: any) {
+              if (err?.statusCode === 'CANCELED') {
+                setErrorMessage('Google Pay sheet was closed before completing payment.');
+              } else {
+                setErrorMessage(
+                  err?.message || 'Unable to process Google Pay payment right now. Please try again.'
+                );
+              }
+            } finally {
+              setCapturing(false);
+            }
+          },
+        });
+
+        container.innerHTML = '';
+        container.appendChild(gpButton);
+        if (!cancelled) {
+          setGpayLoading(false);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setGpayError(
+            err?.message ||
+              'Google Pay could not be loaded here. You can pay via PayPal, Card, or PH Local QR instead.'
+          );
+          setGpayLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (container) {
+        container.innerHTML = '';
+      }
+    };
+  }, [
+    selectedMethod,
+    configLoading,
+    isPaypalEnabled,
+    isGooglePayEnabled,
+    paymentConfig?.configured,
+    paymentConfig?.clientId,
+    paymentConfig?.googlePay?.merchantId,
+    paymentConfig?.googlePay?.merchantName,
+    sdkEnvironment,
+    meetsMinOrder,
+    settings?.storeName,
     clearCancelledCheckoutNotice,
     clearCart,
     navigateTo,
@@ -634,7 +959,7 @@ export const CheckoutPage: React.FC = () => {
 
     setHostedLoading(true);
     try {
-      const created = await createServerPaypalOrder();
+      const created = await createServerPaypalOrder('paypal');
       if (!created.approveUrl) {
         throw new Error('PayPal did not return a hosted approval URL.');
       }
@@ -645,6 +970,92 @@ export const CheckoutPage: React.FC = () => {
         err?.message || 'Unable to launch Hosted PayPal Checkout right now.'
       );
       setHostedLoading(false);
+    }
+  };
+
+  const handleCopyDetail = (key: string, value: string) => {
+    if (!value) return;
+    void navigator.clipboard.writeText(value);
+    setCopiedField(key);
+    setTimeout(() => setCopiedField(prev => (prev === key ? null : prev)), 2000);
+  };
+
+  const handleSubmitManualQrOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedMethod !== 'gcash' && selectedMethod !== 'maya') return;
+
+    const validationErr = validateBillingState(checkoutStateRef.current);
+    if (validationErr) {
+      setErrorMessage(validationErr);
+      return;
+    }
+
+    const cleanRef = manualReference.trim();
+    if (!cleanRef || cleanRef.length < 4) {
+      setErrorMessage(
+        `Please enter your ${selectedMethod === 'gcash' ? 'GCash' : 'Maya'} Reference Number (at least 4 characters) from your payment receipt.`
+      );
+      return;
+    }
+
+    setErrorMessage(null);
+    setSubmittingManualQr(true);
+    try {
+      const authHeaders = await getOptionalSupabaseAuthHeader();
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        body: JSON.stringify({
+          paymentProvider: selectedMethod,
+          paymentReference: cleanRef,
+          senderName: manualSenderName.trim(),
+          paymentProofNote: manualProofNote.trim(),
+          customerEmail: customerEmail.trim(),
+          customerName: customerName.trim(),
+          billingDetails: {
+            country: billingCountry.trim(),
+            city: billingCity.trim(),
+            postalCode: billingPostalCode.trim(),
+            addressLine1: billingAddress.trim(),
+            phone: customerPhone.trim(),
+          },
+          items: cart.map(item => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+          })),
+          discountCode: appliedDiscount?.code,
+        }),
+      });
+
+      const parsed = await parseJsonResponse<{
+        success?: boolean;
+        order?: Order;
+        error?: string;
+      }>(response);
+
+      if (!parsed.isJson || !parsed.ok || !parsed.data?.success || !parsed.data?.order) {
+        setErrorMessage(
+          extractApiErrorMessage(
+            parsed,
+            `Could not submit your ${selectedMethod === 'gcash' ? 'GCash' : 'Maya'} reference. Please try again.`
+          )
+        );
+        return;
+      }
+
+      clearCancelledCheckoutNotice();
+      setLatestOrder(parsed.data.order);
+      clearCart();
+      navigateTo('confirmation', parsed.data.order.downloadToken);
+    } catch (err: any) {
+      setErrorMessage(
+        err?.message || 'Network error while submitting your QR payment reference.'
+      );
+    } finally {
+      setSubmittingManualQr(false);
     }
   };
 
@@ -690,7 +1101,7 @@ export const CheckoutPage: React.FC = () => {
               <span className="w-5 h-5 rounded-full bg-[#A64B3C] text-[#FFFCF7] text-[11px] font-bold flex items-center justify-center">
                 2
               </span>
-              <span className="text-[#A64B3C] font-bold">PayPal Payment (USD)</span>
+              <span className="text-[#A64B3C] font-bold">Payment Method</span>
             </div>
             <span className="text-[#EADCC8]">/</span>
             <div className="flex items-center gap-1.5 text-[#777777]/70">
@@ -758,7 +1169,7 @@ export const CheckoutPage: React.FC = () => {
               </div>
 
               <p className="text-xs text-[#777777] font-medium leading-relaxed">
-                Your download link and PayPal receipt will be dispatched to this email immediately upon payment capture.
+                Your download link and receipt will be dispatched to this email once payment is confirmed.
               </p>
 
               <div className="space-y-4">
@@ -880,7 +1291,7 @@ export const CheckoutPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Step 2: PayPal Payment Options & Smart Buttons */}
+            {/* Step 2: Select Payment Method (PayPal/Cards, Google Pay, GCash QR, Maya QR) */}
             <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EADCC8] pb-3">
                 <div className="flex items-center gap-2.5">
@@ -888,7 +1299,7 @@ export const CheckoutPage: React.FC = () => {
                     2
                   </span>
                   <h2 className="font-heading font-bold text-lg text-[#292929]">
-                    Select Payment Method (USD)
+                    Select Payment Method
                   </h2>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
@@ -897,81 +1308,131 @@ export const CheckoutPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* PayPal Sandbox Notice */}
-              {isTestMode && (
+              {/* Payment Method Cards Selector */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {isPaypalEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMessage(null);
+                      setSelectedMethod('paypal');
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                      selectedMethod === 'paypal'
+                        ? 'bg-[#FFFCF7] border-[#A64B3C] ring-2 ring-[#A64B3C]/20 shadow-xs'
+                        : 'bg-[#FFFCF7]/70 border-[#EADCC8] hover:border-[#A64B3C]/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <PaypalIcon size={18} />
+                      <span className="text-[10px] font-bold uppercase text-[#777777]">USD</span>
+                    </div>
+                    <div>
+                      <span className="font-heading font-bold text-xs text-[#292929] block">
+                        PayPal &amp; Cards
+                      </span>
+                      <span className="text-[10px] text-[#777777] font-medium block">
+                        Instant Unlock
+                      </span>
+                    </div>
+                  </button>
+                )}
+
+                {isPaypalEnabled && isGooglePayEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMessage(null);
+                      setSelectedMethod('google_pay');
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                      selectedMethod === 'google_pay'
+                        ? 'bg-[#FFFCF7] border-[#A64B3C] ring-2 ring-[#A64B3C]/20 shadow-xs'
+                        : 'bg-[#FFFCF7]/70 border-[#EADCC8] hover:border-[#A64B3C]/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <GooglePayIcon width={34} height={17} />
+                      <span className="text-[10px] font-bold uppercase text-[#777777]">USD</span>
+                    </div>
+                    <div>
+                      <span className="font-heading font-bold text-xs text-[#292929] block">
+                        Google Pay
+                      </span>
+                      <span className="text-[10px] text-[#777777] font-medium block">
+                        1-Tap Instant
+                      </span>
+                    </div>
+                  </button>
+                )}
+
+                {isGcashEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMessage(null);
+                      setSelectedMethod('gcash');
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                      selectedMethod === 'gcash'
+                        ? 'bg-[#FFFCF7] border-[#007DFE] ring-2 ring-[#007DFE]/20 shadow-xs'
+                        : 'bg-[#FFFCF7]/70 border-[#EADCC8] hover:border-[#007DFE]/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <GcashIcon size={18} />
+                      <span className="text-[10px] font-bold uppercase text-[#0057C2]">PHP ₱</span>
+                    </div>
+                    <div>
+                      <span className="font-heading font-bold text-xs text-[#292929] block">
+                        GCash QR
+                      </span>
+                      <span className="text-[10px] text-[#777777] font-medium block">
+                        PH Local E-Wallet
+                      </span>
+                    </div>
+                  </button>
+                )}
+
+                {isMayaEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMessage(null);
+                      setSelectedMethod('maya');
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                      selectedMethod === 'maya'
+                        ? 'bg-[#FFFCF7] border-[#0F172A] ring-2 ring-[#0F172A]/15 shadow-xs'
+                        : 'bg-[#FFFCF7]/70 border-[#EADCC8] hover:border-[#0F172A]/40'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <MayaIcon size={18} />
+                      <span className="text-[10px] font-bold uppercase text-[#0F172A]">PHP ₱</span>
+                    </div>
+                    <div>
+                      <span className="font-heading font-bold text-xs text-[#292929] block">
+                        Maya QR
+                      </span>
+                      <span className="text-[10px] text-[#777777] font-medium block">
+                        PH Local E-Wallet
+                      </span>
+                    </div>
+                  </button>
+                )}
+              </div>
+
+              {/* Sandbox Notice (PayPal / Google Pay only) */}
+              {!isManualQrSelected && isTestMode && (
                 <div className="p-3.5 bg-amber-50/80 border border-amber-300/80 rounded-2xl flex items-center justify-between gap-3 text-xs text-amber-950 font-medium">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span>PayPal Sandbox Active · Test buyer accounts can be used to simulate checkout</span>
+                    <span>PayPal Sandbox Active · Test mode active for USD checkouts</span>
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">
                     Test Mode
                   </span>
-                </div>
-              )}
-
-              {/* Accepted Payment Options Overview */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Option 1: PayPal Account */}
-                <div className="p-4 rounded-2xl border border-[#EADCC8] bg-[#FFFCF7] flex flex-col justify-between shadow-2xs">
-                  <div className="flex items-center gap-2 mb-2">
-                    <PaypalIcon size={20} />
-                    <span className="font-heading font-bold text-sm text-[#003087]">PayPal Account</span>
-                  </div>
-                  <p className="text-[11px] text-[#777777] font-medium leading-relaxed">
-                    Pay securely using your PayPal balance, linked bank account, or Pay in 4 installments.
-                  </p>
-                </div>
-
-                {/* Option 2: Debit & Credit Card */}
-                <div className="p-4 rounded-2xl border border-[#EADCC8] bg-[#FFFCF7] flex flex-col justify-between shadow-2xs">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <CreditCard className="w-4 h-4 text-[#A64B3C]" />
-                      <span className="font-heading font-bold text-sm text-[#292929]">Debit or Credit Card</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <VisaIcon width={24} height={16} />
-                      <MastercardIcon width={24} height={16} />
-                      <AmexIcon width={24} height={16} />
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-[#777777] font-medium leading-relaxed">
-                    No PayPal account required! Check out directly as a guest using any major card.
-                  </p>
-                </div>
-              </div>
-
-              {/* Security and Guidance Reassurance */}
-              <div className="p-3.5 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8] flex items-center gap-2.5 text-xs text-[#292929]">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <p className="text-[11px] font-medium leading-relaxed text-[#555555]">
-                  Select the gold <strong>PayPal</strong> button below for account checkout, or the black <strong>Debit or Credit Card</strong> button to pay directly by card.
-                </p>
-              </div>
-
-              {!configLoading && !isPaypalEnabled && (
-                <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950 font-medium">
-                  <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="font-bold">PayPal checkout is currently paused by the store owner.</p>
-                    <p className="text-amber-900">
-                      Please check back shortly or contact shop.sleepyshroom@gmail.com for assistance.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {!configLoading && isPaypalEnabled && paymentConfig && !paymentConfig.configured && (
-                <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950 font-medium">
-                  <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="font-bold">PayPal gateway credentials are not configured on the server yet.</p>
-                    <p className="text-amber-900">
-                      Add <code className="font-mono font-bold">PAYPAL_CLIENT_ID</code> and{' '}
-                      <code className="font-mono font-bold">PAYPAL_CLIENT_SECRET</code> to your server environment variables to activate PayPal Checkout.
-                    </p>
-                  </div>
                 </div>
               )}
 
@@ -1007,7 +1468,7 @@ export const CheckoutPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Capturing Verification Modal / Card */}
+              {/* Capturing Verification Card */}
               {capturing && (
                 <div className="p-6 bg-white border border-[#EADCC8] rounded-2xl shadow-sm text-center space-y-3">
                   <div className="relative w-12 h-12 mx-auto">
@@ -1016,63 +1477,403 @@ export const CheckoutPage: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="font-heading font-bold text-base text-[#292929]">
-                      Verifying payment with PayPal...
+                      Verifying your payment...
                     </h4>
                     <p className="text-xs text-[#777777] font-medium mt-1">
-                      Capturing payment capture and unlocking your high-resolution digital wallpaper files.
+                      Confirming payment capture and unlocking your high-resolution digital wallpaper files.
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* PayPal Smart Buttons Mount Container */}
-              {isPaypalEnabled && paymentConfig?.configured && meetsMinOrder && (
-                <div className="space-y-3 pt-2">
-                  {sdkLoading && (
-                    <div className="p-5 bg-white border border-[#EADCC8] rounded-2xl flex items-center justify-center gap-2.5 text-xs font-semibold text-[#777777]">
-                      <Loader2 className="w-4 h-4 animate-spin text-[#A64B3C]" />
-                      <span>Loading secure PayPal checkout buttons...</span>
+              {/* METHOD 1: PayPal & Debit/Credit Card */}
+              {selectedMethod === 'paypal' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-4 rounded-2xl border border-[#EADCC8] bg-[#FFFCF7] flex flex-col justify-between shadow-2xs">
+                      <div className="flex items-center gap-2 mb-2">
+                        <PaypalIcon size={20} />
+                        <span className="font-heading font-bold text-sm text-[#003087]">PayPal Account</span>
+                      </div>
+                      <p className="text-[11px] text-[#777777] font-medium leading-relaxed">
+                        Pay securely using your PayPal balance, linked bank account, or Pay in 4 installments.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl border border-[#EADCC8] bg-[#FFFCF7] flex flex-col justify-between shadow-2xs">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1.5">
+                          <CreditCard className="w-4 h-4 text-[#A64B3C]" />
+                          <span className="font-heading font-bold text-sm text-[#292929]">Debit or Credit Card</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <VisaIcon width={24} height={16} />
+                          <MastercardIcon width={24} height={16} />
+                          <AmexIcon width={24} height={16} />
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-[#777777] font-medium leading-relaxed">
+                        No PayPal account required! Check out directly as a guest using any major card.
+                      </p>
+                    </div>
+                  </div>
+
+                  {!configLoading && isPaypalEnabled && paymentConfig && !paymentConfig.configured && (
+                    <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950 font-medium">
+                      <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-bold">PayPal gateway credentials are not configured on the server yet.</p>
+                        <p className="text-amber-900">
+                          Add <code className="font-mono font-bold">PAYPAL_CLIENT_ID</code> and{' '}
+                          <code className="font-mono font-bold">PAYPAL_CLIENT_SECRET</code> in server environment variables, or pay via GCash / Maya QR.
+                        </p>
+                      </div>
                     </div>
                   )}
 
-                  <div
-                    ref={paypalContainerRef}
-                    className={capturing ? 'pointer-events-none opacity-40' : 'min-h-[48px]'}
-                  />
+                  {isPaypalEnabled && paymentConfig?.configured && meetsMinOrder && (
+                    <div className="space-y-3 pt-1">
+                      {sdkLoading && (
+                        <div className="p-5 bg-white border border-[#EADCC8] rounded-2xl flex items-center justify-center gap-2.5 text-xs font-semibold text-[#777777]">
+                          <Loader2 className="w-4 h-4 animate-spin text-[#A64B3C]" />
+                          <span>Loading secure PayPal checkout buttons...</span>
+                        </div>
+                      )}
 
-                  {/* Fallback button only if PayPal Smart Buttons SDK is blocked or encounters an error */}
-                  {sdkError && (
-                    <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-950 font-medium space-y-3">
-                      <p className="font-bold">{sdkError}</p>
-                      <button
-                        type="button"
-                        disabled={hostedLoading || capturing || !meetsMinOrder}
-                        onClick={() => {
-                          void handleHostedPaypalRedirect();
-                        }}
-                        className="w-full py-3.5 px-6 rounded-2xl text-xs sm:text-sm font-bold text-[#FFFCF7] bg-[#A64B3C] hover:bg-[#8E3E30] transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer whitespace-nowrap shadow-xs"
-                      >
-                        {hostedLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
-                        ) : (
-                          <ExternalLink className="w-4 h-4 text-white shrink-0" />
-                        )}
-                        <span>
-                          {hostedLoading
-                            ? 'Connecting to PayPal...'
-                            : `Continue to Hosted PayPal Checkout · ${formatUsd(breakdown.totalUsd)}`}
-                        </span>
-                      </button>
+                      <div
+                        ref={paypalContainerRef}
+                        className={capturing ? 'pointer-events-none opacity-40' : 'min-h-[48px]'}
+                      />
+
+                      {sdkError && (
+                        <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-950 font-medium space-y-3">
+                          <p className="font-bold">{sdkError}</p>
+                          <button
+                            type="button"
+                            disabled={hostedLoading || capturing || !meetsMinOrder}
+                            onClick={() => {
+                              void handleHostedPaypalRedirect();
+                            }}
+                            className="w-full py-3.5 px-6 rounded-2xl text-xs sm:text-sm font-bold text-[#FFFCF7] bg-[#A64B3C] hover:bg-[#8E3E30] transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer whitespace-nowrap shadow-xs"
+                          >
+                            {hostedLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
+                            ) : (
+                              <ExternalLink className="w-4 h-4 text-white shrink-0" />
+                            )}
+                            <span>
+                              {hostedLoading
+                                ? 'Connecting to PayPal...'
+                                : `Continue to Hosted PayPal Checkout · ${formatUsd(breakdown.totalUsd)}`}
+                            </span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               )}
 
+              {/* METHOD 2: Google Pay (USD via PayPal) */}
+              {selectedMethod === 'google_pay' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl border border-[#EADCC8] bg-[#FFFCF7] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#FCF3E2] border border-[#EADCC8] flex items-center justify-center shrink-0">
+                        <GooglePayIcon width={36} height={18} />
+                      </div>
+                      <div>
+                        <h3 className="font-heading font-bold text-sm text-[#292929]">
+                          Express Google Pay Checkout
+                        </h3>
+                        <p className="text-[11px] text-[#777777] font-medium">
+                          Pay seamlessly in USD ({formatUsd(breakdown.totalUsd)}) using cards saved to your Google Account.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 self-start sm:self-center">
+                      Instant Download
+                    </span>
+                  </div>
+
+                  {!configLoading && paymentConfig && !paymentConfig.configured && (
+                    <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950 font-medium">
+                      <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                      <p>
+                        Server PayPal API credentials (<code className="font-mono font-bold">PAYPAL_CLIENT_ID</code>) are required for Google Pay processing.
+                      </p>
+                    </div>
+                  )}
+
+                  {paymentConfig?.configured && meetsMinOrder && (
+                    <div className="space-y-3">
+                      {gpayLoading && (
+                        <div className="p-5 bg-white border border-[#EADCC8] rounded-2xl flex items-center justify-center gap-2.5 text-xs font-semibold text-[#777777]">
+                          <Loader2 className="w-4 h-4 animate-spin text-[#A64B3C]" />
+                          <span>Checking Google Pay availability...</span>
+                        </div>
+                      )}
+
+                      <div
+                        ref={googlePayContainerRef}
+                        className={capturing ? 'pointer-events-none opacity-40' : 'min-h-[48px]'}
+                      />
+
+                      {gpayError && (
+                        <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-950 font-medium space-y-2.5">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                            <p>{gpayError}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setErrorMessage(null);
+                              setSelectedMethod('paypal');
+                            }}
+                            className="px-4 py-2 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] rounded-xl text-xs font-bold cursor-pointer"
+                          >
+                            Switch to PayPal / Debit &amp; Credit Card
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* METHOD 3 & 4: PH Local QR Payments (GCash QR / Maya QR) */}
+              {(selectedMethod === 'gcash' || selectedMethod === 'maya') && (() => {
+                const isGcash = selectedMethod === 'gcash';
+                const brandLabel = isGcash ? 'GCash' : 'Maya';
+                const qrUrl = isGcash ? phLocalConfig.gcashQrImage : phLocalConfig.mayaQrImage;
+                const accountName = isGcash ? phLocalConfig.gcashAccountName : phLocalConfig.mayaAccountName;
+                const accountNumber = isGcash ? phLocalConfig.gcashAccountNumber : phLocalConfig.mayaAccountNumber;
+                const instructions = isGcash ? phLocalConfig.gcashInstructions : phLocalConfig.mayaInstructions;
+                const isConfigured = Boolean(qrUrl || accountNumber);
+
+                return (
+                  <form onSubmit={handleSubmitManualQrOrder} className="space-y-4">
+                    {/* PHP Amount Banner */}
+                    <div className="p-4 rounded-2xl bg-[#FFFCF7] border border-[#EADCC8] flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        {isGcash ? <GcashIcon size={28} /> : <MayaIcon size={28} />}
+                        <div>
+                          <span className="font-heading font-bold text-sm text-[#292929] block">
+                            Pay via {brandLabel} QR Code (Philippines)
+                          </span>
+                          <span className="text-[11px] text-[#777777] font-medium">
+                            Exact PHP conversion: {formatUsd(breakdown.totalUsd)} × ₱{phLocalConfig.phpExchangeRate.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-left sm:text-right">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#777777] block">
+                          Amount to Send
+                        </span>
+                        <span className="text-lg font-extrabold text-[#A64B3C] tabular-nums">
+                          {formatOrderMoney(phpTotal, 'PHP')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {!isConfigured ? (
+                      <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950 font-medium">
+                        <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold">
+                            {brandLabel} QR details have not been added yet by the store owner.
+                          </p>
+                          <p className="text-amber-900 mt-0.5">
+                            Please choose PayPal, Debit/Credit Card, or another enabled payment method, or contact {settings?.contactEmail || 'shop.sleepyshroom@gmail.com'}.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Scannable QR & Account Info Card */}
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center p-4 sm:p-5 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8]">
+                          {/* QR Display */}
+                          <div className="sm:col-span-5 flex flex-col items-center gap-2">
+                            {qrUrl ? (
+                              <>
+                                <div className="p-3 bg-white rounded-2xl border border-[#EADCC8] shadow-2xs relative group">
+                                  <img
+                                    src={qrUrl}
+                                    alt={`${brandLabel} Payment QR Code`}
+                                    className="w-44 h-44 object-contain rounded-lg"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEnlargedQrModal({
+                                        title: `${brandLabel} Official QR Code`,
+                                        url: qrUrl,
+                                      })
+                                    }
+                                    className="mt-2 w-full py-1.5 px-2.5 bg-[#FCF3E2] hover:bg-[#EADCC8] text-[#292929] rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                                  >
+                                    <Maximize2 className="w-3 h-3" />
+                                    <span>Enlarge QR</span>
+                                  </button>
+                                </div>
+                                <a
+                                  href={qrUrl}
+                                  download={`sleepyshroom_${selectedMethod}_qr.png`}
+                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-[#A64B3C] hover:underline"
+                                >
+                                  <Download className="w-3 h-3" />
+                                  <span>Save QR image to phone</span>
+                                </a>
+                              </>
+                            ) : (
+                              <div className="w-44 h-44 bg-[#FCF3E2] rounded-2xl border border-dashed border-[#EADCC8] flex flex-col items-center justify-center p-4 text-center text-[11px] text-[#777777]">
+                                <QrCode className="w-8 h-8 text-[#A64B3C] mb-1.5" />
+                                <span>Send directly using the {brandLabel} account number shown.</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Account Number, Account Name & Instructions */}
+                          <div className="sm:col-span-7 space-y-3 text-xs">
+                            {accountName && (
+                              <div className="p-3 rounded-xl bg-[#FCF3E2] border border-[#EADCC8] flex items-center justify-between gap-2">
+                                <div>
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#777777] block">
+                                    Account Name
+                                  </span>
+                                  <span className="font-bold text-[#292929] text-sm">
+                                    {accountName}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyDetail('accName', accountName)}
+                                  className="px-2.5 py-1.5 bg-[#FFFCF7] hover:bg-[#EADCC8]/50 text-[#292929] rounded-lg border border-[#EADCC8] text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  {copiedField === 'accName' ? (
+                                    <Check className="w-3 h-3 text-emerald-700" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                  <span>{copiedField === 'accName' ? 'Copied' : 'Copy'}</span>
+                                </button>
+                              </div>
+                            )}
+
+                            {accountNumber && (
+                              <div className="p-3 rounded-xl bg-[#FCF3E2] border border-[#EADCC8] flex items-center justify-between gap-2">
+                                <div>
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#777777] block">
+                                    {brandLabel} Number
+                                  </span>
+                                  <span className="font-mono font-bold text-[#292929] text-sm">
+                                    {accountNumber}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyDetail('accNum', accountNumber)}
+                                  className="px-2.5 py-1.5 bg-[#FFFCF7] hover:bg-[#EADCC8]/50 text-[#292929] rounded-lg border border-[#EADCC8] text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  {copiedField === 'accNum' ? (
+                                    <Check className="w-3 h-3 text-emerald-700" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                  <span>{copiedField === 'accNum' ? 'Copied' : 'Copy'}</span>
+                                </button>
+                              </div>
+                            )}
+
+                            <div className="p-3 rounded-xl bg-[#FFFCF7] border border-[#EADCC8] text-[11px] text-[#555555] leading-relaxed space-y-1">
+                              <p className="font-bold text-[#292929]">Payment Steps:</p>
+                              <p>{instructions}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Reference Submission Fields */}
+                        <div className="p-4 sm:p-5 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8] space-y-3.5">
+                          <div className="flex items-start gap-2 text-xs text-[#292929]">
+                            <Clock className="w-4 h-4 text-[#A64B3C] shrink-0 mt-0.5" />
+                            <p className="text-[11px] text-[#555555] font-medium">
+                              After sending <strong>{formatOrderMoney(phpTotal, 'PHP')}</strong>, enter your {brandLabel} receipt Reference Number below. Downloads stay locked while pending and unlock automatically as soon as the studio verifies your transfer.
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label htmlFor="manual-ref" className="block text-xs font-bold text-[#292929] mb-1">
+                                {brandLabel} Reference No. *
+                              </label>
+                              <input
+                                id="manual-ref"
+                                type="text"
+                                required
+                                placeholder="e.g. 9012 3456 7890"
+                                value={manualReference}
+                                onChange={e => setManualReference(e.target.value)}
+                                className="w-full px-3.5 py-2.5 text-xs sm:text-sm font-mono bg-[#FCF3E2]/50 border border-[#EADCC8] rounded-xl text-[#292929] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="manual-sender" className="block text-xs font-bold text-[#292929] mb-1">
+                                Sender Name / Mobile <span className="font-normal text-[#777777]">(optional)</span>
+                              </label>
+                              <input
+                                id="manual-sender"
+                                type="text"
+                                placeholder="Account name or last 4 digits"
+                                value={manualSenderName}
+                                onChange={e => setManualSenderName(e.target.value)}
+                                className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#FCF3E2]/50 border border-[#EADCC8] rounded-xl text-[#292929] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label htmlFor="manual-note" className="block text-xs font-bold text-[#292929] mb-1">
+                              Payment Note <span className="font-normal text-[#777777]">(optional)</span>
+                            </label>
+                            <input
+                              id="manual-note"
+                              type="text"
+                              placeholder="Any helpful note for our verification team (e.g. time sent)"
+                              value={manualProofNote}
+                              onChange={e => setManualProofNote(e.target.value)}
+                              className="w-full px-3.5 py-2 text-xs bg-[#FCF3E2]/50 border border-[#EADCC8] rounded-xl text-[#292929] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40"
+                            />
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={submittingManualQr || !meetsMinOrder}
+                            className="w-full py-3.5 px-6 rounded-2xl text-xs sm:text-sm font-bold text-[#FFFCF7] bg-[#A64B3C] hover:bg-[#8E3E30] transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer shadow-xs"
+                          >
+                            {submittingManualQr ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <ShieldCheck className="w-4 h-4" />
+                            )}
+                            <span>
+                              {submittingManualQr
+                                ? `Submitting ${brandLabel} Reference...`
+                                : `Submit ${brandLabel} Payment for Verification · ${formatOrderMoney(phpTotal, 'PHP')}`}
+                            </span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </form>
+                );
+              })()}
+
               {/* Trust Badges Strip (4 Pillars) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3 border-t border-[#EADCC8]">
                 <div className="p-2.5 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-center">
                   <Download className="w-3.5 h-3.5 text-[#A64B3C] mx-auto mb-1" />
-                  <span className="block text-[10px] font-bold text-[#292929]">Instant Delivery</span>
+                  <span className="block text-[10px] font-bold text-[#292929]">Instant / Verified</span>
                   <span className="text-[9px] text-[#777777]">300 DPI Lossless</span>
                 </div>
                 <div className="p-2.5 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-center">
@@ -1082,8 +1883,8 @@ export const CheckoutPage: React.FC = () => {
                 </div>
                 <div className="p-2.5 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-center">
                   <CreditCard className="w-3.5 h-3.5 text-[#A64B3C] mx-auto mb-1" />
-                  <span className="block text-[10px] font-bold text-[#292929]">No Account Needed</span>
-                  <span className="text-[9px] text-[#777777]">Pay by Card</span>
+                  <span className="block text-[10px] font-bold text-[#292929]">Flexible Options</span>
+                  <span className="text-[9px] text-[#777777]">Cards, GPay &amp; PH QR</span>
                 </div>
                 <div className="p-2.5 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-center">
                   <Sparkles className="w-3.5 h-3.5 text-[#A64B3C] mx-auto mb-1" />
@@ -1093,7 +1894,7 @@ export const CheckoutPage: React.FC = () => {
               </div>
 
               <p className="text-[11px] text-center text-[#777777] font-medium">
-                By completing checkout with PayPal, you agree to our{' '}
+                By completing checkout, you agree to our{' '}
                 <button
                   type="button"
                   onClick={() => setShowPolicyAccordion(prev => !prev)}
@@ -1101,7 +1902,7 @@ export const CheckoutPage: React.FC = () => {
                 >
                   Digital Goods Return Policy
                 </button>
-                . Downloads unlock automatically upon verified payment capture.
+                .
               </p>
             </div>
           </div>
@@ -1115,7 +1916,7 @@ export const CheckoutPage: React.FC = () => {
                   Order Summary ({cart.length} item{cart.length > 1 ? 's' : ''})
                 </h3>
                 <span className="text-xs font-bold text-[#A64B3C] bg-white px-2.5 py-1 rounded-full border border-[#EADCC8]">
-                  USD ($)
+                  {isManualQrSelected ? 'PHP (₱)' : 'USD ($)'}
                 </span>
               </div>
 
@@ -1220,9 +2021,18 @@ export const CheckoutPage: React.FC = () => {
 
                 <div className="flex justify-between items-baseline text-base font-bold text-[#292929] pt-2 border-t border-[#EADCC8]">
                   <span>Total Due</span>
-                  <span className="text-xl font-extrabold text-[#A64B3C] tabular-nums">
-                    {formatUsd(breakdown.totalUsd)}
-                  </span>
+                  <div className="text-right">
+                    <span className="text-xl font-extrabold text-[#A64B3C] tabular-nums block">
+                      {isManualQrSelected
+                        ? formatOrderMoney(phpTotal, 'PHP')
+                        : formatUsd(breakdown.totalUsd)}
+                    </span>
+                    {isManualQrSelected && (
+                      <span className="text-[11px] font-semibold text-[#777777] tabular-nums block">
+                        ({formatUsd(breakdown.totalUsd)} at ₱{phLocalConfig.phpExchangeRate.toFixed(2)}/$1)
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1247,7 +2057,7 @@ export const CheckoutPage: React.FC = () => {
                 {showPolicyAccordion && (
                   <div className="mt-2.5 p-3.5 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-[11px] text-[#777777] leading-relaxed space-y-1.5 font-medium">
                     <p>
-                      <strong>Instant Access:</strong> All items are digital downloads delivered immediately upon PayPal capture.
+                      <strong>Digital Access:</strong> PayPal and Google Pay unlock downloads immediately. GCash &amp; Maya QR payments unlock once your reference number is confirmed.
                     </p>
                     <p>
                       <strong>Duplicate Protection:</strong> Accidentally purchased the same wallpaper twice? Email us within 14 days and we refund the duplicate transaction.
@@ -1263,10 +2073,12 @@ export const CheckoutPage: React.FC = () => {
               <div className="p-4 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8] space-y-2 text-xs text-[#777777]">
                 <div className="flex items-center gap-2 font-bold text-[#292929]">
                   <Download className="w-4 h-4 text-[#A64B3C]" />
-                  <span>Instant High-Res Delivery</span>
+                  <span>{isManualQrSelected ? 'Verified PH QR Delivery' : 'Instant High-Res Delivery'}</span>
                 </div>
                 <p className="text-[11px] leading-relaxed font-medium">
-                  Once PayPal confirms your payment, your high-resolution wallpaper downloads unlock automatically on your confirmation screen and in your customer account.
+                  {isManualQrSelected
+                    ? 'Once sleepyshroom Studio confirms your GCash or Maya reference number, your download link and email receipt unlock automatically.'
+                    : 'Once PayPal or Google Pay confirms your payment, your high-resolution wallpaper downloads unlock automatically on your confirmation screen.'}
                 </p>
               </div>
 
@@ -1275,6 +2087,43 @@ export const CheckoutPage: React.FC = () => {
 
         </div>
       </div>
+
+      {/* Enlarged QR Modal */}
+      {enlargedQrModal && (
+        <div
+          className="fixed inset-0 z-50 bg-[#292929]/70 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setEnlargedQrModal(null)}
+        >
+          <div
+            className="bg-[#FFFCF7] rounded-3xl border border-[#EADCC8] p-6 max-w-sm w-full space-y-4 shadow-2xl text-center"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-heading font-bold text-base text-[#292929]">
+                {enlargedQrModal.title}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEnlargedQrModal(null)}
+                aria-label="Close QR zoom"
+                className="p-1.5 rounded-xl bg-[#FCF3E2] text-[#292929] hover:bg-[#EADCC8] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 bg-white rounded-2xl border border-[#EADCC8] flex items-center justify-center">
+              <img
+                src={enlargedQrModal.url}
+                alt={enlargedQrModal.title}
+                className="w-64 h-64 object-contain"
+              />
+            </div>
+            <p className="text-xs font-bold text-[#A64B3C] tabular-nums">
+              Send exactly {formatOrderMoney(phpTotal, 'PHP')}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

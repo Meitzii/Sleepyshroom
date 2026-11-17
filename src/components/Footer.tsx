@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Heart, Sparkles, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
-import { ShroomLogoIcon, SocialPlatformIcon } from './common/Icons.tsx';
+import { ShroomLogoIcon, SocialPlatformIcon, PaymentBadges } from './common/Icons.tsx';
 import { parseJsonResponse } from '../utils/apiClient.ts';
 import { getVisibleSocialPlatforms } from '../utils/socialMedia.ts';
 
@@ -62,8 +62,10 @@ export const Footer: React.FC = () => {
     paypalEnabled: true,
     paypalAllowCards: true,
     testMode: true,
+    googlePayEnabled: true,
+    gcashEnabled: true,
+    mayaEnabled: true,
   };
-  const allowCards = providers.paypalAllowCards !== false;
 
   return (
     <footer className="bg-[#FCF3E2] border-t border-[#EADCC8] text-[#292929] mt-auto">
@@ -265,26 +267,9 @@ export const Footer: React.FC = () => {
             {/* Payments We Accept */}
             <div className="pt-3">
               <p className="text-[11px] font-bold uppercase tracking-wider text-[#292929] mb-2">
-                Payments We Accept · USD via PayPal
+                Payments We Accept · USD &amp; PH Local QR
               </p>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="px-2 py-1 bg-[#FFFCF7] text-[10px] font-bold text-[#292929] rounded-md border border-[#EADCC8] shadow-xs">
-                  PayPal
-                </span>
-                {allowCards && (
-                  <>
-                    <span className="px-2 py-1 bg-[#FFFCF7] text-[10px] font-bold text-[#292929] rounded-md border border-[#EADCC8] shadow-xs">
-                      Visa
-                    </span>
-                    <span className="px-2 py-1 bg-[#FFFCF7] text-[10px] font-bold text-[#292929] rounded-md border border-[#EADCC8] shadow-xs">
-                      Mastercard
-                    </span>
-                    <span className="px-2 py-1 bg-[#FFFCF7] text-[10px] font-bold text-[#292929] rounded-md border border-[#EADCC8] shadow-xs">
-                      Debit &amp; Credit
-                    </span>
-                  </>
-                )}
-              </div>
+              <PaymentBadges providers={providers} />
             </div>
 
           </div>

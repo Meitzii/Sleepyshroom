@@ -21,7 +21,21 @@ export const initialSettings: WebsiteSettings = {
   "paymentProviders": {
     "paypalEnabled": true,
     "paypalAllowCards": true,
-    "testMode": false
+    "testMode": false,
+    "googlePayEnabled": true,
+    "googlePayMerchantId": "",
+    "googlePayMerchantName": "sleepyshroom",
+    "gcashEnabled": true,
+    "gcashQrImage": "",
+    "gcashAccountName": "",
+    "gcashAccountNumber": "",
+    "gcashInstructions": "Open your GCash app, scan the QR code or send the exact PHP amount, then enter your 13-digit GCash Reference No. below.",
+    "mayaEnabled": true,
+    "mayaQrImage": "",
+    "mayaAccountName": "",
+    "mayaAccountNumber": "",
+    "mayaInstructions": "Open your Maya app, scan the QR code or transfer the exact PHP amount, then enter your Maya Reference ID below.",
+    "phpExchangeRate": 56.5
   },
   "socialMedia": {
     "pinterest": { "enabled": true, "url": "https://ph.pinterest.com/FreecafeDecals/" },

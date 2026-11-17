@@ -20,7 +20,13 @@ import type { Order } from '../types/index.ts';
 import { downloadAuthorizedOrderFile } from '../utils/downloadHelper.ts';
 import { parseJsonResponse, getOptionalSupabaseAuthHeader } from '../utils/apiClient.ts';
 import { formatOrderMoney } from '../utils/currency.ts';
-import { PaypalIcon, ShieldLockIcon } from '../components/common/Icons.tsx';
+import {
+  PaypalIcon,
+  GooglePayIcon,
+  GcashIcon,
+  MayaIcon,
+  ShieldLockIcon,
+} from '../components/common/Icons.tsx';
 
 interface OrderConfirmationPageProps {
   token: string;
@@ -216,7 +222,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
       <div className="py-20 text-center max-w-md mx-auto space-y-3">
         <Loader2 className="w-7 h-7 text-[#A64B3C] animate-spin mx-auto" />
         <p className="text-sm font-semibold text-[#A64B3C]">
-          Verifying payment status with PayPal...
+          Verifying order &amp; payment status...
         </p>
       </div>
     );
@@ -257,22 +263,41 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
     .filter(Boolean)
     .join(', ');
 
+  const providerKey = String(order.paymentProvider || 'paypal').toLowerCase();
+  const isGcashOrder = providerKey === 'gcash';
+  const isMayaOrder = providerKey === 'maya';
+  const isGooglePayOrder = providerKey === 'google_pay';
+  const isPhQrOrder = isGcashOrder || isMayaOrder;
+  const providerDisplay = isGcashOrder
+    ? 'GCash QR'
+    : isMayaOrder
+      ? 'Maya QR'
+      : isGooglePayOrder
+        ? 'Google Pay via PayPal'
+        : 'PayPal';
+
   // Strict enforcement: NEVER show digital download buttons unless server verified paymentStatus === 'paid' | 'completed'
   if (!isVerifiedPaid) {
     const isPending = statusLower === 'pending';
     const isRefunded = statusLower === 'refunded';
     const statusTitle = isPending
-      ? 'Awaiting PayPal Payment Confirmation'
+      ? isPhQrOrder
+        ? `${providerDisplay} Reference Received · Awaiting Verification`
+        : `Awaiting ${providerDisplay} Confirmation`
       : isRefunded
       ? 'Order Refunded via PayPal'
       : statusLower === 'cancelled'
       ? 'Checkout Cancelled Before Payment'
       : statusLower === 'expired'
       ? 'Checkout Session Expired'
+      : isPhQrOrder
+      ? `${providerDisplay} Verification Failed`
       : 'Payment Not Completed';
 
     const statusDescription = isPending
-      ? 'We created your order and are waiting for PayPal to confirm payment capture. Digital downloads unlock automatically once verification finishes.'
+      ? isPhQrOrder
+        ? `Thank you! We received your ${providerDisplay} Reference Number (${order.paymentReference || order.transactionId}). Our studio will confirm your PHP transfer shortly—your digital wallpaper downloads unlock automatically as soon as verified.`
+        : 'We created your order and are waiting for payment capture confirmation. Digital downloads unlock automatically once verification finishes.'
       : isRefunded
       ? order.refundReason ||
         'This order has been refunded via PayPal. Digital wallpaper download access is now locked.'
@@ -315,6 +340,16 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
                 <span className="font-bold text-[#292929]">{order.orderNumber}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-[#777777] font-medium">Payment Method</span>
+                <span className="font-bold text-[#292929] inline-flex items-center gap-1.5">
+                  {isGcashOrder && <GcashIcon size={14} />}
+                  {isMayaOrder && <MayaIcon size={14} />}
+                  {isGooglePayOrder && <GooglePayIcon width={28} height={14} />}
+                  {!isPhQrOrder && !isGooglePayOrder && <PaypalIcon size={14} />}
+                  <span>{providerDisplay}</span>
+                </span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-[#777777] font-medium">Payment Status</span>
                 <span className="font-bold uppercase text-[#A64B3C]">{statusLower}</span>
               </div>
@@ -322,8 +357,27 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
                 <span className="text-[#777777] font-medium">Order Total</span>
                 <span className="font-bold text-[#292929] tabular-nums">
                   {formatOrderMoney(order.total, order.currency)}
+                  {order.usdTotal !== undefined && String(order.currency || '').toUpperCase() === 'PHP'
+                    ? ` (${formatOrderMoney(order.usdTotal, 'USD')})`
+                    : ''}
                 </span>
               </div>
+              {(order.paymentReference || order.transactionId) && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-[#777777] font-medium">
+                    {isPhQrOrder ? `${providerDisplay} Reference No.` : 'Payment Reference'}
+                  </span>
+                  <span className="font-mono font-bold text-[#292929] truncate">
+                    {order.paymentReference || order.transactionId}
+                  </span>
+                </div>
+              )}
+              {order.senderName && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-[#777777] font-medium">Sender Account</span>
+                  <span className="font-semibold text-[#292929] truncate">{order.senderName}</span>
+                </div>
+              )}
               {order.paypalOrderId && (
                 <div className="flex justify-between gap-2">
                   <span className="text-[#777777] font-medium">PayPal Order ID</span>
@@ -343,7 +397,9 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
               <span>
                 {isRefunded
                   ? 'Downloads are disabled on refunded orders.'
-                  : 'Downloads are strictly locked until PayPal payment verification succeeds.'}
+                  : isPhQrOrder
+                    ? 'Downloads remain locked while pending verification and unlock automatically once confirmed by sleepyshroom Studio.'
+                    : 'Downloads are strictly locked until payment verification succeeds.'}
               </span>
             </div>
 
@@ -356,7 +412,13 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
                   className="px-5 py-3 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-60 cursor-pointer whitespace-nowrap"
                 >
                   <RefreshCw className={`w-4 h-4 ${verifying ? 'animate-spin' : ''}`} />
-                  <span>{verifying ? 'Checking PayPal...' : 'Verify with PayPal'}</span>
+                  <span>
+                    {verifying
+                      ? 'Checking Status...'
+                      : isPhQrOrder
+                        ? 'Check Verification Status'
+                        : 'Verify Payment Status'}
+                  </span>
                 </button>
               )}
               <button
@@ -389,7 +451,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
           </h1>
 
           <p className="text-sm sm:text-base text-[#777777] font-medium">
-            Payment verified via PayPal. Your digital wallpapers are unlocked for{' '}
+            Payment verified via {providerDisplay}. Your digital wallpapers are unlocked for{' '}
             <strong className="text-[#292929] font-bold">{order.customerEmail}</strong>.
           </p>
         </div>
@@ -655,25 +717,33 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
             </div>
           </div>
 
-          {/* Official PayPal Payment Receipt Card */}
+          {/* Official Payment Receipt Card */}
           <div className="bg-[#FFFCF7] rounded-2xl p-5 border border-[#EADCC8] space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EADCC8]/80 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#003087]/10 flex items-center justify-center shrink-0 border border-[#003087]/20">
-                  <PaypalIcon className="w-4 h-4 text-[#003087]" />
+                <div className="w-9 h-9 rounded-xl bg-[#FCF3E2] flex items-center justify-center shrink-0 border border-[#EADCC8]">
+                  {isGcashOrder ? (
+                    <GcashIcon size={18} />
+                  ) : isMayaOrder ? (
+                    <MayaIcon size={18} />
+                  ) : isGooglePayOrder ? (
+                    <GooglePayIcon width={30} height={15} />
+                  ) : (
+                    <PaypalIcon className="w-4 h-4 text-[#003087]" />
+                  )}
                 </div>
                 <div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-heading font-bold text-sm text-[#292929]">
-                      PayPal Official Receipt
+                      {providerDisplay} Official Receipt
                     </span>
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-300">
                       <ShieldLockIcon className="w-3 h-3 text-emerald-700" />
-                      <span>Verified &amp; Captured</span>
+                      <span>Verified &amp; Unlocked</span>
                     </span>
                   </div>
                   <p className="text-[11px] text-[#777777] font-medium">
-                    Transaction processed via PayPal Checkout{order.isTestOrder ? ' (Sandbox)' : ''}
+                    Transaction processed via {providerDisplay}{order.isTestOrder ? ' (Sandbox)' : ''}
                   </p>
                 </div>
               </div>
@@ -706,11 +776,13 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
                   <span className="text-[#777777]">Payment Method:</span>{' '}
                   <strong className="text-[#292929] font-bold capitalize">{order.paymentMethod}</strong>
                 </p>
-                {(order.paypalCaptureId || order.paypalOrderId) && (
+                {(order.paypalCaptureId || order.paypalOrderId || order.paymentReference) && (
                   <p className="text-[11px] flex items-center gap-1.5">
-                    <span className="text-[#777777]">PayPal ID:</span>{' '}
+                    <span className="text-[#777777]">
+                      {isPhQrOrder ? `${providerDisplay} Ref:` : 'Reference ID:'}
+                    </span>{' '}
                     <code className="font-mono text-[10px] bg-[#FCF3E2] text-[#292929] px-1.5 py-0.5 rounded border border-[#EADCC8]">
-                      {order.paypalCaptureId || order.paypalOrderId}
+                      {order.paypalCaptureId || order.paypalOrderId || order.paymentReference}
                     </code>
                   </p>
                 )}

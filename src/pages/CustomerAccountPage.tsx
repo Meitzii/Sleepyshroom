@@ -644,7 +644,7 @@ export const CustomerAccountPage: React.FC = () => {
                     No verified paid downloads yet
                   </h3>
                   <p className="text-xs text-[#777777] font-medium max-w-sm mx-auto">
-                    Wallpapers you purchase with this email unlock here automatically once PayPal confirms payment.
+                    Wallpapers you purchase with this email unlock here automatically once payment is verified (PayPal, Google Pay, or confirmed GCash/Maya QR).
                   </p>
                   <button
                     onClick={() => navigateTo('collections')}
@@ -811,12 +811,20 @@ export const CustomerAccountPage: React.FC = () => {
                       </div>
                       <p className="text-xs text-[#777777] font-medium mt-0.5">
                         {ord.items.length} item{ord.items.length > 1 ? 's' : ''} · {ord.paymentMethod}
+                        {ord.paymentReference ? ` · Ref: ${ord.paymentReference}` : ''}
                       </p>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="text-base font-extrabold text-[#A64B3C] tabular-nums">
-                        {formatOrderMoney(ord.total, ord.currency)}
-                      </span>
+                      <div className="text-right">
+                        <span className="text-base font-extrabold text-[#A64B3C] tabular-nums block">
+                          {formatOrderMoney(ord.total, ord.currency)}
+                        </span>
+                        {ord.currency === 'PHP' && typeof ord.usdTotal === 'number' && (
+                          <span className="text-[10px] text-[#777777] font-medium tabular-nums">
+                            ({formatOrderMoney(ord.usdTotal, 'USD')})
+                          </span>
+                        )}
+                      </div>
                       <button
                         onClick={() => navigateTo('confirmation', ord.downloadToken)}
                         className="text-xs font-bold text-[#292929] hover:underline cursor-pointer"

@@ -221,6 +221,87 @@ export const AmexIcon: React.FC<{ className?: string; width?: number; height?: n
   </svg>
 );
 
+import type { WebsiteSettings } from '../../types/index.ts';
+
+export const GooglePayIcon: React.FC<{ className?: string; width?: number; height?: number }> = ({
+  className = '',
+  width = 36,
+  height = 20,
+}) => (
+  <svg
+    width={width}
+    height={height}
+    viewBox="0 0 48 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 ${className}`}
+    aria-label="Google Pay"
+  >
+    <path
+      d="M21.48 11.77v4.06h-1.29V5.8h3.41c.85 0 1.61.28 2.21.84.61.55.92 1.24.92 2.09s-.31 1.56-.92 2.1c-.6.55-1.36.82-2.21.82h-2.12v.12zm0-4.74v3.49h2.15c.5 0 .93-.17 1.27-.52.35-.35.52-.76.52-1.23 0-.46-.17-.87-.52-1.21a1.73 1.73 0 0 0-1.27-.53h-2.15zM29.41 8.81c.95 0 1.7.25 2.25.76.55.51.83 1.21.83 2.1v4.16h-1.23v-.94h-.06c-.53.78-1.24 1.17-2.13 1.17-.75 0-1.38-.22-1.88-.67-.51-.44-.76-1-.76-1.67 0-.7.26-1.26.79-1.68.53-.42 1.24-.63 2.12-.63.76 0 1.38.14 1.87.42v-.29c0-.44-.17-.81-.53-1.12a1.88 1.88 0 0 0-1.25-.45c-.71 0-1.28.3-1.69.9l-1.14-.71c.62-.9 1.54-1.35 2.81-1.35zm-1.66 4.94c0 .33.14.61.42.83.28.22.61.33.99.33.54 0 1.02-.2 1.44-.6.42-.4.63-.87.63-1.4-.4-.32-.96-.47-1.68-.47-.52 0-.96.13-1.3.38-.33.24-.5.55-.5.93zM39.96 9.03l-4.29 9.86h-1.33l1.59-3.45-2.82-6.41h1.4l2.04 4.92h.03l1.99-4.92h1.39z"
+      fill="#3C4043"
+    />
+    <path
+      d="M15.48 11.49c0-.4-.03-.8-.1-1.18H10.1v2.24h3.02c-.13.7-.53 1.3-1.13 1.7v1.42h1.83c1.07-.98 1.66-2.43 1.66-4.18z"
+      fill="#4285F4"
+    />
+    <path
+      d="M10.1 17c1.51 0 2.79-.5 3.72-1.36l-1.83-1.42c-.5.34-1.15.54-1.89.54-1.45 0-2.69-.98-3.13-2.3H5.08v1.46A5.62 5.62 0 0 0 10.1 17z"
+      fill="#34A853"
+    />
+    <path
+      d="M6.97 12.46a3.38 3.38 0 0 1 0-2.16V8.84H5.08a5.64 5.64 0 0 0 0 5.08l1.89-1.46z"
+      fill="#FBBC04"
+    />
+    <path
+      d="M10.1 8c.82 0 1.56.28 2.14.84l1.61-1.61A5.42 5.42 0 0 0 10.1 5.76c-2.2 0-4.1 1.26-5.02 3.08l1.89 1.46c.44-1.32 1.68-2.3 3.13-2.3z"
+      fill="#EA4335"
+    />
+  </svg>
+);
+
+export const GcashIcon: React.FC<{ className?: string; size?: number }> = ({
+  className = '',
+  size = 18,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 ${className}`}
+    aria-label="GCash"
+  >
+    <rect width="24" height="24" rx="6" fill="#007DFE" />
+    <path
+      d="M12.2 6.2a5.8 5.8 0 1 0 5.5 7.5h-4.9v-2.1h7.2v1.2A7.8 7.8 0 1 1 12.2 4.2c2.1 0 4 .8 5.4 2.1l-1.6 1.5a3.7 3.7 0 0 0-3.8-1.6z"
+      fill="#FFFFFF"
+    />
+  </svg>
+);
+
+export const MayaIcon: React.FC<{ className?: string; size?: number }> = ({
+  className = '',
+  size = 18,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 ${className}`}
+    aria-label="Maya"
+  >
+    <rect width="24" height="24" rx="6" fill="#0F172A" />
+    <path
+      d="M5.2 16.5V7.5h2.5l4.3 5.2 4.3-5.2h2.5v9h-2.3v-5.3l-3.7 4.4h-1.6l-3.7-4.4v5.3H5.2z"
+      fill="#2FF38A"
+    />
+  </svg>
+);
+
 export const ShieldLockIcon: React.FC<{ className?: string; size?: number }> = ({
   className = 'text-[#A64B3C]',
   size = 18,
@@ -242,43 +323,83 @@ export const ShieldLockIcon: React.FC<{ className?: string; size?: number }> = (
 );
 
 // Payment Badges
-export const PaymentBadges: React.FC<{ className?: string; showAllCards?: boolean }> = ({
-  className = '',
-  showAllCards = true,
-}) => (
-  <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
-    <div
-      title="PayPal Verified"
-      className="inline-flex items-center gap-1 px-2 py-1 bg-white rounded-lg border border-[#EADCC8] shadow-2xs hover:border-[#A64B3C]/50 transition-colors"
-    >
-      <PaypalIcon size={14} />
-      <span className="text-[11px] font-bold text-[#003087]">PayPal</span>
-    </div>
+export const PaymentBadges: React.FC<{
+  className?: string;
+  showAllCards?: boolean;
+  providers?: WebsiteSettings['paymentProviders'];
+}> = ({ className = '', showAllCards = true, providers }) => {
+  const paypalEnabled = providers ? providers.paypalEnabled !== false : true;
+  const allowCards = providers ? providers.paypalAllowCards !== false && showAllCards : showAllCards;
+  const googlePayEnabled = providers ? providers.googlePayEnabled !== false : true;
+  const gcashEnabled = providers ? providers.gcashEnabled !== false : true;
+  const mayaEnabled = providers ? providers.mayaEnabled !== false : true;
 
-    {showAllCards && (
-      <>
+  return (
+    <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
+      {paypalEnabled && (
         <div
-          title="Visa"
-          className="inline-flex items-center px-1.5 py-0.5 bg-white rounded-lg border border-[#EADCC8] shadow-2xs"
+          title="PayPal Verified"
+          className="inline-flex items-center gap-1 px-2 py-1 bg-[#FFFCF7] rounded-lg border border-[#EADCC8] shadow-2xs hover:border-[#A64B3C]/50 transition-colors"
         >
-          <VisaIcon width={28} height={18} />
+          <PaypalIcon size={13} />
+          <span className="text-[11px] font-bold text-[#003087]">PayPal</span>
         </div>
+      )}
+
+      {paypalEnabled && allowCards && (
+        <>
+          <div
+            title="Visa"
+            className="inline-flex items-center px-1.5 py-0.5 bg-[#FFFCF7] rounded-lg border border-[#EADCC8] shadow-2xs"
+          >
+            <VisaIcon width={26} height={17} />
+          </div>
+          <div
+            title="Mastercard"
+            className="inline-flex items-center px-1.5 py-0.5 bg-[#FFFCF7] rounded-lg border border-[#EADCC8] shadow-2xs"
+          >
+            <MastercardIcon width={26} height={17} />
+          </div>
+          <div
+            title="American Express"
+            className="inline-flex items-center px-1.5 py-0.5 bg-[#FFFCF7] rounded-lg border border-[#EADCC8] shadow-2xs"
+          >
+            <AmexIcon width={26} height={17} />
+          </div>
+        </>
+      )}
+
+      {googlePayEnabled && (
         <div
-          title="Mastercard"
-          className="inline-flex items-center px-1.5 py-0.5 bg-white rounded-lg border border-[#EADCC8] shadow-2xs"
+          title="Google Pay"
+          className="inline-flex items-center px-1.5 py-0.5 bg-[#FFFCF7] rounded-lg border border-[#EADCC8] shadow-2xs hover:border-[#A64B3C]/50 transition-colors"
         >
-          <MastercardIcon width={28} height={18} />
+          <GooglePayIcon width={36} height={17} />
         </div>
+      )}
+
+      {gcashEnabled && (
         <div
-          title="American Express"
-          className="inline-flex items-center px-1.5 py-0.5 bg-white rounded-lg border border-[#EADCC8] shadow-2xs"
+          title="GCash QR (Philippines)"
+          className="inline-flex items-center gap-1 px-2 py-1 bg-[#FFFCF7] rounded-lg border border-[#EADCC8] shadow-2xs hover:border-[#007DFE]/50 transition-colors"
         >
-          <AmexIcon width={28} height={18} />
+          <GcashIcon size={13} />
+          <span className="text-[11px] font-bold text-[#0057C2]">GCash</span>
         </div>
-      </>
-    )}
-  </div>
-);
+      )}
+
+      {mayaEnabled && (
+        <div
+          title="Maya QR (Philippines)"
+          className="inline-flex items-center gap-1 px-2 py-1 bg-[#FFFCF7] rounded-lg border border-[#EADCC8] shadow-2xs hover:border-[#0F172A]/40 transition-colors"
+        >
+          <MayaIcon size={13} />
+          <span className="text-[11px] font-bold text-[#0F172A]">Maya</span>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const PinterestIcon: React.FC<{ className?: string; size?: number }> = ({
   className = '',

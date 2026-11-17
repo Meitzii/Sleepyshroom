@@ -7,6 +7,7 @@ import { calculateCheckoutBreakdown, formatUsd } from '../../utils/currency.ts';
 export const CartDrawer: React.FC = () => {
   const {
     cart,
+    settings,
     isCartOpen,
     setIsCartOpen,
     removeFromCart,
@@ -230,13 +231,11 @@ export const CartDrawer: React.FC = () => {
             </div>
 
             {/* Accepted Payments Preview */}
-            <div className="pt-2 pb-1 border-t border-[#EADCC8]/70">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#777777]">
-                  Accepted Payments
-                </span>
-                <PaymentBadges />
-              </div>
+            <div className="pt-2 pb-1 border-t border-[#EADCC8]/70 space-y-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#777777] block">
+                Accepted Payments
+              </span>
+              <PaymentBadges providers={settings?.paymentProviders} />
             </div>
 
             {/* Checkout Button */}
@@ -250,7 +249,7 @@ export const CartDrawer: React.FC = () => {
 
             <div className="flex items-center justify-center gap-2 text-[11px] text-[#777777] font-medium text-center">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Instant digital download · 256-Bit SSL PayPal encrypted</span>
+              <span>Instant digital download · PayPal, Google Pay &amp; PH QR</span>
             </div>
 
           </div>

@@ -1,6 +1,6 @@
 export type DeviceType = 'desktop' | 'mobile' | 'tablet';
 
-export type PaymentProviderKey = 'paypal';
+export type PaymentProviderKey = 'paypal' | 'google_pay' | 'gcash' | 'maya';
 
 export type OrderPaymentStatus =
   | 'pending'
@@ -149,6 +149,20 @@ export interface WebsiteSettings {
     paypalEnabled: boolean;
     paypalAllowCards: boolean;
     testMode: boolean;
+    googlePayEnabled?: boolean;
+    googlePayMerchantId?: string;
+    googlePayMerchantName?: string;
+    gcashEnabled?: boolean;
+    gcashQrImage?: string;
+    gcashAccountName?: string;
+    gcashAccountNumber?: string;
+    gcashInstructions?: string;
+    mayaEnabled?: boolean;
+    mayaQrImage?: string;
+    mayaAccountName?: string;
+    mayaAccountNumber?: string;
+    mayaInstructions?: string;
+    phpExchangeRate?: number;
   };
   socialMedia?: SocialMediaSettings;
   socialLinks?: {
@@ -218,6 +232,7 @@ export interface Order {
   discount: number;
   discountCode?: string;
   total: number;
+  usdTotal?: number;
   currency?: string;
   paymentProvider?: PaymentProviderKey | string;
   paymentMethod: string;
@@ -225,6 +240,8 @@ export interface Order {
   isTestOrder?: boolean;
   transactionId: string;
   paymentReference?: string;
+  senderName?: string;
+  paymentProofNote?: string;
   paypalOrderId?: string;
   paypalCaptureId?: string;
   paypalPayerId?: string;

@@ -31,6 +31,8 @@ import {
   Globe,
   FileText,
   ExternalLink,
+  QrCode,
+  X,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { supabase } from '../lib/supabase.ts';
@@ -45,7 +47,13 @@ import { ContactMessagesPanel } from '../components/admin/ContactMessagesPanel.t
 import { CollectionsBundlesAdminPanel } from '../components/admin/CollectionsBundlesAdminPanel.tsx';
 import { NewsletterEmailsAdminPanel } from '../components/admin/NewsletterEmailsAdminPanel.tsx';
 import { ReviewsFaqsAdminPanel } from '../components/admin/ReviewsFaqsAdminPanel.tsx';
-import { PaypalIcon, SocialPlatformIcon } from '../components/common/Icons.tsx';
+import {
+  PaypalIcon,
+  GooglePayIcon,
+  GcashIcon,
+  MayaIcon,
+  SocialPlatformIcon,
+} from '../components/common/Icons.tsx';
 import type { 
   Product, 
   CarouselSlide, 
@@ -97,6 +105,9 @@ export const AdminDashboard: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [verifyingOrderId, setVerifyingOrderId] = useState<string | null>(null);
+  const [confirmingManualOrderId, setConfirmingManualOrderId] = useState<string | null>(null);
+  const [rejectManualOrderKey, setRejectManualOrderKey] = useState<string | null>(null);
+  const [rejectManualReasonInput, setRejectManualReasonInput] = useState<string>('');
   const [refundConfirmOrderKey, setRefundConfirmOrderKey] = useState<string | null>(null);
   const [refundReasonInput, setRefundReasonInput] = useState<string>('');
   const [refundingOrderId, setRefundingOrderId] = useState<string | null>(null);
@@ -643,6 +654,154 @@ export const AdminDashboard: React.FC = () => {
     } finally {
       setRefundingOrderId(null);
     }
+  };
+
+  const handleConfirmManualPayment = async (order: Order) => {
+    const key = order.id || order.downloadToken || order.orderNumber;
+    if (!key) return;
+    setConfirmingManualOrderId(key);
+    setErrorMessage(null);
+    try {
+      const token = await getFreshAdminToken();
+      if (!token) {
+        setErrorMessage('Administrator session expired. Please sign in again.');
+        return;
+      }
+
+      const res = await fetch(`/api/orders/${encodeURIComponent(key)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: 'confirm_manual_payment' }),
+      });
+      const parsed = await parseJsonResponse<{
+        success?: boolean;
+        verifiedPaid?: boolean;
+        order?: Order;
+        error?: string;
+      }>(res);
+
+      if (!parsed.ok || !parsed.isJson || !parsed.data?.success || !parsed.data?.order) {
+        setErrorMessage(parsed.data?.error || 'Could not confirm manual QR payment.');
+        return;
+      }
+
+      const updated = parsed.data.order;
+      setOrders(prev => prev.map(item => (item.id === updated.id ? updated : item)));
+      triggerSaveNotification(
+        `Order ${updated.orderNumber} confirmed! Digital downloads are now unlocked for ${updated.customerEmail}.`
+      );
+      void loadAdminData(token);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Error confirming QR payment.');
+    } finally {
+      setConfirmingManualOrderId(null);
+    }
+  };
+
+  const handleRejectManualPayment = async (order: Order, reasonText: string) => {
+    const key = order.id || order.downloadToken || order.orderNumber;
+    if (!key) return;
+    setConfirmingManualOrderId(key);
+    setErrorMessage(null);
+    try {
+      const token = await getFreshAdminToken();
+      if (!token) {
+        setErrorMessage('Administrator session expired. Please sign in again.');
+        return;
+      }
+
+      const res = await fetch(`/api/orders/${encodeURIComponent(key)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: 'reject_manual_payment',
+          reason:
+            reasonText.trim() ||
+            'Payment reference could not be verified. Please contact support or retry checkout.',
+        }),
+      });
+      const parsed = await parseJsonResponse<{
+        success?: boolean;
+        order?: Order;
+        error?: string;
+      }>(res);
+
+      if (!parsed.ok || !parsed.isJson || !parsed.data?.success || !parsed.data?.order) {
+        setErrorMessage(parsed.data?.error || 'Could not reject manual QR payment.');
+        return;
+      }
+
+      const updated = parsed.data.order;
+      setOrders(prev => prev.map(item => (item.id === updated.id ? updated : item)));
+      setRejectManualOrderKey(null);
+      setRejectManualReasonInput('');
+      triggerSaveNotification(`Order ${updated.orderNumber} marked as rejected.`);
+      void loadAdminData(token);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Error rejecting QR payment.');
+    } finally {
+      setConfirmingManualOrderId(null);
+    }
+  };
+
+  const handleUploadQrCodeImage = (
+    provider: 'gcash' | 'maya',
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !settings) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const rawDataUrl = typeof reader.result === 'string' ? reader.result : '';
+      if (!rawDataUrl) return;
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 520;
+        const scale = Math.min(1, maxDim / Math.max(img.width || maxDim, img.height || maxDim));
+        const width = Math.max(1, Math.round((img.width || maxDim) * scale));
+        const height = Math.max(1, Math.round((img.height || maxDim) * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        let compressed = canvas.toDataURL('image/png');
+        if (compressed.length > 400000) {
+          compressed = canvas.toDataURL('image/webp', 0.85);
+        }
+        setSettings(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            paymentProviders: {
+              ...prev.paymentProviders,
+              ...(provider === 'gcash'
+                ? { gcashQrImage: compressed }
+                : { mayaQrImage: compressed }),
+            },
+          };
+        });
+        triggerSaveNotification(
+          `${provider === 'gcash' ? 'GCash' : 'Maya'} QR image ready! Click Save Changes to publish.`
+        );
+      };
+      img.onerror = () => {
+        setErrorMessage('Could not read image file. Please select a valid PNG, JPG, or WebP QR code.');
+      };
+      img.src = rawDataUrl;
+    };
+    reader.readAsDataURL(file);
   };
 
   // Image upload helper for hero or settings
@@ -1452,10 +1611,14 @@ export const AdminDashboard: React.FC = () => {
 
         {/* TAB 5: ORDERS & DOWNLOADS */}
         {activeTab === 'orders' && (() => {
-          const totalPaidRevenue = orders
-            .filter(o => ['paid', 'completed'].includes(String(o.paymentStatus || '').toLowerCase()))
+          const paidOrders = orders.filter(o => ['paid', 'completed'].includes(String(o.paymentStatus || '').toLowerCase()));
+          const totalPaidUsd = paidOrders
+            .filter(o => String(o.currency || 'USD').toUpperCase() !== 'PHP')
             .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-          const paidOrdersCount = orders.filter(o => ['paid', 'completed'].includes(String(o.paymentStatus || '').toLowerCase())).length;
+          const totalPaidPhp = paidOrders
+            .filter(o => String(o.currency || 'USD').toUpperCase() === 'PHP')
+            .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+          const paidOrdersCount = paidOrders.length;
           const pendingOrdersCount = orders.filter(o => String(o.paymentStatus || '').toLowerCase() === 'pending').length;
           const refundedOrdersCount = orders.filter(o => String(o.paymentStatus || '').toLowerCase() === 'refunded').length;
 
@@ -1476,8 +1639,23 @@ export const AdminDashboard: React.FC = () => {
               const matchName = o.customerName?.toLowerCase().includes(q);
               const matchCapture = o.paypalCaptureId?.toLowerCase().includes(q);
               const matchPaypalOrder = o.paypalOrderId?.toLowerCase().includes(q);
+              const matchRef = o.paymentReference?.toLowerCase().includes(q);
+              const matchTx = o.transactionId?.toLowerCase().includes(q);
+              const matchSender = o.senderName?.toLowerCase().includes(q);
+              const matchProvider = o.paymentProvider?.toLowerCase().includes(q);
               const matchToken = o.downloadToken?.toLowerCase().includes(q);
-              return matchOrderNum || matchEmail || matchName || matchCapture || matchPaypalOrder || matchToken;
+              return (
+                matchOrderNum ||
+                matchEmail ||
+                matchName ||
+                matchCapture ||
+                matchPaypalOrder ||
+                matchRef ||
+                matchTx ||
+                matchSender ||
+                matchProvider ||
+                matchToken
+              );
             }
             return true;
           });
@@ -1487,17 +1665,17 @@ export const AdminDashboard: React.FC = () => {
               {/* Header */}
               <div className="bg-[#F9F6F0] p-5 rounded-3xl border border-[#E8C9C1] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-heading font-bold text-lg text-[#1E1419]">
-                      Customer Orders &amp; PayPal Verification
+                      Customer Orders &amp; Payment Verification
                     </h2>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#003087] bg-[#003087]/10 px-2 py-0.5 rounded-full border border-[#003087]/20">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#003087] bg-[#003087]/10 px-2.5 py-0.5 rounded-full border border-[#003087]/20">
                       <PaypalIcon className="w-3 h-3" />
-                      <span>PayPal Exclusive</span>
+                      <span>PayPal · Google Pay · PH QR</span>
                     </span>
                   </div>
                   <p className="text-xs text-[#33222C] mt-0.5">
-                    Server-verified PayPal USD orders, capture references, refund management, and digital download access status.
+                    Verified PayPal USD, Google Pay, and PH Local GCash/Maya QR orders, reference approvals, refunds, and download unlocks.
                   </p>
                 </div>
 
@@ -1517,11 +1695,16 @@ export const AdminDashboard: React.FC = () => {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="bg-[#F9F6F0] p-4 rounded-2xl border border-[#E8C9C1]">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#8B6F7A] block">
-                    Verified Revenue (USD)
+                    Verified Revenue
                   </span>
                   <span className="text-xl font-extrabold text-[#945367] tabular-nums mt-1 block">
-                    {formatUsd(totalPaidRevenue)}
+                    {formatUsd(totalPaidUsd)}
                   </span>
+                  {totalPaidPhp > 0 && (
+                    <span className="text-xs font-bold text-[#1E1419] tabular-nums block">
+                      + {formatOrderMoney(totalPaidPhp, 'PHP')}
+                    </span>
+                  )}
                   <span className="text-[11px] text-[#45313D] font-medium mt-0.5 block">
                     From {paidOrdersCount} completed orders
                   </span>
@@ -1547,7 +1730,7 @@ export const AdminDashboard: React.FC = () => {
                     {paidOrdersCount}
                   </span>
                   <span className="text-[11px] text-[#45313D] font-medium mt-0.5 block">
-                    Instant delivery verified
+                    Verified payments
                   </span>
                 </div>
 
@@ -1559,7 +1742,7 @@ export const AdminDashboard: React.FC = () => {
                     {pendingOrdersCount} <span className="text-xs font-normal text-[#8B6F7A]">/ {refundedOrdersCount}</span>
                   </span>
                   <span className="text-[11px] text-[#45313D] font-medium mt-0.5 block">
-                    {pendingOrdersCount} awaiting capture · {refundedOrdersCount} refunded
+                    {pendingOrdersCount} awaiting verification · {refundedOrdersCount} refunded
                   </span>
                 </div>
               </div>
@@ -1621,7 +1804,7 @@ export const AdminDashboard: React.FC = () => {
                     type="text"
                     value={orderSearchQuery}
                     onChange={e => setOrderSearchQuery(e.target.value)}
-                    placeholder="Search by order #, email, name, or PayPal ID..."
+                    placeholder="Search order #, email, name, or Ref ID..."
                     className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-[#D5C2BB] rounded-xl text-[#1E1419] placeholder-[#8B6F7A]/60 focus:outline-hidden focus:ring-1 focus:ring-[#8B6F7A]"
                   />
                   {orderSearchQuery && (
@@ -1641,7 +1824,7 @@ export const AdminDashboard: React.FC = () => {
                 <div className="bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] p-8 text-center text-xs text-[#33222C] font-medium space-y-2">
                   <p>
                     {orders.length === 0
-                      ? 'No orders recorded yet. New PayPal checkouts will appear here automatically.'
+                      ? 'No orders recorded yet. New PayPal, Google Pay, GCash, and Maya checkouts will appear here automatically.'
                       : 'No orders found matching the selected filter or search query.'}
                   </p>
                   {(orderFilterStatus !== 'all' || orderSearchQuery) && (
@@ -1663,6 +1846,11 @@ export const AdminDashboard: React.FC = () => {
                   const st = String(o.paymentStatus || 'pending').toLowerCase();
                   const isPaid = st === 'paid' || st === 'completed';
                   const isRefunded = st === 'refunded';
+                  const providerKey = String(o.paymentProvider || 'paypal').toLowerCase();
+                  const isGcash = providerKey === 'gcash';
+                  const isMaya = providerKey === 'maya';
+                  const isGooglePay = providerKey === 'google_pay';
+                  const isManualQr = isGcash || isMaya;
                   const badgeClass = isPaid
                     ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                     : st === 'pending'
@@ -1672,9 +1860,11 @@ export const AdminDashboard: React.FC = () => {
                     : 'bg-red-50 text-red-700 border-red-200';
                   const orderKey = o.id || o.downloadToken || o.orderNumber;
                   const isVerifyingThis = verifyingOrderId === orderKey;
+                  const isManualConfirmingThis = confirmingManualOrderId === orderKey;
                   const isRefundingThis = refundingOrderId === orderKey;
                   const showRefundConfirm = refundConfirmOrderKey === orderKey;
-                  const payRef = o.paypalCaptureId || o.paypalOrderId || o.transactionId;
+                  const showRejectConfirm = rejectManualOrderKey === orderKey;
+                  const payRef = o.paypalCaptureId || o.paypalOrderId || o.paymentReference || o.transactionId;
                   const txDate = o.paidAt || o.createdAt;
 
                   return (
@@ -1694,18 +1884,27 @@ export const AdminDashboard: React.FC = () => {
                           <div className="text-xs text-[#33222C] font-medium flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             <span>Email: <strong className="text-[#1E1419] font-bold">{o.customerEmail}</strong></span>
                             <span>·</span>
-                            <span className="inline-flex items-center gap-1 text-[#003087] font-bold">
-                              <PaypalIcon className="w-3.5 h-3.5" />
-                              <span>PayPal ({o.paymentMethod})</span>
+                            <span className="inline-flex items-center gap-1.5 font-bold text-[#1E1419]">
+                              {isGcash && <GcashIcon size={14} />}
+                              {isMaya && <MayaIcon size={14} />}
+                              {isGooglePay && <GooglePayIcon width={26} height={13} />}
+                              {!isManualQr && !isGooglePay && <PaypalIcon className="w-3.5 h-3.5" />}
+                              <span>{o.paymentMethod}</span>
                             </span>
                           </div>
                           <p className="text-xs text-[#33222C] font-medium flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span>
-                              PayPal Ref:{' '}
-                              <span className="font-mono text-[11px] bg-white text-[#1E1419] px-1.5 py-0.5 rounded border border-[#D5C2BB]">
+                              {isManualQr ? 'QR Ref No.:' : 'Payment Ref:'}{' '}
+                              <span className="font-mono text-[11px] bg-white text-[#1E1419] px-1.5 py-0.5 rounded border border-[#D5C2BB] font-bold">
                                 {payRef || 'n/a'}
                               </span>
                             </span>
+                            {o.senderName && (
+                              <span>
+                                · Sender:{' '}
+                                <span className="font-semibold text-[#1E1419]">{o.senderName}</span>
+                              </span>
+                            )}
                             {o.paypalOrderId && o.paypalCaptureId && (
                               <span>
                                 · Order ID:{' '}
@@ -1721,6 +1920,11 @@ export const AdminDashboard: React.FC = () => {
                               </span>
                             </span>
                           </p>
+                          {o.paymentProofNote && (
+                            <p className="text-[11px] text-[#45313D] italic">
+                              Customer Note: &ldquo;{o.paymentProofNote}&rdquo;
+                            </p>
+                          )}
                           {isRefunded && (
                             <p className="text-[11px] text-stone-700 font-medium">
                               Refunded{o.refundedAt ? ` on ${new Date(o.refundedAt).toLocaleString()}` : ''}
@@ -1734,11 +1938,52 @@ export const AdminDashboard: React.FC = () => {
                         </div>
 
                         <div className="flex flex-col lg:items-end gap-2 shrink-0">
-                          <span className="text-base font-extrabold text-[#945367] tabular-nums">
-                            {formatOrderMoney(o.total, o.currency)}
-                          </span>
+                          <div className="text-left lg:text-right">
+                            <span className="text-base font-extrabold text-[#945367] tabular-nums block">
+                              {formatOrderMoney(o.total, o.currency)}
+                            </span>
+                            {o.usdTotal !== undefined && String(o.currency || '').toUpperCase() === 'PHP' && (
+                              <span className="text-[10px] text-[#8B6F7A] font-semibold tabular-nums block">
+                                ({formatUsd(o.usdTotal)})
+                              </span>
+                            )}
+                          </div>
                           <div className="flex flex-wrap items-center gap-2">
-                            {!isPaid && !isRefunded && o.paypalOrderId && (
+                            {isManualQr && !isPaid && !isRefunded && (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={isManualConfirmingThis}
+                                  onClick={() => handleConfirmManualPayment(o)}
+                                  className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer whitespace-nowrap shadow-xs"
+                                >
+                                  {isManualConfirmingThis ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Check className="w-3.5 h-3.5" />
+                                  )}
+                                  <span>Confirm Payment &amp; Unlock</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isManualConfirmingThis}
+                                  onClick={() => {
+                                    if (showRejectConfirm) {
+                                      setRejectManualOrderKey(null);
+                                      setRejectManualReasonInput('');
+                                    } else {
+                                      setRejectManualOrderKey(orderKey);
+                                      setRejectManualReasonInput('');
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 bg-white hover:bg-red-50 text-red-700 border border-red-200 rounded-xl text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 cursor-pointer whitespace-nowrap"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                  <span>Reject</span>
+                                </button>
+                              </>
+                            )}
+                            {!isManualQr && !isPaid && !isRefunded && o.paypalOrderId && (
                               <button
                                 type="button"
                                 disabled={isVerifyingThis}
@@ -1777,6 +2022,52 @@ export const AdminDashboard: React.FC = () => {
                           </div>
                         </div>
                       </div>
+
+                      {showRejectConfirm && (
+                        <div className="p-4 bg-white rounded-2xl border border-red-200 space-y-3 text-xs">
+                          <div className="space-y-1">
+                            <p className="font-bold text-red-800">
+                              Reject {isGcash ? 'GCash' : 'Maya'} Reference ({payRef || 'n/a'})
+                            </p>
+                            <p className="text-[#45313D] font-medium">
+                              Downloads remain locked for {o.customerEmail}. Enter a clear reason if the transfer amount or reference number was not found.
+                            </p>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <input
+                              type="text"
+                              placeholder="Reason (e.g. Reference number not found in GCash history)"
+                              value={rejectManualReasonInput}
+                              onChange={e => setRejectManualReasonInput(e.target.value)}
+                              className="flex-1 px-3 py-2 text-xs bg-[#F9F6F0] border border-[#D5C2BB] rounded-xl text-[#1E1419]"
+                            />
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                disabled={isManualConfirmingThis}
+                                onClick={() => {
+                                  setRejectManualOrderKey(null);
+                                  setRejectManualReasonInput('');
+                                }}
+                                className="px-3 py-2 bg-[#F9F6F0] hover:bg-[#E8C9C1]/40 text-[#1E1419] border border-[#D5C2BB] rounded-xl font-bold cursor-pointer whitespace-nowrap"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isManualConfirmingThis}
+                                onClick={() => {
+                                  void handleRejectManualPayment(o, rejectManualReasonInput);
+                                }}
+                                className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-xl font-bold flex items-center gap-1.5 disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                              >
+                                {isManualConfirmingThis && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                                <span>Confirm Reject</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {showRefundConfirm && (
                         <div className="p-4 bg-white rounded-2xl border border-red-200 space-y-3 text-xs">
@@ -2093,15 +2384,15 @@ export const AdminDashboard: React.FC = () => {
               );
             })()}
 
-            {/* PayPal Payment Gateway Configuration */}
-            <div className="border-t border-[#E8C9C1]/50 pt-6 space-y-4">
+            {/* PayPal, Google Pay & PH Local QR Gateway Configuration */}
+            <div className="border-t border-[#E8C9C1]/50 pt-6 space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B6F7A]">
-                    PayPal Exclusive Checkout (USD)
+                    PayPal &amp; Google Pay Checkout (USD)
                   </h3>
                   <p className="text-[11px] text-[#45313D] mt-0.5">
-                    Sleepyshroom uses PayPal exclusively in USD. Keep PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, and PAYPAL_WEBHOOK_ID in server environment variables.
+                    Keep PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, and PAYPAL_WEBHOOK_ID in server environment variables.
                   </p>
                 </div>
 
@@ -2142,16 +2433,16 @@ export const AdminDashboard: React.FC = () => {
                   </span>
                 </div>
                 <div className="p-3 bg-white rounded-2xl border border-[#E8C9C1]">
-                  <span className="text-[10px] font-bold uppercase text-[#8B6F7A] block">Checkout Currency</span>
+                  <span className="text-[10px] font-bold uppercase text-[#8B6F7A] block">Currencies Supported</span>
                   <span className="font-bold text-[#1E1419] block mt-0.5 tabular-nums">
-                    USD ($) · Min $0.50 USD
+                    USD ($) &amp; PHP (₱) · Min $0.50 USD
                   </span>
                 </div>
               </div>
 
-              {/* PayPal Checkout Controls */}
-              <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-3 text-xs">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* PayPal & Google Pay Controls */}
+              <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <label className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F9F6F0] border border-[#E8C9C1] cursor-pointer">
                     <input
                       type="checkbox"
@@ -2168,7 +2459,7 @@ export const AdminDashboard: React.FC = () => {
                     <div>
                       <span className="font-bold text-[#1E1419] block">Enable PayPal Checkout</span>
                       <span className="text-[11px] text-[#45313D]">
-                        Allow customers to complete purchases through PayPal Orders v2.
+                        PayPal Orders v2 &amp; Smart Buttons.
                       </span>
                     </div>
                   </label>
@@ -2187,13 +2478,79 @@ export const AdminDashboard: React.FC = () => {
                       className="accent-[#8B6F7A] mt-0.5"
                     />
                     <div>
-                      <span className="font-bold text-[#1E1419] block">Allow Debit &amp; Credit Cards via PayPal</span>
+                      <span className="font-bold text-[#1E1419] block">Allow Debit &amp; Credit Cards</span>
                       <span className="text-[11px] text-[#45313D]">
-                        Show Visa, Mastercard, and card checkout options alongside PayPal buttons.
+                        Visa, Mastercard &amp; Amex via PayPal.
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F9F6F0] border border-[#E8C9C1] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.paymentProviders.googlePayEnabled !== false}
+                      onChange={e => setSettings({
+                        ...settings,
+                        paymentProviders: {
+                          ...settings.paymentProviders,
+                          googlePayEnabled: e.target.checked,
+                        },
+                      })}
+                      className="accent-[#8B6F7A] mt-0.5"
+                    />
+                    <div>
+                      <span className="font-bold text-[#1E1419] inline-flex items-center gap-1.5">
+                        <GooglePayIcon width={28} height={14} />
+                        <span>Enable Google Pay</span>
+                      </span>
+                      <span className="text-[11px] text-[#45313D] block">
+                        1-Tap Google Pay (processed in USD via PayPal).
                       </span>
                     </div>
                   </label>
                 </div>
+
+                {/* Optional Google Pay Merchant Overrides */}
+                {settings.paymentProviders.googlePayEnabled !== false && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="text-[11px] font-bold text-[#33222C] block mb-1">
+                        Google Pay Merchant Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="sleepyshroom"
+                        value={settings.paymentProviders.googlePayMerchantName ?? 'sleepyshroom'}
+                        onChange={e => setSettings({
+                          ...settings,
+                          paymentProviders: {
+                            ...settings.paymentProviders,
+                            googlePayMerchantName: e.target.value,
+                          },
+                        })}
+                        className="w-full px-3 py-2 text-xs bg-[#F9F6F0] border border-[#D5C2BB] rounded-xl text-[#1E1419]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-[#33222C] block mb-1">
+                        Google Pay Merchant ID <span className="font-normal text-[#8B6F7A]">(optional in Sandbox)</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="BCR2DN..."
+                        value={settings.paymentProviders.googlePayMerchantId ?? ''}
+                        onChange={e => setSettings({
+                          ...settings,
+                          paymentProviders: {
+                            ...settings.paymentProviders,
+                            googlePayMerchantId: e.target.value,
+                          },
+                        })}
+                        className="w-full px-3 py-2 text-xs font-mono bg-[#F9F6F0] border border-[#D5C2BB] rounded-xl text-[#1E1419]"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="p-3 rounded-xl bg-[#F9F6F0] border border-[#E8C9C1] space-y-1 text-[11px] text-[#45313D]">
                   <p className="font-bold text-[#1E1419]">PayPal Webhook Endpoint</p>
@@ -2207,6 +2564,336 @@ export const AdminDashboard: React.FC = () => {
                     <code className="font-mono">PAYMENT.CAPTURE.DENIED</code>, and{' '}
                     <code className="font-mono">PAYMENT.CAPTURE.REFUNDED</code>.
                   </p>
+                </div>
+              </div>
+
+              {/* PH Local QR Payments (GCash & Maya) */}
+              <div className="p-5 bg-white rounded-2xl border border-[#E8C9C1] space-y-4 text-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E8C9C1]/60 pb-3">
+                  <div>
+                    <h4 className="font-heading font-bold text-sm text-[#1E1419] flex items-center gap-2">
+                      <QrCode className="w-4 h-4 text-[#945367]" />
+                      <span>PH Local QR Code Payments (GCash &amp; Maya · PHP ₱)</span>
+                    </h4>
+                    <p className="text-[11px] text-[#45313D] mt-0.5">
+                      Upload your official GCash and Maya QR codes so Filipino buyers can scan &amp; submit their reference number. Downloads stay locked until you confirm receipt in Orders.
+                    </p>
+                  </div>
+
+                  {/* USD -> PHP Exchange Rate */}
+                  <div className="flex items-center gap-2 bg-[#F9F6F0] px-3 py-2 rounded-xl border border-[#E8C9C1] shrink-0">
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-[#8B6F7A] block">
+                        $1 USD Rate (PHP)
+                      </label>
+                      <span className="text-[10px] text-[#45313D] tabular-nums">
+                        $4.50 → {formatOrderMoney(4.5 * (settings.paymentProviders.phpExchangeRate ?? 56.5), 'PHP')}
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      min="20"
+                      max="150"
+                      step="0.1"
+                      value={settings.paymentProviders.phpExchangeRate ?? 56.5}
+                      onChange={e => setSettings({
+                        ...settings,
+                        paymentProviders: {
+                          ...settings.paymentProviders,
+                          phpExchangeRate: Number(e.target.value) || 56.5,
+                        },
+                      })}
+                      className="w-20 px-2.5 py-1.5 text-xs font-bold tabular-nums bg-white border border-[#D5C2BB] rounded-lg text-[#1E1419]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* GCash QR Setup Card */}
+                  <div className="p-4 rounded-2xl bg-[#F9F6F0] border border-[#E8C9C1] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <GcashIcon size={20} />
+                        <span className="font-heading font-bold text-sm text-[#1E1419]">GCash QR Code</span>
+                      </div>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.paymentProviders.gcashEnabled !== false}
+                          onChange={e => setSettings({
+                            ...settings,
+                            paymentProviders: {
+                              ...settings.paymentProviders,
+                              gcashEnabled: e.target.checked,
+                            },
+                          })}
+                          className="accent-[#007DFE]"
+                        />
+                        <span className="text-[11px] font-bold text-[#1E1419]">Enabled</span>
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="text-[11px] font-bold text-[#33222C] block mb-1">
+                          GCash Account Name
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Maria C."
+                          value={settings.paymentProviders.gcashAccountName ?? ''}
+                          onChange={e => setSettings({
+                            ...settings,
+                            paymentProviders: {
+                              ...settings.paymentProviders,
+                              gcashAccountName: e.target.value,
+                            },
+                          })}
+                          className="w-full px-3 py-2 text-xs bg-white border border-[#D5C2BB] rounded-xl text-[#1E1419]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-[#33222C] block mb-1">
+                          GCash Mobile Number
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 0917 123 4567"
+                          value={settings.paymentProviders.gcashAccountNumber ?? ''}
+                          onChange={e => setSettings({
+                            ...settings,
+                            paymentProviders: {
+                              ...settings.paymentProviders,
+                              gcashAccountNumber: e.target.value,
+                            },
+                          })}
+                          className="w-full px-3 py-2 text-xs font-mono bg-white border border-[#D5C2BB] rounded-xl text-[#1E1419]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-[#33222C] block mb-1">
+                        Customer Instructions
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={settings.paymentProviders.gcashInstructions ?? ''}
+                        onChange={e => setSettings({
+                          ...settings,
+                          paymentProviders: {
+                            ...settings.paymentProviders,
+                            gcashInstructions: e.target.value,
+                          },
+                        })}
+                        className="w-full px-3 py-2 text-xs bg-white border border-[#D5C2BB] rounded-xl text-[#1E1419]"
+                      />
+                    </div>
+
+                    {/* GCash QR Image Upload + Preview */}
+                    <div className="p-3 bg-white rounded-xl border border-[#D5C2BB] flex flex-col sm:flex-row items-center gap-3">
+                      {settings.paymentProviders.gcashQrImage ? (
+                        <img
+                          src={settings.paymentProviders.gcashQrImage}
+                          alt="GCash QR Preview"
+                          className="w-20 h-20 object-contain rounded-lg border border-[#E8C9C1] shrink-0 bg-white"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-lg border border-dashed border-[#D5C2BB] flex items-center justify-center text-[#8B6F7A] shrink-0">
+                          <QrCode className="w-7 h-7" />
+                        </div>
+                      )}
+                      <div className="flex-1 w-full space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="px-3 py-1.5 bg-[#007DFE] hover:bg-[#0066D1] text-white rounded-lg text-[11px] font-bold inline-flex items-center gap-1.5 cursor-pointer">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload GCash QR Image</span>
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              onChange={e => handleUploadQrCodeImage('gcash', e)}
+                              className="hidden"
+                            />
+                          </label>
+                          {settings.paymentProviders.gcashQrImage && (
+                            <button
+                              type="button"
+                              onClick={() => setSettings({
+                                ...settings,
+                                paymentProviders: {
+                                  ...settings.paymentProviders,
+                                  gcashQrImage: '',
+                                },
+                              })}
+                              className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-[11px] font-bold cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Or paste QR image URL (https://...)"
+                          value={
+                            settings.paymentProviders.gcashQrImage?.startsWith('data:')
+                              ? ''
+                              : settings.paymentProviders.gcashQrImage ?? ''
+                          }
+                          onChange={e => setSettings({
+                            ...settings,
+                            paymentProviders: {
+                              ...settings.paymentProviders,
+                              gcashQrImage: e.target.value,
+                            },
+                          })}
+                          className="w-full px-2.5 py-1.5 text-[11px] bg-[#F9F6F0] border border-[#D5C2BB] rounded-lg text-[#1E1419]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Maya QR Setup Card */}
+                  <div className="p-4 rounded-2xl bg-[#F9F6F0] border border-[#E8C9C1] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MayaIcon size={20} />
+                        <span className="font-heading font-bold text-sm text-[#1E1419]">Maya QR Code</span>
+                      </div>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.paymentProviders.mayaEnabled !== false}
+                          onChange={e => setSettings({
+                            ...settings,
+                            paymentProviders: {
+                              ...settings.paymentProviders,
+                              mayaEnabled: e.target.checked,
+                            },
+                          })}
+                          className="accent-[#0F172A]"
+                        />
+                        <span className="text-[11px] font-bold text-[#1E1419]">Enabled</span>
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="text-[11px] font-bold text-[#33222C] block mb-1">
+                          Maya Account Name
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Maria C."
+                          value={settings.paymentProviders.mayaAccountName ?? ''}
+                          onChange={e => setSettings({
+                            ...settings,
+                            paymentProviders: {
+                              ...settings.paymentProviders,
+                              mayaAccountName: e.target.value,
+                            },
+                          })}
+                          className="w-full px-3 py-2 text-xs bg-white border border-[#D5C2BB] rounded-xl text-[#1E1419]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-[#33222C] block mb-1">
+                          Maya Mobile / Account Number
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 0917 123 4567"
+                          value={settings.paymentProviders.mayaAccountNumber ?? ''}
+                          onChange={e => setSettings({
+                            ...settings,
+                            paymentProviders: {
+                              ...settings.paymentProviders,
+                              mayaAccountNumber: e.target.value,
+                            },
+                          })}
+                          className="w-full px-3 py-2 text-xs font-mono bg-white border border-[#D5C2BB] rounded-xl text-[#1E1419]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-[#33222C] block mb-1">
+                        Customer Instructions
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={settings.paymentProviders.mayaInstructions ?? ''}
+                        onChange={e => setSettings({
+                          ...settings,
+                          paymentProviders: {
+                            ...settings.paymentProviders,
+                            mayaInstructions: e.target.value,
+                          },
+                        })}
+                        className="w-full px-3 py-2 text-xs bg-white border border-[#D5C2BB] rounded-xl text-[#1E1419]"
+                      />
+                    </div>
+
+                    {/* Maya QR Image Upload + Preview */}
+                    <div className="p-3 bg-white rounded-xl border border-[#D5C2BB] flex flex-col sm:flex-row items-center gap-3">
+                      {settings.paymentProviders.mayaQrImage ? (
+                        <img
+                          src={settings.paymentProviders.mayaQrImage}
+                          alt="Maya QR Preview"
+                          className="w-20 h-20 object-contain rounded-lg border border-[#E8C9C1] shrink-0 bg-white"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-lg border border-dashed border-[#D5C2BB] flex items-center justify-center text-[#8B6F7A] shrink-0">
+                          <QrCode className="w-7 h-7" />
+                        </div>
+                      )}
+                      <div className="flex-1 w-full space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="px-3 py-1.5 bg-[#0F172A] hover:bg-[#1E293B] text-[#2FF38A] rounded-lg text-[11px] font-bold inline-flex items-center gap-1.5 cursor-pointer">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload Maya QR Image</span>
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              onChange={e => handleUploadQrCodeImage('maya', e)}
+                              className="hidden"
+                            />
+                          </label>
+                          {settings.paymentProviders.mayaQrImage && (
+                            <button
+                              type="button"
+                              onClick={() => setSettings({
+                                ...settings,
+                                paymentProviders: {
+                                  ...settings.paymentProviders,
+                                  mayaQrImage: '',
+                                },
+                              })}
+                              className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-[11px] font-bold cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Or paste QR image URL (https://...)"
+                          value={
+                            settings.paymentProviders.mayaQrImage?.startsWith('data:')
+                              ? ''
+                              : settings.paymentProviders.mayaQrImage ?? ''
+                          }
+                          onChange={e => setSettings({
+                            ...settings,
+                            paymentProviders: {
+                              ...settings.paymentProviders,
+                              mayaQrImage: e.target.value,
+                            },
+                          })}
+                          className="w-full px-2.5 py-1.5 text-[11px] bg-[#F9F6F0] border border-[#D5C2BB] rounded-lg text-[#1E1419]"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
