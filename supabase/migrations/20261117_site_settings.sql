@@ -2,6 +2,27 @@
 -- Persists editable storefront settings (including Social Media URLs & toggles, SEO, and policies)
 -- across Vercel serverless deployments and refreshes.
 
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and (
+        lower(coalesce(p.role, '')) = 'admin'
+        or lower(coalesce(p.email, '')) = 'shop.sleepyshroom@gmail.com'
+      )
+  );
+$$;
+
+revoke all on function public.is_admin() from public;
+grant execute on function public.is_admin() to authenticated;
+
 create table if not exists public.site_settings (
   id text primary key default 'default',
   settings_json jsonb not null default '{}'::jsonb,

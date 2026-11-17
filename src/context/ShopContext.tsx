@@ -73,6 +73,7 @@ interface ShopContextType {
   viewParam: string | null;
   navigateTo: (view: string, param?: string | null) => void;
   refreshData: () => Promise<void>;
+  applyUpdatedSettings: (nextSettings: WebsiteSettings) => void;
   latestOrder: Order | null;
   setLatestOrder: (order: Order | null) => void;
   searchQuery: string;
@@ -267,14 +268,29 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
+  // Apply newly saved settings immediately to storefront footer/checkout state
+  const applyUpdatedSettings = (nextSettings: WebsiteSettings) => {
+    if (!nextSettings) return;
+    setSettings(prev => ({
+      ...(prev || initialSettings),
+      ...nextSettings,
+      socialMedia: nextSettings.socialMedia ?? prev?.socialMedia ?? initialSettings.socialMedia,
+      paymentProviders: {
+        ...(prev?.paymentProviders || initialSettings.paymentProviders),
+        ...(nextSettings.paymentProviders || {}),
+      },
+    }));
+  };
+
   // Fetch initial data
   const refreshData = async () => {
     try {
+      const bust = `t=${Date.now()}`;
       const [contentRes, prodsRes, colsRes, bundlesRes] = await Promise.all([
-        fetch('/api/content', { cache: 'no-store' }),
-        fetch('/api/products?includeDrafts=false', { cache: 'no-store' }),
-        fetch('/api/collections', { cache: 'no-store' }),
-        fetch('/api/bundles', { cache: 'no-store' }),
+        fetch(`/api/content?${bust}`, { cache: 'no-store' }),
+        fetch(`/api/products?includeDrafts=false&${bust}`, { cache: 'no-store' }),
+        fetch(`/api/collections?${bust}`, { cache: 'no-store' }),
+        fetch(`/api/bundles?${bust}`, { cache: 'no-store' }),
       ]);
 
       const [contentParsed, prodsParsed, colsParsed, bundlesParsed] = await Promise.all([
@@ -1417,6 +1433,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         viewParam,
         navigateTo,
         refreshData,
+        applyUpdatedSettings,
         latestOrder,
         setLatestOrder,
         searchQuery,

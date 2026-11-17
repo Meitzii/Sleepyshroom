@@ -66,7 +66,7 @@ import type {
 } from '../types/index.ts';
 
 export const AdminDashboard: React.FC = () => {
-  const { user, settings: storefrontSettings, carouselSlides: storefrontSlides, navigateTo, refreshData } = useShop();
+  const { user, settings: storefrontSettings, carouselSlides: storefrontSlides, navigateTo, refreshData, applyUpdatedSettings } = useShop();
 
   const normalizeAdminSettings = (raw: Partial<WebsiteSettings> | null | undefined): WebsiteSettings => {
     const base: WebsiteSettings = {
@@ -146,6 +146,8 @@ export const AdminDashboard: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsTableMissing, setSettingsTableMissing] = useState(false);
+  const [copiedSiteSettingsSql, setCopiedSiteSettingsSql] = useState(false);
   const [verifyingOrderId, setVerifyingOrderId] = useState<string | null>(null);
   const [confirmingManualOrderId, setConfirmingManualOrderId] = useState<string | null>(null);
   const [rejectManualOrderKey, setRejectManualOrderKey] = useState<string | null>(null);
@@ -231,13 +233,14 @@ export const AdminDashboard: React.FC = () => {
     try {
       setLoadingStats(true);
       const authHeaders = { Authorization: `Bearer ${token}` };
+      const bust = `t=${Date.now()}`;
       const [statsRes, contentRes, prodsRes, colsRes, ordersRes, checkoutCfgRes] = await Promise.all([
-        fetch('/api/admin/stats', { headers: authHeaders }),
-        fetch('/api/admin/content', { headers: authHeaders }),
-        fetch('/api/products?includeDrafts=true'),
-        fetch('/api/collections?includeAll=true'),
-        fetch('/api/orders', { headers: authHeaders }),
-        fetch('/api/checkout'),
+        fetch(`/api/admin/stats?${bust}`, { headers: authHeaders, cache: 'no-store' }),
+        fetch(`/api/admin/content?${bust}`, { headers: authHeaders, cache: 'no-store' }),
+        fetch(`/api/products?includeDrafts=true&${bust}`, { cache: 'no-store' }),
+        fetch(`/api/collections?includeAll=true&${bust}`, { cache: 'no-store' }),
+        fetch(`/api/orders?${bust}`, { headers: authHeaders, cache: 'no-store' }),
+        fetch(`/api/checkout?${bust}`, { cache: 'no-store' }),
       ]);
 
       const [statsParsed, contentParsed, prodsParsed, colsParsed, ordersParsed, checkoutParsed] = await Promise.all([
@@ -254,7 +257,7 @@ export const AdminDashboard: React.FC = () => {
         if (contentParsed.data.settings) setSettings(normalizeAdminSettings(contentParsed.data.settings));
         if (Array.isArray(contentParsed.data.carouselSlides)) setSlides(contentParsed.data.carouselSlides);
       } else {
-        const publicContentRes = await fetch('/api/content', { cache: 'no-store' });
+        const publicContentRes = await fetch(`/api/content?${bust}`, { cache: 'no-store' });
         const publicContentParsed = await parseJsonResponse<any>(publicContentRes);
         if (publicContentParsed.ok && publicContentParsed.isJson && publicContentParsed.data) {
           if (publicContentParsed.data.settings) setSettings(normalizeAdminSettings(publicContentParsed.data.settings));
@@ -570,6 +573,7 @@ export const AdminDashboard: React.FC = () => {
   const handleSaveSettings = async () => {
     if (!settings) return;
     setErrorMessage(null);
+    setSettingsTableMissing(false);
 
     const normalizedSocial = normalizeSocialMediaSettings(settings.socialMedia);
     for (const meta of SOCIAL_PLATFORMS_META) {
@@ -598,23 +602,31 @@ export const AdminDashboard: React.FC = () => {
         headers,
         body: JSON.stringify(payload),
       });
-      const parsed = await parseJsonResponse<{ settings?: WebsiteSettings; error?: string }>(res);
-      if (parsed.ok) {
-        if (parsed.data?.settings) {
-          setSettings(normalizeAdminSettings(parsed.data.settings));
-        }
+      const parsed = await parseJsonResponse<{
+        success?: boolean;
+        settings?: WebsiteSettings;
+        needsTableSetup?: boolean;
+        error?: string;
+      }>(res);
+      if (parsed.ok && parsed.data?.settings) {
+        const normalizedSaved = normalizeAdminSettings(parsed.data.settings);
+        setSettings(normalizedSaved);
+        applyUpdatedSettings(normalizedSaved);
         triggerSaveNotification('Website settings saved cleanly!');
-        refreshData();
-        const cfgRes = await fetch('/api/checkout');
+        await refreshData();
+        const cfgRes = await fetch(`/api/checkout?t=${Date.now()}`, { cache: 'no-store' });
         const cfgParsed = await parseJsonResponse<typeof gatewayStatus>(cfgRes);
         if (cfgParsed.ok && cfgParsed.isJson && cfgParsed.data) {
           setGatewayStatus(cfgParsed.data);
         }
       } else {
-        setErrorMessage(parsed.data?.error || 'Error updating settings');
+        if (parsed.data?.needsTableSetup) {
+          setSettingsTableMissing(true);
+        }
+        setErrorMessage(parsed.data?.error || 'Could not save website settings. Please verify your admin session and Supabase setup.');
       }
     } catch {
-      setErrorMessage('Error updating settings');
+      setErrorMessage('Network error while saving settings.');
     } finally {
       setSavingSettings(false);
     }
@@ -2284,6 +2296,31 @@ export const AdminDashboard: React.FC = () => {
               </button>
             </div>
 
+            {settingsTableMissing && (
+              <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl space-y-2.5 text-xs text-amber-950">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-bold">Supabase Table Setup Required (`public.site_settings`)</p>
+                    <p className="text-[11px] text-amber-900 mt-0.5">
+                      Run this SQL once in your Supabase SQL Editor so social links, QR codes, and settings save permanently on Vercel:
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const sql = `create or replace function public.is_admin() returns boolean language sql stable security definer set search_path = public as $$\n  select exists (select 1 from public.profiles p where p.id = auth.uid() and (lower(coalesce(p.role, '')) = 'admin' or lower(coalesce(p.email, '')) = 'shop.sleepyshroom@gmail.com'));\n$$;\nrevoke all on function public.is_admin() from public;\ngrant execute on function public.is_admin() to authenticated;\ncreate table if not exists public.site_settings (\n  id text primary key default 'default',\n  settings_json jsonb not null default '{}'::jsonb,\n  updated_at timestamptz not null default now()\n);\nalter table public.site_settings enable row level security;\nrevoke all on table public.site_settings from anon, authenticated;\ngrant select on table public.site_settings to anon, authenticated;\ngrant insert, update, delete on table public.site_settings to authenticated;\ndrop policy if exists "Public can read site settings" on public.site_settings;\ncreate policy "Public can read site settings" on public.site_settings for select using (true);\ndrop policy if exists "Admins can manage site settings" on public.site_settings;\ncreate policy "Admins can manage site settings" on public.site_settings for all to authenticated using (public.is_admin()) with check (public.is_admin());`;
+                      void navigator.clipboard.writeText(sql);
+                      setCopiedSiteSettingsSql(true);
+                      setTimeout(() => setCopiedSiteSettingsSql(false), 3000);
+                    }}
+                    className="px-3.5 py-2 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] font-bold rounded-xl text-[11px] cursor-pointer shrink-0"
+                  >
+                    {copiedSiteSettingsSql ? 'Copied SQL!' : 'Copy Site Settings SQL'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* General Store info */}
             <div className="space-y-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B6F7A]">
@@ -3297,9 +3334,13 @@ export const AdminDashboard: React.FC = () => {
             {/* Sticky Bottom Save Bar */}
             <div className="sticky bottom-4 z-20 bg-[#FCF3E2]/95 backdrop-blur-sm border border-[#EADCC8] rounded-2xl p-4 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="text-xs">
-                <p className="font-bold text-[#1E1419]">
-                  {saveStatus ? saveStatus : 'Ready to publish changes to your storefront?'}
-                </p>
+                {errorMessage ? (
+                  <p className="font-bold text-red-700">{errorMessage}</p>
+                ) : (
+                  <p className="font-bold text-[#1E1419]">
+                    {saveStatus ? saveStatus : 'Ready to publish changes to your storefront?'}
+                  </p>
+                )}
                 <p className="text-[11px] text-[#45313D]">
                   Saves store info, social links, PayPal &amp; Google Pay, GCash/Maya QR codes, SEO, and policies.
                 </p>

@@ -833,7 +833,7 @@ app.put('/api/admin/settings', async (req: Request, res: Response) => {
 
   const cfg = resolveSupabaseServerConfig();
   const bearer = extractBearerToken(req);
-  await upsertSupabaseSettings(
+  const supaResult = await upsertSupabaseSettings(
     nextSettings,
     cfg.configured
       ? {
@@ -843,6 +843,14 @@ app.put('/api/admin/settings', async (req: Request, res: Response) => {
         }
       : null
   );
+
+  if (cfg.configured && !supaResult.saved && !supaResult.skipped) {
+    return res.status((supaResult as any).statusCode || 503).json({
+      success: false,
+      needsTableSetup: Boolean((supaResult as any).needsTableSetup),
+      error: (supaResult as any).error || 'Unable to save settings to Supabase database.',
+    });
+  }
 
   res.json({ success: true, settings: store.settings });
 });
