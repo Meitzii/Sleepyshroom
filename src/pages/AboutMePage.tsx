@@ -126,7 +126,7 @@ export const AboutMePage: React.FC = () => {
                 <span>Kind Customer Support</span>
               </p>
               <p className="text-[#777777] font-medium leading-relaxed text-[11px]">
-                Have a question or need device setup assistance? We're always here at <strong className="text-[#292929]">sleepyshroom@gmail.com</strong>.
+                Have a question or need device setup assistance? We're always here at <strong className="text-[#292929]">shop.sleepyshroom@gmail.com</strong>.
               </p>
             </div>
           </div>

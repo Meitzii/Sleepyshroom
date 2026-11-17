@@ -155,7 +155,7 @@ export const ReturnPolicyPage: React.FC = () => {
                   2. Accidental Duplicate Purchases (14-Day Full Refund Guarantee)
                 </h2>
                 <p>
-                  If you accidentally purchase the same wallpaper or bundle twice due to double clicking or checking out twice, simply forward your receipts or order numbers to <strong>sleepyshroom@gmail.com</strong> within 14 days. We will gladly and immediately issue a 100% full refund on the duplicate order via PayPal.
+                  If you accidentally purchase the same wallpaper or bundle twice due to double clicking or checking out twice, simply forward your receipts or order numbers to <strong>shop.sleepyshroom@gmail.com</strong> within 14 days. We will gladly and immediately issue a 100% full refund on the duplicate order via PayPal.
                 </p>
               </section>
 
@@ -233,7 +233,7 @@ export const ReturnPolicyPage: React.FC = () => {
                   4. Data Retention & Your Rights
                 </h2>
                 <p>
-                  We retain order records indefinitely so that you may always retrieve your digital files. You have the right to request access to the personal data we hold about you or request its deletion at any time by emailing <strong>sleepyshroom@gmail.com</strong>.
+                  We retain order records indefinitely so that you may always retrieve your digital files. You have the right to request access to the personal data we hold about you or request its deletion at any time by emailing <strong>shop.sleepyshroom@gmail.com</strong>.
                 </p>
               </section>
             </div>
@@ -379,8 +379,7 @@ export const ReturnPolicyPage: React.FC = () => {
                   Customer support is provided via direct email and our online contact portal. You can reach us at:
                 </p>
                 <div className="p-4 bg-[#FFFCF7] border border-[#EADCC8] rounded-2xl space-y-1 text-xs">
-                  <p><strong>Primary Support:</strong> <a href="mailto:sleepyshroom@gmail.com" className="text-[#A64B3C] font-bold hover:underline">sleepyshroom@gmail.com</a></p>
-                  <p><strong>Store Inquiries:</strong> <a href="mailto:shop.sleepyshroom@gmail.com" className="text-[#A64B3C] font-bold hover:underline">shop.sleepyshroom@gmail.com</a></p>
+                  <p><strong>Support &amp; Store Inquiries:</strong> <a href="mailto:shop.sleepyshroom@gmail.com" className="text-[#A64B3C] font-bold hover:underline">shop.sleepyshroom@gmail.com</a></p>
                 </div>
               </section>
 

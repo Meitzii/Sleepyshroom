@@ -55,7 +55,7 @@ We use essential browser storage solely to preserve your shopping bag, login ses
 Sleepyshroom relies on Supabase (database, auth, file storage), PayPal (payment capture & webhook verification), and Resend/SMTP transactional email services for order receipts and support replies.
 
 ## 6. Your Privacy Rights & Contact
-You can unsubscribe from marketing emails anytime, request access or correction of your account records, or ask for deletion by emailing sleepyshroom@gmail.com.`;
+You can unsubscribe from marketing emails anytime, request access or correction of your account records, or ask for deletion by emailing shop.sleepyshroom@gmail.com.`;
 
   return (
     <div className="py-12 sm:py-16 bg-[#FFFCF7] min-h-screen">
@@ -87,7 +87,7 @@ You can unsubscribe from marketing emails anytime, request access or correction 
         <div className="flex flex-wrap items-center justify-between gap-4 bg-[#FCF3E2] rounded-2xl p-5 border border-[#EADCC8]">
           <div className="flex items-center gap-2 text-xs font-bold text-[#292929]">
             <Mail className="w-4 h-4 text-[#A64B3C]" />
-            <span>Privacy questions? Email sleepyshroom@gmail.com</span>
+            <span>Privacy questions? Email shop.sleepyshroom@gmail.com</span>
           </div>
           <div className="flex items-center gap-3">
             <button

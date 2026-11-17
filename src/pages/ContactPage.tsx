@@ -402,7 +402,7 @@ export const ContactPage: React.FC = () => {
               <Mail className="w-5 h-5" />
             </div>
             <h3 className="font-heading font-bold text-sm text-[#292929] mb-1">
-              Direct Support Emails
+              Direct Support Email
             </h3>
             <p className="text-xs text-[#777777] mb-3">
               Need immediate help or prefer writing from your personal mailbox?
@@ -410,16 +410,8 @@ export const ContactPage: React.FC = () => {
             <div className="space-y-1 text-xs">
               <div>
                 <a
-                  href="mailto:sleepyshroom@gmail.com"
-                  className="font-bold text-[#A64B3C] hover:underline"
-                >
-                  sleepyshroom@gmail.com
-                </a>
-              </div>
-              <div>
-                <a
                   href="mailto:shop.sleepyshroom@gmail.com"
-                  className="text-[#777777] hover:underline"
+                  className="font-bold text-[#A64B3C] hover:underline"
                 >
                   shop.sleepyshroom@gmail.com
                 </a>
@@ -490,7 +482,7 @@ export const ContactPage: React.FC = () => {
               },
               {
                 q: 'Can I download my purchases again?',
-                a: 'Yes! Your download tokens remain active and tied to your order record. If you created a customer account during checkout, you can log in anytime to view your complete digital library under your Account dashboard. If you checked out as a guest, simply email sleepyshroom@gmail.com with your order details and we will regenerate your files.'
+                a: 'Yes! Your download tokens remain active and tied to your order record. If you created a customer account during checkout, you can log in anytime to view your complete digital library under your Account dashboard. If you checked out as a guest, simply email shop.sleepyshroom@gmail.com with your order details and we will regenerate your files.'
               },
               {
                 q: 'Can I use the wallpapers commercially?',
@@ -498,7 +490,7 @@ export const ContactPage: React.FC = () => {
               },
               {
                 q: 'What should I do if my download link expires or fails?',
-                a: 'If a network interruption halts your download or an expired session occurs, simply send a brief note to sleepyshroom@gmail.com or shop.sleepyshroom@gmail.com with your PayPal email or Order ID. We will promptly issue fresh download access and direct file mirrors within 12–24 hours.'
+                a: 'If a network interruption halts your download or an expired session occurs, simply send a brief note to shop.sleepyshroom@gmail.com with your PayPal email or Order ID. We will promptly issue fresh download access and direct file mirrors within 12–24 hours.'
               }
             ].map((faq, index) => {
               const isOpen = openFaqIndex === index;

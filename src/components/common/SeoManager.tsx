@@ -130,7 +130,7 @@ export const SeoManager: React.FC = () => {
     } else if (activeView === 'contact') {
       title = 'Contact & Customer Support | sleepyshroom';
       description =
-        'Reach Sleepyshroom customer support at sleepyshroom@gmail.com for order help, compatibility questions, or download assistance.';
+        'Reach Sleepyshroom customer support at shop.sleepyshroom@gmail.com for order help, compatibility questions, or download assistance.';
       canonical = `${baseUrl}/#contact`;
     } else if (activeView === 'policy') {
       title = 'Store Policies & Refunds | sleepyshroom';

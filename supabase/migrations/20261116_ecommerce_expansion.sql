@@ -57,7 +57,7 @@ create table if not exists public.newsletter_subscribers (
   consent boolean not null default true check (consent = true),
   status text not null default 'subscribed' check (status in ('subscribed', 'unsubscribed')),
   source text default 'footer',
-  unsubscribe_token text not null default encode(gen_random_bytes(24), 'hex'),
+  unsubscribe_token text not null default replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''),
   subscribed_at timestamptz not null default now(),
   unsubscribed_at timestamptz,
   created_at timestamptz not null default now(),

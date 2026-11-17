@@ -51,7 +51,7 @@ Every wallpaper, icon pack, and bundle includes a non-exclusive, non-transferabl
 Because digital downloads cannot be returned after delivery, sales are final except for duplicate purchases reported within 14 days or unresolvable technical file issues.
 
 ## 6. Support Contact
-For help with orders, licensing, or downloads, reach us at sleepyshroom@gmail.com.`;
+For help with orders, licensing, or downloads, reach us at shop.sleepyshroom@gmail.com.`;
 
   return (
     <div className="py-12 sm:py-16 bg-[#FFFCF7] min-h-screen">
@@ -83,7 +83,7 @@ For help with orders, licensing, or downloads, reach us at sleepyshroom@gmail.co
         <div className="flex flex-wrap items-center justify-between gap-4 bg-[#FCF3E2] rounded-2xl p-5 border border-[#EADCC8]">
           <div className="flex items-center gap-2 text-xs font-bold text-[#292929]">
             <Mail className="w-4 h-4 text-[#A64B3C]" />
-            <span>Questions about these terms? Email sleepyshroom@gmail.com</span>
+            <span>Questions about these terms? Email shop.sleepyshroom@gmail.com</span>
           </div>
           <button
             type="button"

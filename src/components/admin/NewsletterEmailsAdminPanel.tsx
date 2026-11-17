@@ -11,9 +11,67 @@ import {
   Loader2,
   UserCheck,
   UserX,
+  Copy,
+  Check,
 } from 'lucide-react';
 import type { NewsletterSubscriber, EmailLog, Order } from '../../types/index.ts';
 import { parseJsonResponse } from '../../utils/apiClient.ts';
+
+const NEWSLETTER_SETUP_SQL = `create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and (
+        lower(coalesce(p.role, '')) = 'admin'
+        or lower(coalesce(p.email, '')) = 'shop.sleepyshroom@gmail.com'
+      )
+  );
+$$;
+
+revoke all on function public.is_admin() from public;
+grant execute on function public.is_admin() to authenticated;
+
+create table if not exists public.newsletter_subscribers (
+  id uuid primary key default gen_random_uuid(),
+  email text not null check (char_length(trim(email)) between 3 and 254),
+  name text default '',
+  consent boolean not null default true check (consent = true),
+  status text not null default 'subscribed' check (status in ('subscribed', 'unsubscribed')),
+  source text default 'footer',
+  unsubscribe_token text not null default replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''),
+  subscribed_at timestamptz not null default now(),
+  unsubscribed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists idx_newsletter_subscribers_email_unique
+  on public.newsletter_subscribers (lower(trim(email)));
+
+create unique index if not exists idx_newsletter_subscribers_unsub_token
+  on public.newsletter_subscribers (unsubscribe_token);
+
+create index if not exists idx_newsletter_subscribers_status
+  on public.newsletter_subscribers (status, subscribed_at desc);
+
+alter table public.newsletter_subscribers enable row level security;
+revoke all on table public.newsletter_subscribers from anon, authenticated;
+grant select, update, delete on table public.newsletter_subscribers to authenticated;
+
+drop policy if exists "Admins can view and manage newsletter subscribers" on public.newsletter_subscribers;
+create policy "Admins can view and manage newsletter subscribers"
+  on public.newsletter_subscribers
+  for all
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());`;
 
 interface NewsletterEmailsAdminPanelProps {
   orders: Order[];
@@ -37,6 +95,7 @@ export const NewsletterEmailsAdminPanel: React.FC<NewsletterEmailsAdminPanelProp
   const [selectedOrderId, setSelectedOrderId] = useState('');
   const [resendingOrder, setResendingOrder] = useState(false);
   const [busySubId, setBusySubId] = useState<string | null>(null);
+  const [copiedSql, setCopiedSql] = useState(false);
 
   const paidOrders = useMemo(
     () =>
@@ -231,9 +290,38 @@ export const NewsletterEmailsAdminPanel: React.FC<NewsletterEmailsAdminPanelProp
   return (
     <div className="space-y-8">
       {setupNotice && (
-        <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-900 font-medium flex items-start gap-2.5">
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
-          <span>{setupNotice}</span>
+        <div className="p-5 bg-amber-50 border border-amber-300 rounded-3xl text-xs text-amber-950 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
+              <div className="space-y-1">
+                <p className="font-bold text-sm">Supabase Newsletter Table Setup Required</p>
+                <p className="font-medium text-amber-900">
+                  {setupNotice} Paste the SQL below into your Supabase Dashboard → <strong>SQL Editor</strong> and click <strong>Run</strong>, then click <strong>Refresh</strong>.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(NEWSLETTER_SETUP_SQL);
+                  setCopiedSql(true);
+                  onNotify('Newsletter SQL copied! Paste it into Supabase SQL Editor and click Run.');
+                  setTimeout(() => setCopiedSql(false), 3000);
+                } catch {
+                  onError('Could not copy automatically. Copy the SQL snippet shown below.');
+                }
+              }}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] text-xs font-bold cursor-pointer shadow-xs"
+            >
+              {copiedSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedSql ? 'Copied SQL!' : 'Copy Newsletter SQL'}</span>
+            </button>
+          </div>
+          <pre className="p-3 bg-white/90 border border-amber-200 rounded-2xl text-[11px] font-mono text-[#292929] overflow-x-auto max-h-48">
+            {NEWSLETTER_SETUP_SQL}
+          </pre>
         </div>
       )}
 

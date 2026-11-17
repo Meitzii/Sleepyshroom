@@ -215,7 +215,7 @@ export const FaqPage: React.FC = () => {
               Still need a hand with a download or order?
             </h3>
             <p className="text-xs sm:text-sm text-[#777777] font-medium mt-1">
-              Email us anytime at <strong className="text-[#292929]">sleepyshroom@gmail.com</strong> or send a note through our Contact page.
+              Email us anytime at <strong className="text-[#292929]">shop.sleepyshroom@gmail.com</strong> or send a note through our Contact page.
             </p>
           </div>
           <button
