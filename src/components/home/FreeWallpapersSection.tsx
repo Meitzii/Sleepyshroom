@@ -29,7 +29,7 @@ export const FreeWallpapersSection: React.FC = () => {
               size="md"
               subtitle="Find a little happiness for your screens right away! Enjoy these two hand-crafted wallpapers completely free — instant 1-click download with no checkout required, ready for your phone, tablet, and desktop."
             >
-              Complimentary Cozy Freebies
+              Freebies
             </SectionHeading>
 
             {/* Quick reassurance perks */}
