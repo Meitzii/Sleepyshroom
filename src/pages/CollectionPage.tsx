@@ -329,7 +329,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
   }
 
   return (
-    <div className="bg-[#FFFCF7] min-h-screen">
+    <div className="bg-[#FFFFFF] min-h-screen">
       {/* Dynamic Collection Hero */}
       <CollectionHero collection={collection} totalProducts={collectionProducts.length} />
 

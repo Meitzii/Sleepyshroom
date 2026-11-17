@@ -27,6 +27,7 @@ import {
   MayaIcon,
   ShieldLockIcon,
 } from '../components/common/Icons.tsx';
+import { SectionHeading } from '../components/common/SectionHeading.tsx';
 
 interface OrderConfirmationPageProps {
   token: string;
@@ -305,9 +306,9 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
         'Because payment has not been verified for this order, digital wallpaper downloads remain locked.';
 
     return (
-      <div className="py-10 sm:py-16 bg-[#FFFCF7]">
+      <div className="py-10 sm:py-16 bg-[#FFFFFF]">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-          <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs text-center space-y-4">
+          <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-xs text-center space-y-4">
             <div
               className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-sm ${
                 isPending
@@ -326,15 +327,15 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
               )}
             </div>
 
-            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#292929]">
+            <SectionHeading as="h1" size="md">
               {statusTitle}
-            </h1>
+            </SectionHeading>
 
             <p className="text-sm text-[#777777] font-medium leading-relaxed max-w-lg mx-auto">
               {statusDescription}
             </p>
 
-            <div className="bg-[#FFFCF7] rounded-2xl p-4 border border-[#EADCC8] text-xs text-left space-y-1.5">
+            <div className="bg-neutral-50/70 rounded-2xl p-4 border border-neutral-200 text-xs text-left space-y-1.5">
               <div className="flex justify-between">
                 <span className="text-[#777777] font-medium">Order Number</span>
                 <span className="font-bold text-[#292929]">{order.orderNumber}</span>
@@ -437,7 +438,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
   }
 
   return (
-    <div className="py-10 sm:py-16 bg-[#FFFCF7]">
+    <div className="py-10 sm:py-16 bg-[#FFFFFF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Celebration Header */}
@@ -446,9 +447,9 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
             <CheckCircle className="w-8 h-8" />
           </div>
 
-          <h1 className="font-heading font-bold text-3xl sm:text-4xl text-[#292929] tracking-tight">
+          <SectionHeading as="h1" size="lg">
             Thank you for your order!
-          </h1>
+          </SectionHeading>
 
           <p className="text-sm sm:text-base text-[#777777] font-medium">
             Payment verified via {providerDisplay}. Your digital wallpapers are unlocked for{' '}
@@ -475,9 +476,9 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
         )}
 
         {/* Main Digital Downloads Card */}
-        <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs mb-8 space-y-6">
+        <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-xs mb-8 space-y-6">
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EADCC8] pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 pb-4">
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
                 Verified Digital Download Package
@@ -823,7 +824,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <button
             onClick={() => navigateTo('account')}
-            className="w-full sm:w-auto px-6 py-3 bg-[#FFFCF7] hover:bg-[#FCF3E2] text-[#292929] rounded-xl text-xs sm:text-sm font-bold transition-all border border-[#EADCC8] cursor-pointer whitespace-nowrap"
+            className="w-full sm:w-auto px-6 py-3 bg-[#FFFFFF] hover:bg-neutral-50 text-[#292929] rounded-xl text-xs sm:text-sm font-bold transition-all border border-neutral-200 cursor-pointer whitespace-nowrap"
           >
             View in My Account
           </button>

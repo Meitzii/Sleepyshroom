@@ -45,11 +45,11 @@ export const CollectionFilters: React.FC<CollectionFiltersProps> = ({
       <div
         className={`${
           mobileOpen
-            ? 'w-80 max-w-[90vw] h-full overflow-y-auto bg-[#FFFCF7] p-6 shadow-2xl'
-            : 'bg-[#FCF3E2] rounded-3xl p-5 border border-[#EADCC8] sticky top-36'
+            ? 'w-80 max-w-[90vw] h-full overflow-y-auto bg-[#FFFFFF] p-6 shadow-2xl'
+            : 'bg-[#FFFFFF] rounded-3xl p-5 border border-neutral-200 sticky top-36'
         } space-y-6`}
       >
-        <div className="flex items-center justify-between border-b border-[#EADCC8] pb-3">
+        <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
           <span className="text-xs font-extrabold uppercase tracking-wider text-[#292929] flex items-center gap-1.5">
             <SlidersHorizontal className="w-3.5 h-3.5 text-[#A64B3C]" />
             <span>Filter Collection</span>
@@ -69,7 +69,7 @@ export const CollectionFilters: React.FC<CollectionFiltersProps> = ({
               <button
                 type="button"
                 onClick={onCloseMobile}
-                className="lg:hidden p-1.5 rounded-lg bg-[#FCF3E2] text-[#292929] border border-[#EADCC8]"
+                className="lg:hidden p-1.5 rounded-lg bg-neutral-100 text-[#292929] border border-neutral-200"
                 aria-label="Close filters"
               >
                 <X className="w-4 h-4" />
@@ -87,7 +87,7 @@ export const CollectionFilters: React.FC<CollectionFiltersProps> = ({
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
               filters.onSaleOnly
                 ? 'bg-[#A64B3C] text-[#FFFCF7] border-[#8E3E30] shadow-xs'
-                : 'bg-[#FFFCF7] text-[#292929] border-[#EADCC8] hover:border-[#A64B3C]/40'
+                : 'bg-[#FFFFFF] text-[#292929] border-neutral-200 hover:border-[#A64B3C]/40 hover:bg-neutral-50'
             }`}
           >
             <span className="flex items-center gap-1.5">
@@ -108,7 +108,7 @@ export const CollectionFilters: React.FC<CollectionFiltersProps> = ({
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
               filters.bundlesOnly
                 ? 'bg-[#A64B3C] text-[#FFFCF7] border-[#8E3E30] shadow-xs'
-                : 'bg-[#FFFCF7] text-[#292929] border-[#EADCC8] hover:border-[#A64B3C]/40'
+                : 'bg-[#FFFFFF] text-[#292929] border-neutral-200 hover:border-[#A64B3C]/40 hover:bg-neutral-50'
             }`}
           >
             <span className="flex items-center gap-1.5">
@@ -121,7 +121,7 @@ export const CollectionFilters: React.FC<CollectionFiltersProps> = ({
 
         {/* Product Type */}
         {availableProductTypes.length > 0 && (
-          <div className="border-t border-[#EADCC8] pt-4 space-y-2">
+          <div className="border-t border-neutral-200 pt-4 space-y-2">
             <h3 className="text-xs font-bold text-[#292929]">Product Type</h3>
             <div className="space-y-1.5">
               {['all', ...availableProductTypes].map((type) => {
@@ -140,8 +140,8 @@ export const CollectionFilters: React.FC<CollectionFiltersProps> = ({
                     onClick={() => onChange({ productType: type })}
                     className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
                       active
-                        ? 'bg-[#FFFCF7] text-[#292929] border border-[#A64B3C]/40'
-                        : 'text-[#777777] hover:bg-[#FFFCF7]/70'
+                        ? 'bg-neutral-50 text-[#292929] border border-[#A64B3C]/40'
+                        : 'text-[#777777] hover:bg-neutral-50'
                     }`}
                   >
                     <span>{labelMap[type] || type}</span>

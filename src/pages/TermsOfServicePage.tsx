@@ -1,6 +1,7 @@
 import React from 'react';
-import { FileText, AlertCircle, Mail, ArrowRight } from 'lucide-react';
+import { AlertCircle, Mail, ArrowRight } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
+import { SectionHeading } from '../components/common/SectionHeading.tsx';
 
 function renderTermsParagraphs(markdown: string) {
   return markdown.split(/\n\n+/).map((block, idx) => {
@@ -54,33 +55,29 @@ Because digital downloads cannot be returned after delivery, sales are final exc
 For help with orders, licensing, or downloads, reach us at shop.sleepyshroom@gmail.com.`;
 
   return (
-    <div className="py-12 sm:py-16 bg-[#FFFCF7] min-h-screen">
+    <div className="py-12 sm:py-16 bg-[#FFFFFF] min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#FCF3E2] border border-[#EADCC8] text-xs font-extrabold text-[#A64B3C]">
-            <FileText className="w-3.5 h-3.5" />
-            <span>Terms &amp; Licensing</span>
-          </div>
-          <h1 className="font-heading font-bold text-3xl sm:text-4xl text-[#292929]">
+          <SectionHeading as="h1" size="lg">
             {doc?.title || 'Terms of Service'}
-          </h1>
+          </SectionHeading>
           <p className="text-xs font-bold text-[#777777]">
             Last updated: {doc?.lastUpdated || 'November 2026'}
           </p>
         </div>
 
         {doc?.ownerReviewRequiredNotice && (
-          <div className="p-4 rounded-2xl bg-[#FCF3E2] border border-[#A64B3C]/30 flex items-start gap-3 text-xs text-[#292929]">
+          <div className="p-4 rounded-2xl bg-neutral-50 border border-[#A64B3C]/30 flex items-start gap-3 text-xs text-[#292929]">
             <AlertCircle className="w-4 h-4 text-[#A64B3C] shrink-0 mt-0.5" />
             <p className="font-semibold">{doc.ownerReviewRequiredNotice}</p>
           </div>
         )}
 
-        <div className="bg-[#FCF3E2]/55 rounded-3xl p-6 sm:p-10 border border-[#EADCC8] space-y-4">
+        <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-10 border border-neutral-200 space-y-4">
           {renderTermsParagraphs(doc?.content || fallbackTerms)}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-[#FCF3E2] rounded-2xl p-5 border border-[#EADCC8]">
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-[#FFFFFF] rounded-2xl p-5 border border-neutral-200">
           <div className="flex items-center gap-2 text-xs font-bold text-[#292929]">
             <Mail className="w-4 h-4 text-[#A64B3C]" />
             <span>Questions about these terms? Email shop.sleepyshroom@gmail.com</span>

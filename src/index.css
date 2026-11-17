@@ -1,18 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --font-heading: 'Comfortaa', cursive, sans-serif;
+  --font-heading: 'Quicksand', sans-serif;
   --font-body: 'Quicksand', sans-serif;
+  --font-section-serif: 'Cormorant Garamond', Georgia, serif;
 
-  /* Official 4-Color Brand Palette */
+  /* Brand Palette on Pure White Storefront Canvas */
   --color-shroom-red: #A64B3C;
-  --color-shroom-white: #FFFCF7;
+  --color-shroom-white: #FFFFFF;
   --color-shroom-charcoal: #292929;
   --color-shroom-cream: #FCF3E2;
   --color-shroom-gray: #777777;
 
-  /* Legacy theme aliases mapped to new palette */
-  --color-shroom-beige: #FFFCF7;
+  /* Legacy theme aliases */
+  --color-shroom-beige: #FFFFFF;
   --color-shroom-blush: #FCF3E2;
   --color-shroom-lavender: #A64B3C;
   --color-shroom-mocha: #A64B3C;
@@ -24,7 +25,7 @@
 
 body {
   font-family: var(--font-body);
-  background-color: #FFFCF7;
+  background-color: #FFFFFF;
   color: #292929;
   overflow-x: hidden;
 }
@@ -34,16 +35,20 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   color: #292929;
 }
 
-/* Custom cozy scrollbar */
+.font-section-serif {
+  font-family: var(--font-section-serif);
+}
+
+/* Custom subtle light scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #FCF3E2;
+  background: #F5F5F5;
 }
 ::-webkit-scrollbar-thumb {
-  background: #E5D5C0;
+  background: #D8D4CE;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {

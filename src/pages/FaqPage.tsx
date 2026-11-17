@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { HelpCircle, ChevronDown, Search, Mail, Sparkles } from 'lucide-react';
+import { ChevronDown, Search, Mail, Sparkles } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { parseJsonResponse } from '../utils/apiClient.ts';
 import type { FaqItem } from '../types/index.ts';
+import { SectionHeading } from '../components/common/SectionHeading.tsx';
 
 const FAQ_CATEGORIES = [
   'All Categories',
@@ -69,7 +70,7 @@ export const FaqPage: React.FC = () => {
   }, [filteredFaqs]);
 
   return (
-    <div className="py-12 sm:py-16 bg-[#FFFCF7] min-h-screen">
+    <div className="py-12 sm:py-16 bg-[#FFFFFF] min-h-screen">
       {/* Schema.org FAQPage JSON-LD */}
       {faqs.length > 0 && (
         <script
@@ -95,21 +96,18 @@ export const FaqPage: React.FC = () => {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Header */}
-        <div className="text-center max-w-2xl mx-auto space-y-3">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#FCF3E2] border border-[#EADCC8] text-xs font-extrabold text-[#A64B3C]">
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span>Help Center</span>
-          </div>
-          <h1 className="font-heading font-bold text-3xl sm:text-4xl text-[#292929]">
+        <div className="text-center max-w-2xl mx-auto">
+          <SectionHeading
+            as="h1"
+            size="lg"
+            subtitle="Everything you need to know about PayPal checkout, instant digital downloads, device resolutions, and licensing."
+          >
             Frequently Asked Questions
-          </h1>
-          <p className="text-sm text-[#777777] font-medium">
-            Everything you need to know about PayPal checkout, instant digital downloads, device resolutions, and licensing.
-          </p>
+          </SectionHeading>
         </div>
 
         {/* Search & Category Tabs */}
-        <div className="bg-[#FCF3E2] rounded-3xl p-5 sm:p-6 border border-[#EADCC8] space-y-4">
+        <div className="bg-[#FFFFFF] rounded-3xl p-5 sm:p-6 border border-neutral-200 space-y-4">
           <div className="relative">
             <Search className="w-4 h-4 text-[#777777] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
@@ -117,7 +115,7 @@ export const FaqPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search questions (e.g., PayPal, iPad, refund, bundle)..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#FFFCF7] border border-[#EADCC8] text-xs sm:text-sm text-[#292929] placeholder-[#777777] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/30"
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-neutral-50 border border-neutral-200 text-xs sm:text-sm text-[#292929] placeholder-[#777777] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/30"
             />
           </div>
 
@@ -132,7 +130,7 @@ export const FaqPage: React.FC = () => {
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer border ${
                     active
                       ? 'bg-[#A64B3C] text-[#FFFCF7] border-[#8E3E30]'
-                      : 'bg-[#FFFCF7] text-[#292929] border-[#EADCC8] hover:bg-[#EADCC8]/50'
+                      : 'bg-[#FFFFFF] text-[#292929] border-neutral-200 hover:bg-neutral-50'
                   }`}
                 >
                   {cat}
@@ -148,7 +146,7 @@ export const FaqPage: React.FC = () => {
             Opening our cozy help guide...
           </div>
         ) : groupedFaqs.length === 0 ? (
-          <div className="bg-[#FCF3E2] rounded-3xl p-10 text-center border border-[#EADCC8]">
+          <div className="bg-[#FFFFFF] rounded-3xl p-10 text-center border border-neutral-200">
             <p className="font-heading font-bold text-base text-[#292929] mb-2">
               No matching questions found
             </p>
@@ -177,13 +175,13 @@ export const FaqPage: React.FC = () => {
                     return (
                       <div
                         key={item.id}
-                        className="bg-[#FCF3E2]/70 rounded-2xl border border-[#EADCC8] overflow-hidden"
+                        className="bg-[#FFFFFF] rounded-2xl border border-neutral-200 overflow-hidden"
                       >
                         <button
                           type="button"
                           onClick={() => setOpenId(isOpen ? null : item.id)}
                           aria-expanded={isOpen}
-                          className="w-full px-5 py-4 text-left flex items-center justify-between gap-4 hover:bg-[#FCF3E2] transition-colors cursor-pointer"
+                          className="w-full px-5 py-4 text-left flex items-center justify-between gap-4 hover:bg-neutral-50 transition-colors cursor-pointer"
                         >
                           <span className="font-heading font-bold text-sm sm:text-base text-[#292929]">
                             {item.question}
@@ -195,7 +193,7 @@ export const FaqPage: React.FC = () => {
                           />
                         </button>
                         {isOpen && (
-                          <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-[#777777] font-medium leading-relaxed border-t border-[#EADCC8]/60 bg-[#FFFCF7]">
+                          <div className="px-5 pb-5 pt-3 text-xs sm:text-sm text-[#777777] font-medium leading-relaxed border-t border-neutral-200 bg-neutral-50/50">
                             {item.answer}
                           </div>
                         )}
@@ -209,7 +207,7 @@ export const FaqPage: React.FC = () => {
         )}
 
         {/* Need more help banner */}
-        <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-8 border border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="font-heading font-bold text-lg text-[#292929]">
               Still need a hand with a download or order?

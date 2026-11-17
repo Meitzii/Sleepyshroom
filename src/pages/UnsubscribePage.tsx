@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { CheckCircle2, AlertCircle, Loader2, MailX } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { parseJsonResponse } from '../utils/apiClient.ts';
+import { SectionHeading } from '../components/common/SectionHeading.tsx';
 
 export const UnsubscribePage: React.FC = () => {
   const { viewParam, navigateTo } = useShop();
@@ -67,13 +68,15 @@ export const UnsubscribePage: React.FC = () => {
   };
 
   return (
-    <div className="py-16 px-4 bg-[#FFFCF7] min-h-[60vh]">
-      <div className="max-w-md mx-auto bg-[#FCF3E2] rounded-3xl p-8 border border-[#EADCC8] shadow-xs space-y-5 text-center">
-        <div className="w-12 h-12 rounded-2xl bg-[#FFFCF7] border border-[#EADCC8] flex items-center justify-center mx-auto">
+    <div className="py-16 px-4 bg-[#FFFFFF] min-h-[60vh]">
+      <div className="max-w-md mx-auto bg-[#FFFFFF] rounded-3xl p-8 border border-neutral-200 shadow-xs space-y-5 text-center">
+        <div className="w-12 h-12 rounded-2xl bg-neutral-50 border border-neutral-200 flex items-center justify-center mx-auto">
           <MailX className="w-6 h-6 text-[#A64B3C]" />
         </div>
         <div className="space-y-1.5">
-          <h1 className="font-heading font-bold text-2xl text-[#292929]">Newsletter Unsubscribe</h1>
+          <SectionHeading as="h1" size="sm">
+            Newsletter Unsubscribe
+          </SectionHeading>
           <p className="text-xs text-[#777777] font-medium">
             Enter your email below to opt out of Sleepyshroom wallpaper drop announcements. Transactional order receipts for purchases are unaffected.
           </p>
@@ -100,7 +103,7 @@ export const UnsubscribePage: React.FC = () => {
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-[#FFFCF7] border border-[#EADCC8] text-xs sm:text-sm text-[#292929]"
+            className="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-200 text-xs sm:text-sm text-[#292929]"
           />
           <button
             type="submit"

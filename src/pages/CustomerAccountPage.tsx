@@ -18,6 +18,7 @@ import type { Order } from '../types/index.ts';
 import { downloadAuthorizedOrderFile } from '../utils/downloadHelper.ts';
 import { parseJsonResponse, getOptionalSupabaseAuthHeader } from '../utils/apiClient.ts';
 import { formatOrderMoney } from '../utils/currency.ts';
+import { SectionHeading } from '../components/common/SectionHeading.tsx';
 
 export const CustomerAccountPage: React.FC = () => {
   const {
@@ -248,26 +249,26 @@ export const CustomerAccountPage: React.FC = () => {
   // If user is NOT logged in: Show Auth Form
   if (!user) {
     return (
-      <div className="py-12 sm:py-16 bg-[#FFFCF7]">
+      <div className="py-12 sm:py-16 bg-[#FFFFFF]">
         <div className="max-w-md mx-auto px-4 sm:px-6">
           
-          <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs">
+          <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-xs">
             
             {/* Header */}
             <div className="text-center mb-6">
               <div className="w-12 h-12 rounded-full bg-[#A64B3C]/10 text-[#A64B3C] flex items-center justify-center mx-auto mb-2">
                 <User className="w-6 h-6" />
               </div>
-              <h1 className="font-heading font-bold text-2xl text-[#292929]">
+              <SectionHeading as="h1" size="sm">
                 {isLoginTab ? 'Welcome Back!' : 'Create an Account'}
-              </h1>
+              </SectionHeading>
               <p className="text-xs text-[#777777] font-medium mt-1">
                 Access your permanent digital downloads anytime.
               </p>
             </div>
 
             {/* Tab switch */}
-            <div className="flex bg-[#FFFCF7] p-1 rounded-2xl mb-6 border border-[#EADCC8]">
+            <div className="flex bg-neutral-50 p-1 rounded-2xl mb-6 border border-neutral-200">
               <button
                 type="button"
                 onClick={() => {
@@ -463,7 +464,7 @@ export const CustomerAccountPage: React.FC = () => {
               onClick={handleGoogleAuth}
               disabled={authLoading || googleLoading}
               aria-label={isLoginTab ? 'Continue with Google to sign in' : 'Continue with Google to sign up'}
-              className="w-full py-3 px-4 bg-[#FFFCF7] hover:bg-[#FCF3E2]/50 border border-[#EADCC8] hover:border-[#A64B3C]/60 text-[#292929] text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all disabled:opacity-60 cursor-pointer flex items-center justify-center gap-2.5"
+              className="w-full py-3 px-4 bg-[#FFFFFF] hover:bg-neutral-50 border border-neutral-200 hover:border-[#A64B3C]/60 text-[#292929] text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all disabled:opacity-60 cursor-pointer flex items-center justify-center gap-2.5"
             >
               {googleLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin text-[#A64B3C]" />
@@ -541,11 +542,11 @@ export const CustomerAccountPage: React.FC = () => {
 
   // If user IS logged in: Show Account Dashboard
   return (
-    <div className="py-10 sm:py-14 bg-[#FFFCF7]">
+    <div className="py-10 sm:py-14 bg-[#FFFFFF]">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
         {/* Account Header */}
-        <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-8 border border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             {user.avatarUrl && !avatarFailed ? (
               <img
@@ -553,7 +554,7 @@ export const CustomerAccountPage: React.FC = () => {
                 alt={user.name}
                 referrerPolicy="no-referrer"
                 onError={() => setAvatarFailed(true)}
-                className="w-14 h-14 rounded-2xl object-cover border border-[#EADCC8] shrink-0"
+                className="w-14 h-14 rounded-2xl object-cover border border-neutral-200 shrink-0"
               />
             ) : (
               <div className="w-14 h-14 rounded-2xl bg-[#A64B3C] text-[#FFFCF7] flex items-center justify-center font-heading font-bold text-xl shrink-0">
@@ -582,7 +583,7 @@ export const CustomerAccountPage: React.FC = () => {
             )}
             <button
               onClick={() => { void logout(); }}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-[#292929] hover:bg-[#FFFCF7] rounded-xl transition-colors border border-[#EADCC8] cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-[#292929] hover:bg-neutral-50 rounded-xl transition-colors border border-neutral-200 cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Sign Out</span>
@@ -630,7 +631,7 @@ export const CustomerAccountPage: React.FC = () => {
 
             if (loadingOrders) {
               return (
-                <div className="p-8 bg-[#FCF3E2] rounded-3xl border border-[#EADCC8] text-center text-xs text-[#777777] font-medium">
+                <div className="p-8 bg-[#FFFFFF] rounded-3xl border border-neutral-200 text-center text-xs text-[#777777] font-medium">
                   Loading your purchased files...
                 </div>
               );
@@ -638,7 +639,7 @@ export const CustomerAccountPage: React.FC = () => {
 
             if (paidOrders.length === 0) {
               return (
-                <div className="p-8 bg-[#FCF3E2] rounded-3xl border border-[#EADCC8] text-center space-y-3">
+                <div className="p-8 bg-[#FFFFFF] rounded-3xl border border-neutral-200 text-center space-y-3">
                   <p className="text-3xl">🍄</p>
                   <h3 className="font-heading font-bold text-base text-[#292929]">
                     No verified paid downloads yet
@@ -676,7 +677,7 @@ export const CustomerAccountPage: React.FC = () => {
                     return (
                       <div
                         key={key}
-                        className="p-4 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] space-y-3"
+                        className="p-4 bg-[#FFFFFF] rounded-2xl border border-neutral-200 space-y-3"
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div className="flex items-center gap-4">
@@ -784,7 +785,7 @@ export const CustomerAccountPage: React.FC = () => {
           </h2>
 
           {userOrders.length > 0 ? (
-            <div className="bg-[#FCF3E2] rounded-3xl border border-[#EADCC8] divide-y divide-[#EADCC8] overflow-hidden">
+            <div className="bg-[#FFFFFF] rounded-3xl border border-neutral-200 divide-y divide-neutral-200 overflow-hidden">
               {userOrders.map(ord => {
                 const st = String(ord.paymentStatus || 'pending').toLowerCase();
                 const isPaid = st === 'paid' || st === 'completed';

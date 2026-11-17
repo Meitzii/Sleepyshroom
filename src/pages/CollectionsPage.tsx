@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Filter, SlidersHorizontal, Monitor, Smartphone, Tablet, Sparkles, X, Check, ArrowRight } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { ProductCard } from '../components/common/ProductCard.tsx';
+import { SectionHeading } from '../components/common/SectionHeading.tsx';
 
 export const CollectionsPage: React.FC = () => {
   const { products, collections, viewParam, navigateTo } = useShop();
@@ -112,16 +113,20 @@ export const CollectionsPage: React.FC = () => {
   const hasActiveFilters = selectedDevice !== 'all' || selectedTheme !== 'all' || selectedCollection !== 'all' || searchFilter !== '' || maxPrice < 10 || onlyFree;
 
   return (
-    <div className="py-8 sm:py-12 bg-[#FFFCF7]">
+    <div className="py-8 sm:py-12 bg-[#FFFFFF]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Page Header */}
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#777777] uppercase tracking-wider mb-2">
-            <Sparkles className="w-3.5 h-3.5 text-[#A64B3C]" />
-            <span>Digital Wallpapers</span>
-          </div>
-          <h1 className="font-heading font-bold text-3xl sm:text-4xl text-[#292929] tracking-tight">
+          <SectionHeading
+            as="h1"
+            size="lg"
+            subtitle={
+              onlyFree
+                ? 'Download our sweet complimentary wallpapers instantly — completely free.'
+                : 'Explore high-resolution digital wallpapers crafted for peaceful and cozy screen spaces.'
+            }
+          >
             {onlyFree
               ? 'Complimentary Free Wallpapers'
               : selectedDevice === 'desktop'
@@ -129,24 +134,20 @@ export const CollectionsPage: React.FC = () => {
               : selectedDevice === 'mobile'
               ? 'Mobile & Tablet Themes'
               : 'All Wallpaper Collections'}
-          </h1>
-          <p className="mt-2 text-sm text-[#777777] font-medium">
-            {onlyFree
-              ? 'Download our sweet complimentary wallpapers instantly — completely free.'
-              : 'Explore high-resolution digital wallpapers crafted for peaceful and cozy screen spaces.'}
-          </p>
+          </SectionHeading>
         </div>
 
         {/* Dedicated Theme Collection Landing Cards */}
         {!hasActiveFilters && collections.length > 0 && (
-          <div className="mb-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-heading font-bold text-lg text-[#292929]">
+          <div className="mb-12">
+            <div className="mb-6 text-center">
+              <SectionHeading
+                as="h2"
+                size="sm"
+                subtitle="Click any theme to view its bundles & categories"
+              >
                 Browse Dedicated Theme Collections
-              </h2>
-              <span className="text-xs font-bold text-[#777777]">
-                Click any theme to view its bundles &amp; categories
-              </span>
+              </SectionHeading>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {collections.map((c) => (
@@ -154,21 +155,21 @@ export const CollectionsPage: React.FC = () => {
                   key={c.id}
                   type="button"
                   onClick={() => navigateTo('collections', c.slug)}
-                  className="group text-left bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] overflow-hidden hover:shadow-md transition-all cursor-pointer flex flex-col"
+                  className="group text-left bg-[#FFFFFF] rounded-2xl border border-neutral-200 overflow-hidden hover:shadow-md transition-all cursor-pointer flex flex-col"
                 >
-                  <div className="aspect-16/10 w-full overflow-hidden bg-[#EADCC8]/40 relative">
+                  <div className="aspect-16/10 w-full overflow-hidden bg-neutral-100 relative">
                     <img
                       src={c.coverImage}
                       alt={c.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     {c.isNew && (
-                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-[#A64B3C] text-[#FFFCF7] text-[10px] font-extrabold">
+                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-[#A64B3C] text-[#FFFFFF] text-[10px] font-extrabold">
                         NEW
                       </span>
                     )}
                     {c.isLimitedEdition && (
-                      <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#292929] text-[#FFFCF7] text-[10px] font-extrabold">
+                      <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#292929] text-[#FFFFFF] text-[10px] font-extrabold">
                         LIMITED
                       </span>
                     )}
@@ -248,7 +249,7 @@ export const CollectionsPage: React.FC = () => {
         </div>
 
         {/* Toolbar: Result count + Mobile filter toggle + Sorting */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 py-3 px-4 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] mb-8">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 py-3 px-4 bg-[#FFFFFF] rounded-2xl border border-neutral-200 mb-8">
           
           <div className="flex items-center justify-between sm:justify-start gap-4">
             <span className="text-xs font-bold text-[#777777]">
@@ -258,7 +259,7 @@ export const CollectionsPage: React.FC = () => {
             {/* Mobile Filter trigger */}
             <button
               onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
-              className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#292929] bg-[#EADCC8]/60 cursor-pointer"
+              className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#292929] bg-neutral-100 cursor-pointer"
             >
               <Filter className="w-3.5 h-3.5" />
               <span>Filters</span>
@@ -300,9 +301,9 @@ export const CollectionsPage: React.FC = () => {
           
           {/* Desktop Filter Sidebar */}
           <aside className={`md:col-span-3 space-y-6 ${mobileFilterOpen ? 'block' : 'hidden md:block'}`}>
-            <div className="bg-[#FCF3E2] rounded-3xl p-5 border border-[#EADCC8] space-y-6">
+            <div className="bg-[#FFFFFF] rounded-3xl p-5 border border-neutral-200 space-y-6">
               
-              <div className="flex items-center justify-between border-b border-[#EADCC8] pb-3">
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-[#292929] flex items-center gap-1.5">
                   <SlidersHorizontal className="w-3.5 h-3.5 text-[#A64B3C]" />
                   <span>Refine Catalog</span>

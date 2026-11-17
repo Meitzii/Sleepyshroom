@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
   FileText,
-  ShieldCheck,
   ShieldAlert,
   Lock,
   BookOpen,
   MessageCircle,
-  HelpCircle,
-  Clock,
-  Sparkles,
   CheckCircle2,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
+import { SectionHeading } from '../components/common/SectionHeading.tsx';
 
 type PolicyTab = 'refund' | 'privacy' | 'terms' | 'copyright' | 'support';
 
@@ -87,25 +84,21 @@ export const ReturnPolicyPage: React.FC = () => {
   const currentTabConfig = TABS.find(t => t.id === activeTab) || TABS[0];
 
   return (
-    <div className="py-12 sm:py-16 bg-[#FFFCF7]">
+    <div className="py-12 sm:py-16 bg-[#FFFFFF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#A64B3C] uppercase tracking-wider bg-[#FCF3E2] px-3.5 py-1 rounded-full border border-[#EADCC8]">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Store Policies & Trust Information</span>
-          </div>
-          <h1 className="font-heading font-bold text-3xl sm:text-4xl text-[#292929]">
+          <SectionHeading as="h1" size="lg">
             {currentTabConfig.title}
-          </h1>
+          </SectionHeading>
           <p className="text-xs text-[#777777] font-medium">
             Effective Date & Last Updated: {currentTabConfig.lastUpdated} · Sleepyshroom Digital Studio
           </p>
         </div>
 
-        {/* Tab Navigation Pill Bar */}
-        <div className="flex flex-wrap items-center justify-center gap-1.5 p-1.5 bg-[#FCF3E2] border border-[#EADCC8] rounded-2xl shadow-xs">
+        {/* Tab Navigation Bar */}
+        <div className="flex flex-wrap items-center justify-center gap-1.5 p-1.5 bg-[#FFFFFF] border border-neutral-200 rounded-2xl shadow-xs">
           {TABS.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -116,7 +109,7 @@ export const ReturnPolicyPage: React.FC = () => {
                 className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                   isActive
                     ? 'bg-[#A64B3C] text-[#FFFCF7] shadow-xs'
-                    : 'text-[#777777] hover:text-[#292929] hover:bg-[#FFFCF7]'
+                    : 'text-[#777777] hover:text-[#292929] hover:bg-neutral-50'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -130,7 +123,7 @@ export const ReturnPolicyPage: React.FC = () => {
         {activeTab === 'refund' && (
           <div className="space-y-6">
             {/* Notice Card */}
-            <div className="p-4 sm:p-5 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] flex items-start gap-3">
+            <div className="p-4 sm:p-5 bg-neutral-50/70 rounded-2xl border border-neutral-200 flex items-start gap-3">
               <ShieldAlert className="w-5 h-5 text-[#A64B3C] shrink-0 mt-0.5" />
               <div className="text-xs text-[#292929] font-medium leading-relaxed space-y-1">
                 <p className="font-bold">Digital Goods Nature & Fairness Guarantee</p>
@@ -140,7 +133,7 @@ export const ReturnPolicyPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-10 border border-[#EADCC8] shadow-xs text-xs sm:text-sm text-[#555555] leading-relaxed space-y-6">
+            <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-10 border border-neutral-200 shadow-xs text-xs sm:text-sm text-[#555555] leading-relaxed space-y-6">
               <section className="space-y-2">
                 <h2 className="font-heading font-bold text-base sm:text-lg text-[#292929]">
                   1. Instant Digital Delivery
@@ -182,7 +175,7 @@ export const ReturnPolicyPage: React.FC = () => {
 
         {activeTab === 'privacy' && (
           <div className="space-y-6">
-            <div className="p-4 sm:p-5 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] flex items-start gap-3">
+            <div className="p-4 sm:p-5 bg-neutral-50/70 rounded-2xl border border-neutral-200 flex items-start gap-3">
               <Lock className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
               <div className="text-xs text-[#292929] font-medium leading-relaxed space-y-1">
                 <p className="font-bold">Zero-Tracking & Minimal Data Philosophy</p>
@@ -192,7 +185,7 @@ export const ReturnPolicyPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-10 border border-[#EADCC8] shadow-xs text-xs sm:text-sm text-[#555555] leading-relaxed space-y-6">
+            <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-10 border border-neutral-200 shadow-xs text-xs sm:text-sm text-[#555555] leading-relaxed space-y-6">
               <section className="space-y-2">
                 <h2 className="font-heading font-bold text-base sm:text-lg text-[#292929]">
                   1. Information We Collect
@@ -242,7 +235,7 @@ export const ReturnPolicyPage: React.FC = () => {
 
         {activeTab === 'terms' && (
           <div className="space-y-6">
-            <div className="p-4 sm:p-5 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] flex items-start gap-3">
+            <div className="p-4 sm:p-5 bg-neutral-50/70 rounded-2xl border border-neutral-200 flex items-start gap-3">
               <FileText className="w-5 h-5 text-[#A64B3C] shrink-0 mt-0.5" />
               <div className="text-xs text-[#292929] font-medium leading-relaxed space-y-1">
                 <p className="font-bold">Transparent Digital Storefront Terms</p>
@@ -252,7 +245,7 @@ export const ReturnPolicyPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-10 border border-[#EADCC8] shadow-xs text-xs sm:text-sm text-[#555555] leading-relaxed space-y-6">
+            <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-10 border border-neutral-200 shadow-xs text-xs sm:text-sm text-[#555555] leading-relaxed space-y-6">
               <section className="space-y-2">
                 <h2 className="font-heading font-bold text-base sm:text-lg text-[#292929]">
                   1. Acceptance of Terms
@@ -303,7 +296,7 @@ export const ReturnPolicyPage: React.FC = () => {
 
         {activeTab === 'copyright' && (
           <div className="space-y-6">
-            <div className="p-4 sm:p-5 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] flex items-start gap-3">
+            <div className="p-4 sm:p-5 bg-neutral-50/70 rounded-2xl border border-neutral-200 flex items-start gap-3">
               <BookOpen className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
               <div className="text-xs text-[#292929] font-medium leading-relaxed space-y-1">
                 <p className="font-bold">Original Art Protection & Personal License</p>
@@ -313,7 +306,7 @@ export const ReturnPolicyPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-10 border border-[#EADCC8] shadow-xs text-xs sm:text-sm text-[#555555] leading-relaxed space-y-6">
+            <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-10 border border-neutral-200 shadow-xs text-xs sm:text-sm text-[#555555] leading-relaxed space-y-6">
               <section className="space-y-2">
                 <h2 className="font-heading font-bold text-base sm:text-lg text-[#292929]">
                   1. Ownership of Artwork
@@ -360,7 +353,7 @@ export const ReturnPolicyPage: React.FC = () => {
 
         {activeTab === 'support' && (
           <div className="space-y-6">
-            <div className="p-4 sm:p-5 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] flex items-start gap-3">
+            <div className="p-4 sm:p-5 bg-neutral-50/70 rounded-2xl border border-neutral-200 flex items-start gap-3">
               <MessageCircle className="w-5 h-5 text-[#A64B3C] shrink-0 mt-0.5" />
               <div className="text-xs text-[#292929] font-medium leading-relaxed space-y-1">
                 <p className="font-bold">Human, Warm & Dedicated Support</p>
@@ -370,7 +363,7 @@ export const ReturnPolicyPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-10 border border-[#EADCC8] shadow-xs text-xs sm:text-sm text-[#555555] leading-relaxed space-y-6">
+            <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-10 border border-neutral-200 shadow-xs text-xs sm:text-sm text-[#555555] leading-relaxed space-y-6">
               <section className="space-y-2">
                 <h2 className="font-heading font-bold text-base sm:text-lg text-[#292929]">
                   1. How Support Is Delivered
@@ -378,7 +371,7 @@ export const ReturnPolicyPage: React.FC = () => {
                 <p>
                   Customer support is provided via direct email and our online contact portal. You can reach us at:
                 </p>
-                <div className="p-4 bg-[#FFFCF7] border border-[#EADCC8] rounded-2xl space-y-1 text-xs">
+                <div className="p-4 bg-neutral-50/70 border border-neutral-200 rounded-2xl space-y-1 text-xs">
                   <p><strong>Support &amp; Store Inquiries:</strong> <a href="mailto:shop.sleepyshroom@gmail.com" className="text-[#A64B3C] font-bold hover:underline">shop.sleepyshroom@gmail.com</a></p>
                 </div>
               </section>

@@ -1066,11 +1066,11 @@ export const CheckoutPage: React.FC = () => {
   );
 
   return (
-    <div className="py-8 sm:py-12 bg-[#FFFCF7]">
+    <div className="py-8 sm:py-12 bg-[#FFFFFF]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Top Step Breadcrumbs */}
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#EADCC8]">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-neutral-200">
           <button
             type="button"
             onClick={() => navigateTo('collections')}
@@ -1145,8 +1145,8 @@ export const CheckoutPage: React.FC = () => {
           <div className="lg:col-span-7 space-y-6">
 
             {/* Step 1: Billing & Digital Delivery Details */}
-            <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs space-y-5">
-              <div className="flex items-center justify-between border-b border-[#EADCC8] pb-3">
+            <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-xs space-y-5">
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
                 <div className="flex items-center gap-2.5">
                   <span
                     className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 ${
@@ -1292,8 +1292,8 @@ export const CheckoutPage: React.FC = () => {
             </div>
 
             {/* Step 2: Select Payment Method (PayPal/Cards, Google Pay, GCash QR, Maya QR) */}
-            <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EADCC8] pb-3">
+            <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-xs space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 pb-3">
                 <div className="flex items-center gap-2.5">
                   <span className="w-6 h-6 rounded-full bg-[#A64B3C] text-[#FFFCF7] text-xs font-bold flex items-center justify-center shrink-0">
                     2
@@ -1908,14 +1908,14 @@ export const CheckoutPage: React.FC = () => {
           </div>
 
           {/* Right Column: Order Summary (Sticky Desktop Panel) */}
-          <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-8">
-            <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs space-y-5">
+          <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
+            <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-xs space-y-5">
 
-              <div className="flex items-center justify-between border-b border-[#EADCC8] pb-3">
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
                 <h3 className="font-heading font-bold text-lg text-[#292929]">
                   Order Summary ({cart.length} item{cart.length > 1 ? 's' : ''})
                 </h3>
-                <span className="text-xs font-bold text-[#A64B3C] bg-white px-2.5 py-1 rounded-full border border-[#EADCC8]">
+                <span className="text-xs font-bold text-[#A64B3C] bg-neutral-50 px-2.5 py-1 rounded-full border border-neutral-200">
                   {isManualQrSelected ? 'PHP (₱)' : 'USD ($)'}
                 </span>
               </div>

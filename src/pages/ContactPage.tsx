@@ -6,7 +6,6 @@ import {
   AlertCircle,
   Loader2,
   ShieldCheck,
-  HelpCircle,
   ChevronDown,
   ChevronUp,
   Clock,
@@ -15,6 +14,7 @@ import {
 import { useShop } from '../context/ShopContext.tsx';
 import { supabase } from '../lib/supabase.ts';
 import { ShroomLogoIcon } from '../components/common/Icons.tsx';
+import { SectionHeading } from '../components/common/SectionHeading.tsx';
 
 function createSubmissionUuid(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -187,7 +187,7 @@ export const ContactPage: React.FC = () => {
   const targetEmail = settings?.contactEmail || 'shop.sleepyshroom@gmail.com';
 
   return (
-    <div className="py-12 sm:py-16 bg-[#FFFCF7]">
+    <div className="py-12 sm:py-16 bg-[#FFFFFF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Header */}
@@ -195,15 +195,16 @@ export const ContactPage: React.FC = () => {
           <div className="flex justify-center mb-1">
             <ShroomLogoIcon size={44} />
           </div>
-          <h1 className="font-heading font-bold text-3xl sm:text-4xl text-[#292929] tracking-tight">
+          <SectionHeading
+            as="h1"
+            size="lg"
+            subtitle="Have a question, suggestion, or need a little help? Send me a message!"
+          >
             Let's have a little chat!
-          </h1>
-          <p className="text-sm sm:text-base text-[#777777] font-medium">
-            Have a question, suggestion, or need a little help? Send me a message!
-          </p>
+          </SectionHeading>
         </div>
 
-        <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-10 border border-[#EADCC8] shadow-xs">
+        <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-10 border border-neutral-200 shadow-xs">
 
           {submittedState ? (
             <div className="py-10 text-center max-w-lg mx-auto space-y-5">
@@ -250,7 +251,7 @@ export const ContactPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
 
               {/* Context indicator: Signed-in customer vs Guest */}
-              <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-[#FFFCF7] border border-[#EADCC8] rounded-2xl text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-2xl text-xs">
                 <div className="flex items-center gap-2 text-[#292929] font-semibold">
                   <ShieldCheck className="w-4 h-4 text-[#A64B3C] shrink-0" />
                   {user ? (
@@ -292,7 +293,7 @@ export const ContactPage: React.FC = () => {
                     placeholder="Your name"
                     value={fullName}
                     onChange={e => setFullName(e.target.value)}
-                    className="w-full px-4 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium placeholder-[#777777] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40 focus:border-[#A64B3C] disabled:opacity-60"
+                    className="w-full px-4 py-2.5 text-xs sm:text-sm bg-neutral-50/70 border border-neutral-200 rounded-xl text-[#292929] font-medium placeholder-[#777777] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40 focus:border-[#A64B3C] disabled:opacity-60"
                   />
                 </div>
 
@@ -309,7 +310,7 @@ export const ContactPage: React.FC = () => {
                     placeholder="your.email@example.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    className="w-full px-4 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium placeholder-[#777777] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40 focus:border-[#A64B3C] disabled:opacity-60"
+                    className="w-full px-4 py-2.5 text-xs sm:text-sm bg-neutral-50/70 border border-neutral-200 rounded-xl text-[#292929] font-medium placeholder-[#777777] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40 focus:border-[#A64B3C] disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -327,7 +328,7 @@ export const ContactPage: React.FC = () => {
                   placeholder="e.g. Question about 4K Desktop Wallpapers"
                   value={subject}
                   onChange={e => setSubject(e.target.value)}
-                  className="w-full px-4 py-2.5 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium placeholder-[#777777] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40 focus:border-[#A64B3C] disabled:opacity-60"
+                  className="w-full px-4 py-2.5 text-xs sm:text-sm bg-neutral-50/70 border border-neutral-200 rounded-xl text-[#292929] font-medium placeholder-[#777777] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40 focus:border-[#A64B3C] disabled:opacity-60"
                 />
               </div>
 
@@ -344,7 +345,7 @@ export const ContactPage: React.FC = () => {
                   placeholder="Tell me what you have in mind or how I can help..."
                   value={message}
                   onChange={e => setMessage(e.target.value)}
-                  className="w-full px-4 py-3 text-xs sm:text-sm bg-[#FFFCF7] border border-[#EADCC8] rounded-xl text-[#292929] font-medium placeholder-[#777777] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40 focus:border-[#A64B3C] resize-y disabled:opacity-60"
+                  className="w-full px-4 py-3 text-xs sm:text-sm bg-neutral-50/70 border border-neutral-200 rounded-xl text-[#292929] font-medium placeholder-[#777777] focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/40 focus:border-[#A64B3C] resize-y disabled:opacity-60"
                 />
               </div>
 
@@ -397,7 +398,7 @@ export const ContactPage: React.FC = () => {
 
         {/* Customer Support Information Cards */}
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-[#FCF3E2] border border-[#EADCC8] rounded-2xl p-5 text-left">
+          <div className="bg-[#FFFFFF] border border-neutral-200 rounded-2xl p-5 text-left">
             <div className="w-10 h-10 rounded-xl bg-[#A64B3C]/10 text-[#A64B3C] flex items-center justify-center mb-3">
               <Mail className="w-5 h-5" />
             </div>
@@ -419,7 +420,7 @@ export const ContactPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-[#FCF3E2] border border-[#EADCC8] rounded-2xl p-5 text-left">
+          <div className="bg-[#FFFFFF] border border-neutral-200 rounded-2xl p-5 text-left">
             <div className="w-10 h-10 rounded-xl bg-amber-600/10 text-amber-700 flex items-center justify-center mb-3">
               <Clock className="w-5 h-5" />
             </div>
@@ -434,7 +435,7 @@ export const ContactPage: React.FC = () => {
             </span>
           </div>
 
-          <div className="bg-[#FCF3E2] border border-[#EADCC8] rounded-2xl p-5 text-left">
+          <div className="bg-[#FFFFFF] border border-neutral-200 rounded-2xl p-5 text-left">
             <div className="w-10 h-10 rounded-xl bg-emerald-600/10 text-emerald-700 flex items-center justify-center mb-3">
               <ShieldCheck className="w-5 h-5" />
             </div>
@@ -448,18 +449,15 @@ export const ContactPage: React.FC = () => {
         </div>
 
         {/* Frequently Asked Questions Section */}
-        <div className="mt-16 pt-12 border-t border-[#EADCC8]">
-          <div className="text-center max-w-xl mx-auto mb-8 space-y-2">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FCF3E2] border border-[#EADCC8] text-xs font-bold text-[#A64B3C]">
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>Customer Help & Answers</span>
-            </div>
-            <h2 className="font-heading font-bold text-2xl sm:text-3xl text-[#292929]">
+        <div className="mt-16 pt-12 border-t border-neutral-200">
+          <div className="text-center max-w-xl mx-auto mb-8">
+            <SectionHeading
+              as="h2"
+              size="md"
+              subtitle="Everything you need to know about purchasing, digital delivery, formats, and licensing."
+            >
               Frequently Asked Questions
-            </h2>
-            <p className="text-xs sm:text-sm text-[#777777]">
-              Everything you need to know about purchasing, digital delivery, formats, and licensing.
-            </p>
+            </SectionHeading>
           </div>
 
           <div className="space-y-3 max-w-3xl mx-auto">
@@ -497,12 +495,12 @@ export const ContactPage: React.FC = () => {
               return (
                 <div
                   key={index}
-                  className="bg-[#FCF3E2] border border-[#EADCC8] rounded-2xl overflow-hidden transition-colors"
+                  className="bg-[#FFFFFF] border border-neutral-200 rounded-2xl overflow-hidden transition-colors"
                 >
                   <button
                     type="button"
                     onClick={() => setOpenFaqIndex(isOpen ? null : index)}
-                    className="w-full px-5 py-4 flex items-center justify-between text-left gap-4 hover:bg-[#F5E8D0] transition-colors cursor-pointer"
+                    className="w-full px-5 py-4 flex items-center justify-between text-left gap-4 hover:bg-neutral-50 transition-colors cursor-pointer"
                   >
                     <span className="font-heading font-bold text-sm sm:text-base text-[#292929]">
                       {faq.q}
@@ -516,7 +514,7 @@ export const ContactPage: React.FC = () => {
                     </span>
                   </button>
                   {isOpen && (
-                    <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-[#555555] leading-relaxed border-t border-[#EADCC8]/60">
+                    <div className="px-5 pb-5 pt-3 text-xs sm:text-sm text-[#555555] leading-relaxed border-t border-neutral-200 bg-neutral-50/40">
                       {faq.a}
                     </div>
                   )}

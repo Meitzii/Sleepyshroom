@@ -24,7 +24,7 @@ export const CollectionProductGrid: React.FC<CollectionProductGridProps> = ({
   return (
     <div className="lg:col-span-9 space-y-6">
       {/* Toolbar: Matching count + mobile filters + sorting */}
-      <div className="flex flex-wrap items-center justify-between gap-3 py-3 px-4 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8]">
+      <div className="flex flex-wrap items-center justify-between gap-3 py-3 px-4 bg-[#FFFFFF] rounded-2xl border border-neutral-200">
         <div className="flex items-center gap-3">
           <span className="text-xs font-bold text-[#777777]">
             Showing <span className="font-extrabold text-[#292929]">{products.length}</span>{' '}
@@ -34,7 +34,7 @@ export const CollectionProductGrid: React.FC<CollectionProductGridProps> = ({
           <button
             type="button"
             onClick={onOpenMobileFilters}
-            className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFFCF7] border border-[#EADCC8] text-xs font-bold text-[#292929] cursor-pointer"
+            className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-50 border border-neutral-200 text-xs font-bold text-[#292929] cursor-pointer"
           >
             <Filter className="w-3.5 h-3.5 text-[#A64B3C]" />
             <span>Filters</span>
@@ -60,7 +60,7 @@ export const CollectionProductGrid: React.FC<CollectionProductGridProps> = ({
             id="collection-sort"
             value={sortBy}
             onChange={(e) => onSortChange(e.target.value as CollectionFilterState['sortBy'])}
-            className="text-xs font-bold text-[#292929] bg-[#FFFCF7] border border-[#EADCC8] rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/30 cursor-pointer"
+            className="text-xs font-bold text-[#292929] bg-[#FFFFFF] border border-neutral-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#A64B3C]/30 cursor-pointer"
           >
             <option value="featured">Featured</option>
             <option value="newest">Newest</option>
@@ -79,7 +79,7 @@ export const CollectionProductGrid: React.FC<CollectionProductGridProps> = ({
           ))}
         </div>
       ) : (
-        <div className="bg-[#FCF3E2] rounded-3xl p-10 sm:p-14 text-center border border-[#EADCC8]">
+        <div className="bg-[#FFFFFF] rounded-3xl p-10 sm:p-14 text-center border border-neutral-200">
           <p className="text-3xl mb-3">🍄</p>
           <h3 className="font-heading font-bold text-lg text-[#292929] mb-2">
             No designs match these filters

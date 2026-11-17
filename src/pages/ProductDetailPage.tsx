@@ -20,6 +20,7 @@ import { useShop } from '../context/ShopContext.tsx';
 import { ProductCard } from '../components/common/ProductCard.tsx';
 import { ProtectedArtworkPreview } from '../components/common/ProtectedArtworkPreview.tsx';
 import { ProductReviewsSection } from '../components/product/ProductReviewsSection.tsx';
+import { SectionHeading } from '../components/common/SectionHeading.tsx';
 
 interface ProductDetailPageProps {
   slug: string;
@@ -74,7 +75,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
   const activeImage = product.images[activeImageIndex] || product.images[0];
 
   return (
-    <div className="py-8 sm:py-12 bg-[#FFFCF7]">
+    <div className="py-8 sm:py-12 bg-[#FFFFFF]">
       {/* Schema.org Product Structured Data */}
       <script
         type="application/ld+json"
@@ -124,18 +125,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           <div className="lg:col-span-7 space-y-4">
             
             {/* Device Mockup Toggle Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-[#EADCC8]">
+            <div className="flex items-center justify-between pb-2 border-b border-neutral-200">
               <span className="text-xs font-bold text-[#292929] uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#A64B3C]" />
                 <span>Interactive Screen Preview</span>
               </span>
-              <div className="flex items-center gap-1 bg-[#FCF3E2] p-1 rounded-xl border border-[#EADCC8]">
+              <div className="flex items-center gap-1 bg-neutral-50 p-1 rounded-xl border border-neutral-200">
                 <button
                   onClick={() => setDevicePreview('desktop')}
                   className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                     devicePreview === 'desktop'
                       ? 'bg-[#A64B3C] text-[#FFFCF7]'
-                      : 'text-[#292929] hover:bg-[#EADCC8]'
+                      : 'text-[#292929] hover:bg-neutral-200/60'
                   }`}
                   title="Desktop Monitor Frame"
                 >
@@ -146,7 +147,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                   className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                     devicePreview === 'mobile'
                       ? 'bg-[#A64B3C] text-[#FFFCF7]'
-                      : 'text-[#292929] hover:bg-[#EADCC8]'
+                      : 'text-[#292929] hover:bg-neutral-200/60'
                   }`}
                   title="Phone Lock Screen Frame"
                 >
@@ -157,7 +158,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                   className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                     devicePreview === 'tablet'
                       ? 'bg-[#A64B3C] text-[#FFFCF7]'
-                      : 'text-[#292929] hover:bg-[#EADCC8]'
+                      : 'text-[#292929] hover:bg-neutral-200/60'
                   }`}
                   title="Tablet Screen Frame"
                 >
@@ -172,7 +173,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
              * Sourced from `product.images` (controlled by `data/store.json` or Admin Dashboard).
              * ========================================================================= */}
             {/* Main Interactive Screen Frame */}
-            <div className="bg-[#FCF3E2] p-4 sm:p-6 rounded-3xl border border-[#EADCC8] flex items-center justify-center min-h-[380px] sm:min-h-[460px]">
+            <div className="bg-neutral-50/70 p-4 sm:p-6 rounded-3xl border border-neutral-200 flex items-center justify-center min-h-[380px] sm:min-h-[460px]">
               
               {devicePreview === 'desktop' && (
                 /* Desktop Monitor Frame */
@@ -267,7 +268,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
             )}
 
             {/* Digital Download Notice Banner */}
-            <div className="p-4 rounded-2xl bg-[#FCF3E2] border border-[#EADCC8] flex items-start gap-3">
+            <div className="p-4 rounded-2xl bg-[#FFFFFF] border border-neutral-200 flex items-start gap-3">
               <Download className="w-5 h-5 text-[#A64B3C] shrink-0 mt-0.5" />
               <div className="text-xs text-[#292929] space-y-1">
                 <p className="font-extrabold text-[#292929]">
@@ -284,7 +285,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           {/* Right Column: Contiguous Purchase Module */}
           <div className="lg:col-span-5 space-y-6">
             
-            <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] shadow-xs space-y-6">
+            <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-xs space-y-6">
               
               {/* Category & Theme Metadata */}
               <div className="flex items-center gap-2 text-xs text-[#777777] font-bold">
@@ -299,12 +300,12 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               </h1>
 
               {/* Social Proof: Download Numbers & Live recent activity ticker */}
-              <div className="p-3 bg-[#FFFCF7] rounded-2xl border border-[#EADCC8] flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="p-3 bg-neutral-50/80 rounded-2xl border border-neutral-200 flex flex-wrap items-center justify-between gap-2 text-xs">
                 <span className="flex items-center gap-1.5 text-[#292929] font-bold">
                   <Download className="w-4 h-4 text-[#A64B3C]" />
                   <span>{(product.downloadCount || 0).toLocaleString()} happy screens downloaded</span>
                 </span>
-                <span className="text-[11px] font-bold text-[#292929] flex items-center gap-1 bg-[#FCF3E2] px-2 py-0.5 rounded-full border border-[#EADCC8]">
+                <span className="text-[11px] font-bold text-[#292929] flex items-center gap-1 bg-[#FFFFFF] px-2 py-0.5 rounded-full border border-neutral-200">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span>
                     {product.recentDownloadTime === 'just now'
@@ -330,7 +331,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                     ${product.compareAtPrice.toFixed(2)}
                   </span>
                 )}
-                <span className="text-xs font-bold text-[#292929] bg-[#FFFCF7] px-2.5 py-0.5 rounded-full border border-[#EADCC8]">
+                <span className="text-xs font-bold text-[#292929] bg-neutral-50 px-2.5 py-0.5 rounded-full border border-neutral-200">
                   {Boolean(product.isFree || product.price === 0) ? '100% Free Complimentary Gift' : 'All Resolutions Included'}
                 </span>
               </div>
@@ -392,7 +393,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
 
                     <button
                       onClick={handleBuyNow}
-                      className="w-full py-3.5 px-6 rounded-2xl text-sm font-bold text-[#292929] bg-[#FFFCF7] hover:bg-[#EADCC8] active:scale-98 border border-[#EADCC8] transition-all flex items-center justify-center cursor-pointer"
+                      className="w-full py-3.5 px-6 rounded-2xl text-sm font-bold text-[#292929] bg-[#FFFFFF] hover:bg-neutral-50 active:scale-98 border border-neutral-200 transition-all flex items-center justify-center cursor-pointer"
                     >
                       Buy Now with 1-Click Checkout
                     </button>
@@ -401,20 +402,20 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               </div>
 
               {/* Technical Specifications Breakdown */}
-              <div className="border-t border-[#EADCC8] pt-5 space-y-4">
+              <div className="border-t border-neutral-200 pt-5 space-y-4">
                 
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#292929]">
                   Digital Package Specifications
                 </h3>
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8]">
+                  <div className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-200">
                     <p className="text-[#777777] font-bold">Device Compatibility</p>
                     <p className="font-bold text-[#292929] mt-0.5 capitalize">
                       {product.deviceTypes.join(', ')}
                     </p>
                   </div>
-                  <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8]">
+                  <div className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-200">
                     <p className="text-[#777777] font-bold">Archive Package Size</p>
                     <p className="font-bold text-[#292929] mt-0.5">
                       {product.fileSize}
@@ -422,14 +423,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                   </div>
                 </div>
 
-                <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs space-y-1">
+                <div className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-200 text-xs space-y-1">
                   <p className="text-[#777777] font-bold">Included File Formats</p>
                   <p className="font-bold text-[#292929] text-xs">
                     Lossless 300 DPI PNG, High-Resolution JPEG, &amp; Uncompressed ZIP Archives
                   </p>
                 </div>
 
-                <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs">
+                <div className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-200 text-xs">
                   <p className="text-[#777777] font-bold">Calibrated Resolutions</p>
                   <ul className="mt-1 space-y-0.5">
                     {product.resolutions.map((res, i) => (
@@ -441,7 +442,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                   </ul>
                 </div>
 
-                <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs">
+                <div className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-200 text-xs">
                   <p className="text-[#777777] font-bold">What's In The Package</p>
                   <ul className="mt-1 space-y-1">
                     {product.whatsIncluded.map((inc, i) => (
@@ -459,7 +460,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                     .filter((p): p is NonNullable<typeof p> => Boolean(p));
                   if (bundleChildren.length === 0) return null;
                   return (
-                    <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs space-y-2">
+                    <div className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-200 text-xs space-y-2">
                       <p className="text-[#777777] font-bold flex items-center gap-1.5">
                         <Layers className="w-3.5 h-3.5 text-[#A64B3C]" />
                         <span>Included Digital Products ({bundleChildren.length})</span>
@@ -470,13 +471,13 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                             key={child.id}
                             type="button"
                             onClick={() => navigateTo('product', child.slug)}
-                            className="w-full flex items-center justify-between gap-2 p-2 rounded-lg bg-[#FCF3E2]/70 hover:bg-[#FCF3E2] border border-[#EADCC8] text-left transition-colors cursor-pointer"
+                            className="w-full flex items-center justify-between gap-2 p-2 rounded-lg bg-[#FFFFFF] hover:bg-neutral-50 border border-neutral-200 text-left transition-colors cursor-pointer"
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <img
                                 src={child.images[0]}
                                 alt={child.title}
-                                className="w-8 h-8 rounded object-cover border border-[#EADCC8] shrink-0"
+                                className="w-8 h-8 rounded object-cover border border-neutral-200 shrink-0"
                               />
                               <span className="font-bold text-[#292929] truncate">{child.title}</span>
                             </div>
@@ -491,7 +492,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 })()}
 
                 {/* Personal-Use License Notice */}
-                <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs space-y-1">
+                <div className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-200 text-xs space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-[#292929]">
                     <Lock className="w-3.5 h-3.5 text-[#A64B3C]" />
                     <span>Personal Use Licensing</span>
@@ -502,7 +503,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 </div>
 
                 {/* Instant Delivery Guarantee */}
-                <div className="p-3 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-xs space-y-1">
+                <div className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-200 text-xs space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-[#292929]">
                     <HelpCircle className="w-3.5 h-3.5 text-[#A64B3C]" />
                     <span>Instant Digital Delivery</span>
@@ -515,7 +516,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               </div>
 
               {/* Guarantees */}
-              <div className="border-t border-[#EADCC8] pt-4 flex items-center gap-2 text-xs text-[#292929] font-bold">
+              <div className="border-t border-neutral-200 pt-4 flex items-center gap-2 text-xs text-[#292929] font-bold">
                 <ShieldCheck className="w-4 h-4 text-[#A64B3C]" />
                 <span>Lossless 300 DPI Original Artwork &amp; 14-Day Duplicate Protection</span>
               </div>
@@ -531,22 +532,23 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
 
         {/* Related Wallpapers Section */}
         {relatedProducts.length > 0 && (
-          <section className="mt-16 sm:mt-20 pt-12 border-t border-[#EADCC8]">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="font-heading font-bold text-xl sm:text-2xl text-[#292929]">
-                  More from {product.theme}
-                </h2>
-                <p className="text-xs sm:text-sm text-[#777777] font-medium mt-1">
-                  You might also adore these matching cozy wallpapers.
-                </p>
-              </div>
-              <button
-                onClick={() => navigateTo('collections', `theme=${encodeURIComponent(product.theme)}`)}
-                className="text-xs font-bold text-[#A64B3C] hover:underline cursor-pointer"
+          <section className="mt-16 sm:mt-20 pt-12 border-t border-neutral-200">
+            <div className="text-center mb-10 space-y-3">
+              <SectionHeading
+                as="h2"
+                size="md"
+                subtitle="You might also adore these matching cozy wallpapers."
               >
-                View collection
-              </button>
+                More from {product.theme}
+              </SectionHeading>
+              <div>
+                <button
+                  onClick={() => navigateTo('collections', `theme=${encodeURIComponent(product.theme)}`)}
+                  className="text-xs font-bold text-[#A64B3C] hover:underline cursor-pointer"
+                >
+                  View collection
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">

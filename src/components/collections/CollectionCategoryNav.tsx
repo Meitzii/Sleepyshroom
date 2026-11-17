@@ -35,7 +35,7 @@ export const CollectionCategoryNav: React.FC<CollectionCategoryNavProps> = ({
   onSelectCategory,
 }) => {
   return (
-    <div className="border-b border-[#EADCC8] bg-[#FFFCF7]/95 backdrop-blur-sm sticky top-18 z-20">
+    <div className="border-b border-neutral-200 bg-[#FFFFFF]/95 backdrop-blur-sm sticky top-16 sm:top-18 z-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
           role="tablist"

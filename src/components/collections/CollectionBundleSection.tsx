@@ -3,6 +3,7 @@ import { Package, Check, ShoppingBag, Sparkles, ArrowRight } from 'lucide-react'
 import type { ThemeBundle, Product } from '../../types/index.ts';
 import { useShop } from '../../context/ShopContext.tsx';
 import { ProtectedArtworkPreview } from '../common/ProtectedArtworkPreview.tsx';
+import { SectionHeading } from '../common/SectionHeading.tsx';
 
 interface CollectionBundleSectionProps {
   bundles: ThemeBundle[];
@@ -66,21 +67,16 @@ export const CollectionBundleSection: React.FC<CollectionBundleSectionProps> = (
   };
 
   return (
-    <section className="py-12 border-t border-[#EADCC8] bg-[#FCF3E2]/45">
+    <section className="py-12 border-t border-neutral-200 bg-[#FFFFFF]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-          <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#A64B3C] mb-1">
-              <Package className="w-3.5 h-3.5" />
-              <span>Save With Theme Bundles</span>
-            </div>
-            <h2 className="font-heading font-bold text-2xl sm:text-3xl text-[#292929]">
-              Complete Collection Sets
-            </h2>
-          </div>
-          <p className="text-xs sm:text-sm text-[#777777] font-medium">
-            Unlock every screen size and icon pack in one instant download package.
-          </p>
+        <div className="text-center">
+          <SectionHeading
+            as="h2"
+            size="md"
+            subtitle="Unlock every screen size and icon pack in one instant download package."
+          >
+            Complete Collection Sets
+          </SectionHeading>
         </div>
 
         <div className="space-y-6">
@@ -95,10 +91,10 @@ export const CollectionBundleSection: React.FC<CollectionBundleSectionProps> = (
             return (
               <div
                 key={bundle.id}
-                className="bg-[#FFFCF7] rounded-3xl border-2 border-[#A64B3C]/25 shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12"
+                className="bg-[#FFFFFF] rounded-3xl border border-neutral-200 shadow-xs overflow-hidden grid grid-cols-1 lg:grid-cols-12"
               >
                 {/* Bundle Artwork */}
-                <div className="lg:col-span-5 relative min-h-[240px] bg-[#FCF3E2]">
+                <div className="lg:col-span-5 relative min-h-[240px] bg-neutral-100">
                   <ProtectedArtworkPreview
                     src={bundle.previewImage}
                     alt={bundle.title}

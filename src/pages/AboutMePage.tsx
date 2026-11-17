@@ -2,6 +2,7 @@ import React from 'react';
 import { Heart, Sparkles, Coffee, Palette, ArrowRight, ShieldCheck, Mail, Monitor, Download } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { ShroomLogoIcon } from '../components/common/Icons.tsx';
+import { SectionHeading } from '../components/common/SectionHeading.tsx';
 
 export const AboutMePage: React.FC = () => {
   const { settings, navigateTo } = useShop();
@@ -15,45 +16,45 @@ export const AboutMePage: React.FC = () => {
   };
 
   return (
-    <div className="py-12 sm:py-16 bg-[#FFFCF7]">
+    <div className="py-12 sm:py-16 bg-[#FFFFFF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         
         {/* Hero Card */}
-        <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-10 border border-[#EADCC8] shadow-xs">
+        <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-10 border border-neutral-200 shadow-xs">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
             
             {/* Profile Image */}
             <div className="md:col-span-5">
-              <div className="relative mx-auto max-w-xs aspect-square rounded-3xl overflow-hidden border-4 border-[#FFFCF7] shadow-md bg-[#EADCC8]/30">
+              <div className="relative mx-auto max-w-xs aspect-square rounded-3xl overflow-hidden border border-neutral-200 shadow-sm bg-neutral-50">
                 <img
                   src={about.profileImage || '/src/assets/images/theme_sleepy_garden_1794020165839.jpg'}
                   alt="Sleepyshroom Independent Studio"
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute bottom-2.5 right-2.5 bg-[#FFFCF7]/95 px-2.5 py-1 rounded-xl text-[10px] font-bold text-[#A64B3C] border border-[#EADCC8]">
+                <div className="absolute bottom-2.5 right-2.5 bg-[#FFFFFF]/95 px-2.5 py-1 rounded-xl text-[10px] font-bold text-[#A64B3C] border border-neutral-200">
                   Independent Studio 🍄
                 </div>
               </div>
             </div>
 
             {/* Introduction Text */}
-            <div className="md:col-span-7 space-y-4 text-center md:text-left">
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#A64B3C] uppercase tracking-wider">
+            <div className="md:col-span-7 space-y-4 text-center">
+              <div className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-[#A64B3C] uppercase tracking-wider">
                 <Heart className="w-3.5 h-3.5 text-[#A64B3C] fill-current" />
                 <span>The Story of Sleepyshroom</span>
               </div>
-              <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#292929] tracking-tight">
+              <SectionHeading as="h1" size="lg">
                 {about.heading}
-              </h1>
+              </SectionHeading>
               <p className="text-sm sm:text-base text-[#777777] font-medium leading-relaxed">
                 {about.introduction}
               </p>
-              <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-3 text-xs text-[#292929] font-bold">
-                <span className="flex items-center gap-1.5 bg-[#FFFCF7] px-3 py-1.5 rounded-xl border border-[#EADCC8]">
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-3 text-xs text-[#292929] font-bold">
+                <span className="flex items-center gap-1.5 bg-neutral-50 px-3 py-1.5 rounded-xl border border-neutral-200">
                   <Sparkles className="w-3.5 h-3.5 text-[#A64B3C]" />
                   <span>Original Illustrations</span>
                 </span>
-                <span className="flex items-center gap-1.5 bg-[#FFFCF7] px-3 py-1.5 rounded-xl border border-[#EADCC8]">
+                <span className="flex items-center gap-1.5 bg-neutral-50 px-3 py-1.5 rounded-xl border border-neutral-200">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#A64B3C]" />
                   <span>300 DPI Lossless</span>
                 </span>
@@ -67,8 +68,8 @@ export const AboutMePage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           
           {/* Why We Started */}
-          <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FFFCF7] border border-[#EADCC8] text-[#A64B3C] flex items-center justify-center mb-1">
+          <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-8 border border-neutral-200 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-neutral-50 border border-neutral-200 text-[#A64B3C] flex items-center justify-center mb-1">
               <Coffee className="w-5 h-5" />
             </div>
             <h2 className="font-heading font-bold text-lg text-[#292929]">
@@ -80,8 +81,8 @@ export const AboutMePage: React.FC = () => {
           </div>
 
           {/* Design Inspiration */}
-          <div className="bg-[#FCF3E2] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FFFCF7] border border-[#EADCC8] text-[#A64B3C] flex items-center justify-center mb-1">
+          <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-8 border border-neutral-200 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-neutral-50 border border-neutral-200 text-[#A64B3C] flex items-center justify-center mb-1">
               <Palette className="w-5 h-5" />
             </div>
             <h2 className="font-heading font-bold text-lg text-[#292929]">
@@ -95,12 +96,12 @@ export const AboutMePage: React.FC = () => {
         </div>
 
         {/* Our Quality Promises Strip */}
-        <div className="bg-[#FFFCF7] rounded-3xl p-6 sm:p-8 border border-[#EADCC8] space-y-4">
-          <h3 className="font-heading font-bold text-lg text-[#292929] text-center">
+        <div className="bg-[#FFFFFF] rounded-3xl p-6 sm:p-8 border border-neutral-200 space-y-6">
+          <SectionHeading as="h2" size="sm">
             What You Can Expect From Every Download
-          </h3>
+          </SectionHeading>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            <div className="p-4 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] space-y-1.5">
+            <div className="p-4 bg-neutral-50/70 rounded-2xl border border-neutral-200 space-y-1.5">
               <p className="font-bold text-[#292929] flex items-center gap-1.5">
                 <Monitor className="w-4 h-4 text-[#A64B3C]" />
                 <span>Multi-Device Calibration</span>
@@ -110,7 +111,7 @@ export const AboutMePage: React.FC = () => {
               </p>
             </div>
 
-            <div className="p-4 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] space-y-1.5">
+            <div className="p-4 bg-neutral-50/70 rounded-2xl border border-neutral-200 space-y-1.5">
               <p className="font-bold text-[#292929] flex items-center gap-1.5">
                 <Download className="w-4 h-4 text-[#A64B3C]" />
                 <span>Instant &amp; Permanent Access</span>
@@ -120,7 +121,7 @@ export const AboutMePage: React.FC = () => {
               </p>
             </div>
 
-            <div className="p-4 bg-[#FCF3E2] rounded-2xl border border-[#EADCC8] space-y-1.5">
+            <div className="p-4 bg-neutral-50/70 rounded-2xl border border-neutral-200 space-y-1.5">
               <p className="font-bold text-[#292929] flex items-center gap-1.5">
                 <Mail className="w-4 h-4 text-[#A64B3C]" />
                 <span>Kind Customer Support</span>
@@ -133,13 +134,13 @@ export const AboutMePage: React.FC = () => {
         </div>
 
         {/* Cozy Call to Action Card */}
-        <div className="bg-[#FCF3E2] rounded-3xl p-8 border border-[#EADCC8] text-center space-y-4">
+        <div className="bg-[#FFFFFF] rounded-3xl p-8 border border-neutral-200 text-center space-y-4">
           <div className="flex justify-center">
             <ShroomLogoIcon size={48} />
           </div>
-          <h3 className="font-heading font-bold text-xl text-[#292929]">
+          <SectionHeading as="h2" size="md">
             Ready to make your screen a little cozier?
-          </h3>
+          </SectionHeading>
           <p className="text-xs sm:text-sm text-[#777777] font-medium max-w-md mx-auto">
             Take a look through our desktop, phone, and tablet wallpaper collections.
           </p>
@@ -153,7 +154,7 @@ export const AboutMePage: React.FC = () => {
             </button>
             <button
               onClick={() => navigateTo('contact')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#FFFCF7] hover:bg-[#EADCC8]/50 text-[#292929] text-xs sm:text-sm font-bold rounded-xl border border-[#EADCC8] transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#FFFFFF] hover:bg-neutral-50 text-[#292929] text-xs sm:text-sm font-bold rounded-xl border border-neutral-200 transition-all cursor-pointer"
             >
               <span>Say Hello</span>
             </button>

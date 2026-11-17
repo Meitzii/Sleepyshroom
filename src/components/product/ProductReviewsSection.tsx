@@ -4,6 +4,7 @@ import type { ProductReview } from '../../types/index.ts';
 import { useShop } from '../../context/ShopContext.tsx';
 import { supabase } from '../../lib/supabase.ts';
 import { parseJsonResponse } from '../../utils/apiClient.ts';
+import { SectionHeading } from '../common/SectionHeading.tsx';
 
 interface ProductReviewsSectionProps {
   productId: string;
@@ -158,20 +159,20 @@ export const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({
   };
 
   return (
-    <section className="mt-14 pt-12 border-t border-[#EADCC8]">
+    <section className="mt-14 pt-12 border-t border-neutral-200">
+      <div className="text-center mb-8">
+        <p className="text-xs font-extrabold uppercase tracking-wider text-[#A64B3C] mb-1">
+          Customer Reviews
+        </p>
+        <SectionHeading as="h2" size="md">
+          Verified Feedback
+        </SectionHeading>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Summary & Verified Purchase Gate */}
-        <div className="lg:col-span-4 bg-[#FCF3E2] rounded-3xl p-6 border border-[#EADCC8] space-y-5">
-          <div>
-            <span className="text-xs font-extrabold uppercase tracking-wider text-[#A64B3C]">
-              Customer Reviews
-            </span>
-            <h2 className="font-heading font-bold text-2xl text-[#292929] mt-1">
-              Verified Feedback
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-4 bg-[#FFFCF7] p-4 rounded-2xl border border-[#EADCC8]">
+        <div className="lg:col-span-4 bg-[#FFFFFF] rounded-3xl p-6 border border-neutral-200 space-y-5">
+          <div className="flex items-center gap-4 bg-neutral-50/70 p-4 rounded-2xl border border-neutral-200">
             <div className="text-3xl font-extrabold text-[#292929] tabular-nums">
               {totalCount > 0 ? averageRating.toFixed(1) : '—'}
             </div>
@@ -197,7 +198,7 @@ export const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({
             <button
               type="button"
               onClick={() => navigateTo('account')}
-              className="w-full py-2.5 px-4 rounded-xl bg-[#FFFCF7] hover:bg-[#EADCC8]/50 border border-[#EADCC8] text-xs font-bold text-[#292929] flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2.5 px-4 rounded-xl bg-[#FFFFFF] hover:bg-neutral-50 border border-neutral-200 text-xs font-bold text-[#292929] flex items-center justify-center gap-2 cursor-pointer"
             >
               <Lock className="w-3.5 h-3.5 text-[#A64B3C]" />
               <span>Sign In to Review Purchases</span>
@@ -212,7 +213,7 @@ export const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({
               <span>{existingUserReview ? 'Edit Your Review' : 'Write a Verified Review'}</span>
             </button>
           ) : (
-            <div className="p-3 rounded-xl bg-[#FFFCF7] border border-[#EADCC8] text-[11px] font-semibold text-[#777777]">
+            <div className="p-3 rounded-xl bg-neutral-50 border border-neutral-200 text-[11px] font-semibold text-[#777777]">
               Only customers with a paid order including this design (or its bundle) can submit a review.
             </div>
           )}
@@ -230,7 +231,7 @@ export const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({
           {isEditing && canReview && (
             <form
               onSubmit={handleSubmit}
-              className="bg-[#FCF3E2] rounded-3xl p-6 border border-[#A64B3C]/30 space-y-4"
+              className="bg-[#FFFFFF] rounded-3xl p-6 border border-[#A64B3C]/30 space-y-4"
             >
               <h3 className="font-heading font-bold text-lg text-[#292929]">
                 {existingUserReview ? 'Update Your Review' : 'Share Your Experience'}
@@ -307,7 +308,7 @@ export const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({
               Loading verified customer reviews...
             </div>
           ) : reviews.length === 0 ? (
-            <div className="bg-[#FCF3E2]/50 rounded-3xl p-8 text-center border border-[#EADCC8]">
+            <div className="bg-[#FFFFFF] rounded-3xl p-8 text-center border border-neutral-200">
               <p className="font-heading font-bold text-base text-[#292929] mb-1">
                 No verified reviews yet for this design
               </p>
@@ -320,7 +321,7 @@ export const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({
               {reviews.map((rev) => (
                 <article
                   key={rev.id}
-                  className="bg-[#FCF3E2]/70 rounded-2xl p-5 border border-[#EADCC8] space-y-2.5"
+                  className="bg-[#FFFFFF] rounded-2xl p-5 border border-neutral-200 space-y-2.5"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5">
