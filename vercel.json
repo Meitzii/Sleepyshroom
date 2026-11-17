@@ -2,6 +2,90 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/runtime-config.js",
+      "destination": "/api/runtime-config"
+    },
+    {
+      "source": "/api/orders/:idOrToken",
+      "destination": "/api/checkout?route=orders&idOrToken=:idOrToken"
+    },
+    {
+      "source": "/api/orders",
+      "destination": "/api/checkout?route=orders"
+    },
+    {
+      "source": "/api/discounts/validate",
+      "destination": "/api/checkout?route=discounts-validate"
+    },
+    {
+      "source": "/api/contact",
+      "destination": "/api/community?route=contact"
+    },
+    {
+      "source": "/api/reviews",
+      "destination": "/api/community?route=reviews"
+    },
+    {
+      "source": "/api/faqs",
+      "destination": "/api/community?route=faqs"
+    },
+    {
+      "source": "/api/newsletter",
+      "destination": "/api/community?route=newsletter"
+    },
+    {
+      "source": "/api/admin/messages/:id/reply",
+      "destination": "/api/admin/communications?route=messages-reply&id=:id"
+    },
+    {
+      "source": "/api/admin/messages/:id/status",
+      "destination": "/api/admin/communications?route=messages&id=:id"
+    },
+    {
+      "source": "/api/admin/messages/:id",
+      "destination": "/api/admin/communications?route=messages&id=:id"
+    },
+    {
+      "source": "/api/admin/messages",
+      "destination": "/api/admin/communications?route=messages"
+    },
+    {
+      "source": "/api/admin/newsletter/:id",
+      "destination": "/api/admin/communications?route=newsletter&id=:id"
+    },
+    {
+      "source": "/api/admin/newsletter",
+      "destination": "/api/admin/communications?route=newsletter"
+    },
+    {
+      "source": "/api/admin/email-logs",
+      "destination": "/api/admin/communications?route=email-logs"
+    },
+    {
+      "source": "/api/admin/orders/:idOrToken/resend-email",
+      "destination": "/api/admin/communications?route=orders-resend-email&idOrToken=:idOrToken"
+    },
+    {
+      "source": "/api/admin/settings",
+      "destination": "/api/admin/store?route=settings"
+    },
+    {
+      "source": "/api/admin/reviews/:id",
+      "destination": "/api/admin/store?route=reviews&id=:id"
+    },
+    {
+      "source": "/api/admin/reviews",
+      "destination": "/api/admin/store?route=reviews"
+    },
+    {
+      "source": "/api/admin/faqs/:id",
+      "destination": "/api/admin/store?route=faqs&id=:id"
+    },
+    {
+      "source": "/api/admin/faqs",
+      "destination": "/api/admin/store?route=faqs"
+    },
+    {
       "source": "/((?!assets/|wallpapers/|images/|uploads/|src/|api/).*)",
       "destination": "/index.html"
     }
