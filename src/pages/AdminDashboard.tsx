@@ -145,6 +145,7 @@ export const AdminDashboard: React.FC = () => {
   // Feedback notifications
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
   const [verifyingOrderId, setVerifyingOrderId] = useState<string | null>(null);
   const [confirmingManualOrderId, setConfirmingManualOrderId] = useState<string | null>(null);
   const [rejectManualOrderKey, setRejectManualOrderKey] = useState<string | null>(null);
@@ -581,6 +582,7 @@ export const AdminDashboard: React.FC = () => {
       }
     }
 
+    setSavingSettings(true);
     try {
       const token = await getFreshAdminToken();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -601,7 +603,7 @@ export const AdminDashboard: React.FC = () => {
         if (parsed.data?.settings) {
           setSettings(normalizeAdminSettings(parsed.data.settings));
         }
-        triggerSaveNotification('Settings, social links, and storefront preferences saved!');
+        triggerSaveNotification('Website settings saved cleanly!');
         refreshData();
         const cfgRes = await fetch('/api/checkout');
         const cfgParsed = await parseJsonResponse<typeof gatewayStatus>(cfgRes);
@@ -613,6 +615,8 @@ export const AdminDashboard: React.FC = () => {
       }
     } catch {
       setErrorMessage('Error updating settings');
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -2266,11 +2270,17 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <button
+                type="button"
                 onClick={handleSaveSettings}
-                className="px-5 py-2.5 bg-[#8B6F7A] text-[#F7F3E9] text-xs font-bold rounded-xl hover:bg-[#785E69] flex items-center gap-1.5 shadow-xs"
+                disabled={savingSettings}
+                className="px-5 py-2.5 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs transition-colors disabled:opacity-60 cursor-pointer shrink-0"
               >
-                <Save className="w-4 h-4" />
-                <span>Save All Settings</span>
+                {savingSettings ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span>{savingSettings ? 'Saving...' : 'Save Website Settings'}</span>
               </button>
             </div>
 
@@ -3282,6 +3292,31 @@ export const AdminDashboard: React.FC = () => {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Sticky Bottom Save Bar */}
+            <div className="sticky bottom-4 z-20 bg-[#FCF3E2]/95 backdrop-blur-sm border border-[#EADCC8] rounded-2xl p-4 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-xs">
+                <p className="font-bold text-[#1E1419]">
+                  {saveStatus ? saveStatus : 'Ready to publish changes to your storefront?'}
+                </p>
+                <p className="text-[11px] text-[#45313D]">
+                  Saves store info, social links, PayPal &amp; Google Pay, GCash/Maya QR codes, SEO, and policies.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveSettings}
+                disabled={savingSettings}
+                className="px-6 py-2.5 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-xs transition-colors disabled:opacity-60 cursor-pointer shrink-0"
+              >
+                {savingSettings ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span>{savingSettings ? 'Saving Settings...' : 'Save Website Settings'}</span>
+              </button>
             </div>
 
           </div>
