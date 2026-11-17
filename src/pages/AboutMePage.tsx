@@ -5,7 +5,7 @@ import { ShroomLogoIcon } from '../components/common/Icons.tsx';
 import { SectionHeading } from '../components/common/SectionHeading.tsx';
 
 const DEFAULT_ABOUT_INTRO =
-  "Hi, I'm Mei or Cheumeitzii the artist behind Sleepy Shroom!\nI’m a freelance digital artist and a graphic designer, who loves creating a cozy little worlds and cute characters. Each of my phone, tablet and desktop themes is a small slice of this world – a little scene that comes to life on your Home Screen!\n\nThank you for visiting my shop and helping me achieve my dreams of creating cute things and I hope you find something here that makes your days a little brighter!";
+  "Hi, I'm Mei or Cheumeitzii the artist behind Sleepy Shroom! \n\n I’m a freelance digital artist and a graphic designer, who loves creating a cozy little worlds and cute characters. Each of my phone, tablet and desktop themes is a small slice of this world – a little scene that comes to life on your Home Screen!\n\nThank you for visiting my shop and helping me achieve my dreams of creating cute things and I hope you find something here that makes your days a little brighter!";
 
 export const AboutMePage: React.FC = () => {
   const { settings, navigateTo } = useShop();
