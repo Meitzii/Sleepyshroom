@@ -29,7 +29,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollToThemes }) =>
             </div>
 
             {/* Main Welcome Headline */}
-            <h1 className="font-section-serif font-normal text-4xl sm:text-5xl lg:text-[54px] text-[#292929] tracking-tight leading-[1.12] text-balance">
+            <h1 className="font-section-serif font-normal text-4xl sm:text-5xl lg:text-[58px] text-[#292929] tracking-tight leading-[1.12] text-balance">
               {headline}
             </h1>
 

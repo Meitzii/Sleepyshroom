@@ -100,7 +100,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
             className="group flex items-center gap-2 sm:gap-2.5 text-center transition-transform active:scale-95 cursor-pointer"
           >
             <ShroomLogoIcon size={34} className="transition-transform group-hover:rotate-6 shrink-0" />
-            <span className="font-section-serif font-medium text-2xl sm:text-[26px] text-[#292929] tracking-tight leading-none whitespace-nowrap">
+            <span className="font-section-serif font-medium text-[26px] sm:text-[29px] text-[#292929] tracking-tight leading-none whitespace-nowrap">
               {settings?.storeName || 'sleepyshroom'}
             </span>
           </button>

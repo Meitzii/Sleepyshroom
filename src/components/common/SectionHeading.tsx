@@ -11,10 +11,10 @@ interface SectionHeadingProps {
 }
 
 const SIZE_CLASSES: Record<NonNullable<SectionHeadingProps['size']>, string> = {
-  sm: 'text-2xl sm:text-[26px]',
-  md: 'text-2xl sm:text-3xl lg:text-[34px]',
-  lg: 'text-3xl sm:text-4xl lg:text-[40px]',
-  xl: 'text-3xl sm:text-4xl lg:text-[44px]',
+  sm: 'text-2xl sm:text-[28px]',
+  md: 'text-2xl sm:text-3xl lg:text-[38px]',
+  lg: 'text-3xl sm:text-4xl lg:text-[44px]',
+  xl: 'text-3xl sm:text-4xl lg:text-[48px]',
 };
 
 export const SectionHeading: React.FC<SectionHeadingProps> = ({

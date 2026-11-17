@@ -5,6 +5,26 @@
   --font-body: 'Quicksand', sans-serif;
   --font-section-serif: 'Cormorant Garamond', Georgia, serif;
 
+  /* Global Typographic Scale (slightly larger & easier to read across all screens) */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.95rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1.075rem;
+  --text-base--line-height: 1.6;
+  --text-lg: 1.2rem;
+  --text-lg--line-height: 1.55;
+  --text-xl: 1.35rem;
+  --text-xl--line-height: 1.45;
+  --text-2xl: 1.625rem;
+  --text-2xl--line-height: 1.35;
+  --text-3xl: 2.05rem;
+  --text-3xl--line-height: 1.25;
+  --text-4xl: 2.45rem;
+  --text-4xl--line-height: 1.18;
+  --text-5xl: 3.25rem;
+  --text-5xl--line-height: 1.08;
+
   /* Brand Palette on Pure White Storefront Canvas */
   --color-shroom-red: #A64B3C;
   --color-shroom-white: #FFFFFF;
@@ -25,6 +45,7 @@
 
 body {
   font-family: var(--font-body);
+  font-size: 1.0625rem;
   background-color: #FFFFFF;
   color: #292929;
   overflow-x: hidden;
