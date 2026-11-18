@@ -487,9 +487,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 <div className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-200 text-xs space-y-1">
                   <p className="text-[#777777] font-bold">Included File Formats</p>
                   <p className="font-bold text-[#292929] text-xs">
-                    {isStationery
-                      ? product.fileFormat || 'Interactive PDF & High-Resolution PNG Files'
-                      : 'Lossless 300 DPI PNG, High-Resolution JPEG, & Uncompressed ZIP Archives'}
+                    {product.fileFormat ||
+                      (isStationery
+                        ? 'Interactive PDF & High-Resolution PNG Files'
+                        : 'Lossless 300 DPI PNG, High-Resolution JPEG, & Uncompressed ZIP Archives')}
                   </p>
                 </div>
 

@@ -121,7 +121,7 @@ export async function uploadStoreAsset(
     /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name);
 
   if (file.size > 15 * 1024 * 1024) {
-    throw new Error('Selected file is larger than 15 MB. Please choose a smaller image or ZIP archive.');
+    throw new Error('Selected file is larger than 15 MB. Please choose a smaller image, PDF, or ZIP archive.');
   }
 
   const dataUrl =

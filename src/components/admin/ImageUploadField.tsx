@@ -9,6 +9,7 @@ interface ImageUploadFieldProps {
   getToken: () => Promise<string | null>;
   folder?: string;
   aspectClass?: string;
+  imageFit?: 'cover' | 'contain';
   allowClear?: boolean;
   helperText?: string;
   placeholder?: string;
@@ -21,6 +22,7 @@ export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
   getToken,
   folder = 'images',
   aspectClass = 'aspect-16/10',
+  imageFit = 'cover',
   allowClear = false,
   helperText,
   placeholder = '/uploads/... or https://...',
@@ -123,7 +125,7 @@ export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
             src={value}
             alt={label}
             onError={() => setImgBroken(true)}
-            className="w-full h-full object-cover"
+            className={`w-full h-full ${imageFit === 'contain' ? 'object-contain p-2 bg-[#FFFCF7]' : 'object-cover'}`}
           />
         ) : (
           <div className="text-center p-4 space-y-1.5">

@@ -177,9 +177,11 @@ export const AdminDashboard: React.FC = () => {
     webhookConfigured: boolean;
   } | null>(null);
 
-  // Product modal & image upload state
+  // Product modal & catalog management state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [productCatalogFilter, setProductCatalogFilter] = useState<'all' | 'wallpaper' | 'stationery' | 'other'>('all');
+  const [productSearchQuery, setProductSearchQuery] = useState('');
   const [uploadingSlideId, setUploadingSlideId] = useState<string | null>(null);
   const [brokenSlideIds, setBrokenSlideIds] = useState<Record<string, boolean>>({});
   const [uploadingProductGallery, setUploadingProductGallery] = useState(false);
@@ -514,59 +516,193 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // 2. PRODUCT ACTIONS
-  const handleOpenAddProduct = () => {
+  const WALLPAPER_DEFAULT_RES = ['4K UHD (3840 x 2160)', '5K Retina'];
+  const WALLPAPER_DEFAULT_FMT = 'Lossless PNG (300 DPI)';
+  const WALLPAPER_DEFAULT_INC = ['High-res wallpaper variant', 'Setup guide'];
+  const WALLPAPER_DEFAULT_FILE = 'sleepyshroom_wallpaper.zip';
+
+  const STATIONERY_DEFAULT_RES = ['GoodNotes / Notability / Tablet PDF', 'Printable A4 & US Letter'];
+  const STATIONERY_DEFAULT_FMT = 'Interactive Hyperlinked PDF + High-Res PNGs';
+  const STATIONERY_DEFAULT_INC = ['Hyperlinked Digital PDF', 'Quick Import Guide'];
+  const STATIONERY_DEFAULT_FILE = 'sleepyshroom_stationery.pdf';
+
+  const arraysEqual = (a?: string[], b?: string[]) =>
+    JSON.stringify(a || []) === JSON.stringify(b || []);
+
+  const getFirstNonStationeryCollection = () =>
+    allCollections.find(
+      c =>
+        c.id !== DIGITAL_STATIONERY_COLLECTION_ID &&
+        c.slug?.toLowerCase() !== 'digital-stationery'
+    ) || allCollections[0];
+
+  const handleOpenAddProduct = (initialType: 'wallpaper' | 'stationery' = 'wallpaper') => {
+    const isStat = initialType === 'stationery';
+    const defaultWallpaperCol = getFirstNonStationeryCollection();
+
     setEditingProduct({
       id: `prod-${Date.now()}`,
       title: '',
       slug: '',
       description: '',
-      price: 4.00,
-      compareAtPrice: 5.00,
-      theme: allCollections[0]?.name || 'Mushroom Dreams',
-      collection: allCollections[0]?.name || 'Dreamy Night',
-      collectionId: allCollections[0]?.id || '',
-      category: 'desktop',
-      productType: 'wallpaper',
-      deviceTypes: ['desktop'],
-      resolutions: ['4K UHD (3840 x 2160)', '5K Retina'],
-      fileFormat: 'Lossless PNG (300 DPI)',
-      fileSize: '32.0 MB',
-      whatsIncluded: ['High-res wallpaper variant', 'Setup guide'],
+      price: 4.0,
+      compareAtPrice: 5.0,
+      theme: isStat ? 'Cozy Stationery' : defaultWallpaperCol?.name || 'Mushroom Dreams',
+      collection: isStat
+        ? DIGITAL_STATIONERY_COLLECTION_NAME
+        : defaultWallpaperCol?.name || 'Dreamy Night',
+      collectionId: isStat
+        ? DIGITAL_STATIONERY_COLLECTION_ID
+        : defaultWallpaperCol?.id || '',
+      category: isStat ? DIGITAL_STATIONERY_CATEGORIES[0].id : 'desktop',
+      productType: initialType,
+      deviceTypes: isStat ? ['tablet', 'desktop'] : ['desktop'],
+      resolutions: isStat ? [...STATIONERY_DEFAULT_RES] : [...WALLPAPER_DEFAULT_RES],
+      fileFormat: isStat ? STATIONERY_DEFAULT_FMT : WALLPAPER_DEFAULT_FMT,
+      fileSize: isStat ? '12.0 MB' : '32.0 MB',
+      whatsIncluded: isStat ? [...STATIONERY_DEFAULT_INC] : [...WALLPAPER_DEFAULT_INC],
       images: ['/src/assets/images/hero_mushroom_cottage_1794020164209.jpg'],
       featured: false,
       isNew: true,
       popularity: 90,
       status: 'published',
       createdAt: new Date().toISOString(),
-      downloadFileName: 'sleepyshroom_wallpaper.zip',
+      downloadFileName: isStat ? STATIONERY_DEFAULT_FILE : WALLPAPER_DEFAULT_FILE,
     });
     setIsProductModalOpen(true);
   };
 
+  const applyProductTypeSwitch = (prev: Product, nextType: string): Product => {
+    const isNextStationery = nextType === 'stationery';
+    const defaultWallpaperCol = getFirstNonStationeryCollection();
+
+    if (isNextStationery) {
+      const usingWallpaperDefaults = arraysEqual(prev.resolutions, WALLPAPER_DEFAULT_RES);
+      const usingWallpaperInc = arraysEqual(prev.whatsIncluded, WALLPAPER_DEFAULT_INC);
+      const usingWallpaperDev = arraysEqual(prev.deviceTypes, ['desktop']);
+
+      return {
+        ...prev,
+        productType: 'stationery',
+        category: isStationeryCategoryId(prev.category)
+          ? prev.category
+          : DIGITAL_STATIONERY_CATEGORIES[0].id,
+        collectionId: DIGITAL_STATIONERY_COLLECTION_ID,
+        collection: DIGITAL_STATIONERY_COLLECTION_NAME,
+        theme:
+          !prev.theme || prev.theme === (defaultWallpaperCol?.name || 'Mushroom Dreams')
+            ? 'Cozy Stationery'
+            : prev.theme,
+        deviceTypes: usingWallpaperDev ? ['tablet', 'desktop'] : prev.deviceTypes,
+        resolutions: usingWallpaperDefaults ? [...STATIONERY_DEFAULT_RES] : prev.resolutions,
+        fileFormat:
+          !prev.fileFormat || prev.fileFormat === WALLPAPER_DEFAULT_FMT
+            ? STATIONERY_DEFAULT_FMT
+            : prev.fileFormat,
+        fileSize: !prev.fileSize || prev.fileSize === '32.0 MB' ? '12.0 MB' : prev.fileSize,
+        whatsIncluded: usingWallpaperInc ? [...STATIONERY_DEFAULT_INC] : prev.whatsIncluded,
+        downloadFileName:
+          !prev.downloadFileName || prev.downloadFileName === WALLPAPER_DEFAULT_FILE
+            ? STATIONERY_DEFAULT_FILE
+            : prev.downloadFileName,
+      };
+    }
+
+    const usingStationeryDefaults = arraysEqual(prev.resolutions, STATIONERY_DEFAULT_RES);
+    const usingStationeryInc = arraysEqual(prev.whatsIncluded, STATIONERY_DEFAULT_INC);
+    const usingStationeryDev = arraysEqual(prev.deviceTypes, ['tablet', 'desktop']);
+    const wasInStationeryCol =
+      prev.collectionId === DIGITAL_STATIONERY_COLLECTION_ID ||
+      String(prev.collection || '').toLowerCase() === 'digital stationery';
+
+    return {
+      ...prev,
+      productType: nextType,
+      category: isStationeryCategoryId(prev.category)
+        ? nextType === 'bundle'
+          ? 'bundle'
+          : nextType === 'icon_pack'
+            ? 'icon_pack'
+            : 'desktop'
+        : prev.category,
+      collectionId: wasInStationeryCol ? defaultWallpaperCol?.id || '' : prev.collectionId,
+      collection: wasInStationeryCol
+        ? defaultWallpaperCol?.name || 'Dreamy Night'
+        : prev.collection,
+      theme:
+        prev.theme === 'Cozy Stationery'
+          ? defaultWallpaperCol?.name || 'Mushroom Dreams'
+          : prev.theme,
+      deviceTypes: usingStationeryDev ? ['desktop'] : prev.deviceTypes,
+      resolutions: usingStationeryDefaults ? [...WALLPAPER_DEFAULT_RES] : prev.resolutions,
+      fileFormat:
+        !prev.fileFormat || prev.fileFormat === STATIONERY_DEFAULT_FMT
+          ? WALLPAPER_DEFAULT_FMT
+          : prev.fileFormat,
+      fileSize: !prev.fileSize || prev.fileSize === '12.0 MB' ? '32.0 MB' : prev.fileSize,
+      whatsIncluded: usingStationeryInc ? [...WALLPAPER_DEFAULT_INC] : prev.whatsIncluded,
+      downloadFileName:
+        !prev.downloadFileName || prev.downloadFileName === STATIONERY_DEFAULT_FILE
+          ? WALLPAPER_DEFAULT_FILE
+          : prev.downloadFileName,
+    };
+  };
+
   const handleSaveProductModal = async () => {
-    if (!editingProduct || !editingProduct.title) {
+    if (!editingProduct || !editingProduct.title.trim()) {
       setErrorMessage('Please provide a product title');
       return;
     }
+
+    const isStat = isStationeryProduct(editingProduct);
+    const cleanedResolutions = (editingProduct.resolutions || [])
+      .map(s => s.trim())
+      .filter(Boolean);
+    const cleanedIncluded = (editingProduct.whatsIncluded || [])
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    const payload: Product = {
+      ...editingProduct,
+      title: editingProduct.title.trim(),
+      resolutions:
+        cleanedResolutions.length > 0
+          ? cleanedResolutions
+          : isStat
+            ? [...STATIONERY_DEFAULT_RES]
+            : [...WALLPAPER_DEFAULT_RES],
+      whatsIncluded:
+        cleanedIncluded.length > 0
+          ? cleanedIncluded
+          : isStat
+            ? [...STATIONERY_DEFAULT_INC]
+            : [...WALLPAPER_DEFAULT_INC],
+      deviceTypes:
+        editingProduct.deviceTypes && editingProduct.deviceTypes.length > 0
+          ? editingProduct.deviceTypes
+          : isStat
+            ? ['tablet', 'desktop']
+            : ['desktop'],
+    };
 
     try {
       const token = await getFreshAdminToken();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers.Authorization = `Bearer ${token}`;
 
-      const isExisting = allProducts.some(p => p.id === editingProduct.id);
-      const url = isExisting ? `/api/admin/products/${editingProduct.id}` : '/api/admin/products';
+      const isExisting = allProducts.some(p => p.id === payload.id);
+      const url = isExisting ? `/api/admin/products/${payload.id}` : '/api/admin/products';
       const method = isExisting ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
         method,
         headers,
-        body: JSON.stringify(editingProduct),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
         setIsProductModalOpen(false);
-        triggerSaveNotification(`Product "${editingProduct.title}" saved successfully!`);
+        triggerSaveNotification(`Product "${payload.title}" saved successfully!`);
         void loadAdminData(token);
         refreshData();
       } else {
@@ -1284,12 +1420,12 @@ export const AdminDashboard: React.FC = () => {
               </button>
 
               <button
-                onClick={handleOpenAddProduct}
+                onClick={() => handleOpenAddProduct()}
                 className="p-5 bg-white rounded-2xl border border-[#D5C2BB] text-left hover:border-[#8B6F7A] transition-colors cursor-pointer"
               >
                 <Plus className="w-5 h-5 text-[#8B6F7A] mb-2" />
                 <h4 className="font-bold text-sm text-[#1E1419]">Add New Product</h4>
-                <p className="text-xs text-[#33222C] font-medium mt-1">Publish a new desktop or mobile wallpaper.</p>
+                <p className="text-xs text-[#33222C] font-medium mt-1">Publish a new wallpaper or digital stationery product.</p>
               </button>
 
               <button
@@ -1543,100 +1679,193 @@ export const AdminDashboard: React.FC = () => {
         )}
 
         {/* TAB 3: PRODUCT MANAGEMENT */}
-        {activeTab === 'products' && (
-          <div className="space-y-6">
-            <div className="bg-[#F9F6F0] p-5 rounded-3xl border border-[#E8C9C1] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="font-heading font-bold text-lg text-[#1E1419]">
-                  Product Catalog
-                </h2>
-                <p className="text-xs text-[#33222C]">
-                  Manage all downloadable digital wallpapers, pricing, device tags, and files.
-                </p>
+        {activeTab === 'products' && (() => {
+          const stationeryProducts = allProducts.filter(p => isStationeryProduct(p));
+          const otherProducts = allProducts.filter(
+            p => !isStationeryProduct(p) && (p.productType === 'bundle' || p.productType === 'icon_pack')
+          );
+          const wallpaperProducts = allProducts.filter(
+            p => !isStationeryProduct(p) && p.productType !== 'bundle' && p.productType !== 'icon_pack'
+          );
+
+          const filteredProducts = allProducts.filter(prod => {
+            const isStat = isStationeryProduct(prod);
+            const isOther = !isStat && (prod.productType === 'bundle' || prod.productType === 'icon_pack');
+            if (productCatalogFilter === 'stationery' && !isStat) return false;
+            if (productCatalogFilter === 'wallpaper' && (isStat || isOther)) return false;
+            if (productCatalogFilter === 'other' && !isOther) return false;
+
+            const q = productSearchQuery.trim().toLowerCase();
+            if (!q) return true;
+            return (
+              prod.title.toLowerCase().includes(q) ||
+              (prod.theme || '').toLowerCase().includes(q) ||
+              (prod.collection || '').toLowerCase().includes(q) ||
+              (prod.category || '').toLowerCase().includes(q)
+            );
+          });
+
+          return (
+            <div className="space-y-5">
+              <div className="bg-[#F9F6F0] p-5 rounded-3xl border border-[#E8C9C1] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="font-heading font-bold text-lg text-[#1E1419]">
+                    Product Catalog
+                  </h2>
+                  <p className="text-xs text-[#33222C]">
+                    Manage all downloadable digital products (wallpapers, digital stationery, icon packs &amp; bundles), pricing, categories, and files.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => handleOpenAddProduct(productCatalogFilter === 'stationery' ? 'stationery' : 'wallpaper')}
+                    className="px-5 py-2.5 bg-[#A64B3C] text-[#FFFCF7] rounded-xl text-xs font-bold hover:bg-[#8E3E30] flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add New Product</span>
+                  </button>
+                </div>
               </div>
 
-              <button
-                onClick={handleOpenAddProduct}
-                className="px-5 py-2.5 bg-[#8B6F7A] text-[#F7F3E9] rounded-xl text-xs font-bold hover:bg-[#785E69] flex items-center gap-1.5 transition-all shadow-xs"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add New Product</span>
-              </button>
-            </div>
+              {/* Catalog Type Filter & Search Bar */}
+              <div className="bg-[#F9F6F0] p-3.5 rounded-2xl border border-[#E8C9C1] flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[
+                    { id: 'all', label: `All Products (${allProducts.length})` },
+                    { id: 'wallpaper', label: `Wallpapers (${wallpaperProducts.length})` },
+                    { id: 'stationery', label: `Digital Stationery (${stationeryProducts.length})` },
+                    { id: 'other', label: `Icon Packs & Bundles (${otherProducts.length})` },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setProductCatalogFilter(tab.id as any)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                        productCatalogFilter === tab.id
+                          ? 'bg-[#8B6F7A] text-[#FFFCF7]'
+                          : 'bg-white text-[#33222C] border border-[#E8C9C1] hover:bg-[#FCF3E2]'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
 
-            {/* Products Table */}
-            <div className="bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] overflow-hidden shadow-xs">
-              <div className="divide-y divide-[#E8C9C1]/50">
-                {allProducts.map(prod => (
-                  <div key={prod.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <img
-                        src={prod.images[0]}
-                        alt={prod.title}
-                        className="w-16 h-12 object-cover rounded-xl shrink-0 border border-[#D5C2BB]"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-heading font-bold text-sm text-[#1E1419]">
-                            {prod.title}
-                          </h4>
-                          {isStationeryProduct(prod) && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FCF3E2] text-[#A64B3C] border border-[#EADCC8]">
-                              {getStationeryCategoryLabel(prod.category)}
-                            </span>
-                          )}
-                          {Boolean(prod.isFree || prod.price === 0) && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFD58A] text-[#1E1419] border border-[#E6A020]/40">
-                              Freebie Gift 🎁
-                            </span>
-                          )}
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            prod.status === 'published' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-stone-200 text-stone-800'
-                          }`}>
-                            {prod.status}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-[#33222C] font-medium mt-0.5 flex-wrap">
-                          <span>{isStationeryProduct(prod) ? prod.collection || 'Digital Stationery' : prod.theme}</span>
-                          <span>·</span>
-                          <span className="capitalize">{prod.deviceTypes.join(', ')}</span>
-                          <span>·</span>
-                          <span className="text-emerald-800 font-bold">{(prod.downloadCount || 0).toLocaleString()} downloads</span>
-                          <span>·</span>
-                          {/* Distinctive Product Price */}
-                          <span className="font-extrabold text-[#945367] tabular-nums">
-                            {Boolean(prod.isFree || prod.price === 0) ? 'FREE' : `$${prod.price.toFixed(2)}`}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                <div className="relative w-full md:w-64">
+                  <Search className="w-3.5 h-3.5 text-[#8B6F7A] absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={productSearchQuery}
+                    onChange={e => setProductSearchQuery(e.target.value)}
+                    placeholder="Search title, theme, category..."
+                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-[#E8C9C1] rounded-xl text-[#1E1419]"
+                  />
+                </div>
+              </div>
 
-                    <div className="flex items-center gap-2 self-end sm:self-auto">
-                      <button
-                        onClick={() => {
-                          setEditingProduct({ ...prod });
-                          setIsProductModalOpen(true);
-                        }}
-                        className="px-3 py-1.5 bg-white border border-[#D5C2BB] text-xs font-bold text-[#1E1419] rounded-xl hover:bg-[#F4EAE6] flex items-center gap-1 cursor-pointer"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-[#8B6F7A]" />
-                        <span>Edit</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleDeleteProduct(prod.id, prod.title)}
-                        className="p-1.5 text-[#8B6F7A] hover:text-red-700 rounded-xl hover:bg-red-50 cursor-pointer"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+              {/* Products Table */}
+              <div className="bg-[#F9F6F0] rounded-3xl border border-[#E8C9C1] overflow-hidden shadow-xs">
+                {filteredProducts.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-[#5C4952]">
+                    No products match the current filter.
                   </div>
-                ))}
+                ) : (
+                  <div className="divide-y divide-[#E8C9C1]/50">
+                    {filteredProducts.map(prod => {
+                      const isStat = isStationeryProduct(prod);
+                      const typeBadgeLabel = isStat
+                        ? `Stationery · ${getStationeryCategoryLabel(prod.category)}`
+                        : prod.productType === 'bundle'
+                          ? 'Bundle'
+                          : prod.productType === 'icon_pack'
+                            ? 'Icon Pack'
+                            : 'Wallpaper';
+
+                      return (
+                        <div key={prod.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <img
+                              src={prod.images[0]}
+                              alt={prod.title}
+                              className={`w-16 h-12 rounded-xl shrink-0 border border-[#D5C2BB] ${
+                                isStat ? 'object-contain bg-[#FFFCF7] p-0.5' : 'object-cover'
+                              }`}
+                            />
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-heading font-bold text-sm text-[#1E1419]">
+                                  {prod.title}
+                                </h4>
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                    isStat
+                                      ? 'bg-[#FCF3E2] text-[#A64B3C] border-[#EADCC8]'
+                                      : 'bg-white text-[#5C4952] border-[#E8C9C1]'
+                                  }`}
+                                >
+                                  {typeBadgeLabel}
+                                </span>
+                                {Boolean(prod.isFree || prod.price === 0) && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFD58A] text-[#1E1419] border border-[#E6A020]/40">
+                                    Freebie Gift
+                                  </span>
+                                )}
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  prod.status === 'published' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-stone-200 text-stone-800'
+                                }`}>
+                                  {prod.status}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-[#33222C] font-medium mt-0.5 flex-wrap">
+                                <span>{isStat ? prod.theme || prod.collection || 'Digital Stationery' : prod.theme}</span>
+                                <span>·</span>
+                                <span className="capitalize">{(prod.deviceTypes || ['desktop']).join(', ')}</span>
+                                <span>·</span>
+                                <span className="text-emerald-800 font-bold">{(prod.downloadCount || 0).toLocaleString()} downloads</span>
+                                <span>·</span>
+                                <span className="font-extrabold text-[#945367] tabular-nums">
+                                  {Boolean(prod.isFree || prod.price === 0) ? 'FREE' : `$${prod.price.toFixed(2)}`}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 self-end sm:self-auto">
+                            <button
+                              onClick={() => {
+                                setEditingProduct({
+                                  ...prod,
+                                  resolutions: Array.isArray(prod.resolutions) ? prod.resolutions : [],
+                                  whatsIncluded: Array.isArray(prod.whatsIncluded) ? prod.whatsIncluded : [],
+                                  deviceTypes: Array.isArray(prod.deviceTypes) ? prod.deviceTypes : ['desktop'],
+                                  images: Array.isArray(prod.images) ? prod.images : [],
+                                });
+                                setIsProductModalOpen(true);
+                              }}
+                              className="px-3 py-1.5 bg-white border border-[#D5C2BB] text-xs font-bold text-[#1E1419] rounded-xl hover:bg-[#F4EAE6] flex items-center gap-1 cursor-pointer"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-[#8B6F7A]" />
+                              <span>Edit</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteProduct(prod.id, prod.title)}
+                              className="p-1.5 text-[#8B6F7A] hover:text-red-700 rounded-xl hover:bg-red-50 cursor-pointer"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* TAB 4: HOMEPAGE MANAGEMENT */}
         {activeTab === 'homepage' && settings && (
@@ -3515,515 +3744,630 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* MODAL: PRODUCT EDIT / ADD */}
-        {isProductModalOpen && editingProduct && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs overflow-y-auto">
-            <div className="bg-[#F7F3E9] rounded-3xl max-w-2xl w-full p-6 sm:p-8 border border-[#E8C9C1] shadow-2xl max-h-[90vh] overflow-y-auto space-y-5">
-              
-              <div className="flex items-center justify-between border-b border-[#E8C9C1]/60 pb-3">
-                <h3 className="font-heading font-bold text-lg text-[#1E1419]">
-                  {allProducts.some(p => p.id === editingProduct.id) ? 'Edit Product' : 'Add New Wallpaper'}
-                </h3>
-                <button onClick={() => setIsProductModalOpen(false)} className="text-[#8B6F7A] font-bold">✕</button>
-              </div>
+        {/* MODAL: PRODUCT EDIT / ADD (GENERAL FOR WALLPAPERS & DIGITAL STATIONERY) */}
+        {isProductModalOpen && editingProduct && (() => {
+          const isStationeryModal = editingProduct.productType === 'stationery';
 
-              <div className="space-y-4 text-xs">
-                <div>
-                  <label className="block font-bold text-[#1E1419] mb-1">Title *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingProduct.title}
-                    onChange={e => setEditingProduct({ ...editingProduct, title: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl text-[#1E1419]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs overflow-y-auto">
+              <div className="bg-[#F7F3E9] rounded-3xl max-w-2xl w-full p-6 sm:p-8 border border-[#E8C9C1] shadow-2xl max-h-[90vh] overflow-y-auto space-y-5">
+                
+                <div className="flex items-center justify-between border-b border-[#E8C9C1]/60 pb-3">
                   <div>
-                    <label className="block font-bold text-[#1E1419] mb-1">Theme Collection</label>
-                    <select
-                      value={editingProduct.collectionId || ''}
-                      onChange={e => {
-                        const col = allCollections.find(c => c.id === e.target.value);
-                        setEditingProduct({
-                          ...editingProduct,
-                          collectionId: e.target.value || undefined,
-                          collection: col ? col.name : editingProduct.collection,
-                          theme: col ? col.name : editingProduct.theme,
-                        });
-                      }}
-                      className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
-                    >
-                      <option value="">Custom / Manual</option>
-                      {allCollections.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-bold text-[#1E1419] mb-1">Category Filter</label>
-                    <select
-                      value={
-                        editingProduct.productType === 'stationery'
-                          ? (isStationeryCategoryId(editingProduct.category) ? editingProduct.category : 'digital-notes')
-                          : (editingProduct.category || 'desktop')
-                      }
-                      onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
-                    >
-                      {editingProduct.productType === 'stationery' ? (
-                        DIGITAL_STATIONERY_CATEGORIES.map(cat => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.label}
-                          </option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="desktop">Desktop Wallpapers</option>
-                          <option value="phone_tablet">Phone &amp; Tablet Wallpapers</option>
-                          <option value="icon_pack">Icon Packs</option>
-                          <option value="bundle">Bundles</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-bold text-[#1E1419] mb-1">Product Type</label>
-                    <select
-                      value={editingProduct.productType || 'wallpaper'}
-                      onChange={e => {
-                        const nextType = e.target.value;
-                        if (nextType === 'stationery') {
-                          setEditingProduct({
-                            ...editingProduct,
-                            productType: 'stationery',
-                            category: isStationeryCategoryId(editingProduct.category)
-                              ? editingProduct.category
-                              : DIGITAL_STATIONERY_CATEGORIES[0].id,
-                            collectionId: DIGITAL_STATIONERY_COLLECTION_ID,
-                            collection: DIGITAL_STATIONERY_COLLECTION_NAME,
-                          });
-                        } else {
-                          setEditingProduct({
-                            ...editingProduct,
-                            productType: nextType,
-                            category: isStationeryCategoryId(editingProduct.category)
-                              ? (nextType === 'bundle' ? 'bundle' : nextType === 'icon_pack' ? 'icon_pack' : 'desktop')
-                              : editingProduct.category,
-                          });
-                        }
-                      }}
-                      className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
-                    >
-                      <option value="wallpaper">Wallpaper</option>
-                      <option value="icon_pack">Icon Pack</option>
-                      <option value="bundle">Bundle</option>
-                      <option value="stationery">Digital Stationery</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-bold text-[#1E1419] mb-1">Theme Label</label>
-                    <input
-                      type="text"
-                      value={editingProduct.theme}
-                      onChange={e => setEditingProduct({ ...editingProduct, theme: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-[#1E1419] mb-1">Collection Label</label>
-                    <input
-                      type="text"
-                      value={editingProduct.collection}
-                      onChange={e => setEditingProduct({ ...editingProduct, collection: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
-                    />
-                  </div>
-                </div>
-
-                {/* Freebie Wallpaper Setting */}
-                <div className="p-3 bg-[#E8C9C1]/30 rounded-2xl border border-[#E8C9C1] flex items-center justify-between">
-                  <div>
-                    <label className="font-bold text-[#1E1419] flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(editingProduct.isFree || editingProduct.price === 0)}
-                        onChange={e => {
-                          const isFreeVal = e.target.checked;
-                          setEditingProduct({
-                            ...editingProduct,
-                            isFree: isFreeVal,
-                            price: isFreeVal ? 0 : (editingProduct.price || 3.50),
-                            collection: isFreeVal ? 'Free Wallpapers' : editingProduct.collection,
-                          });
-                        }}
-                        className="accent-[#8B6F7A] w-4 h-4 cursor-pointer"
-                      />
-                      <span>Make this a Freebie Wallpaper (Price = $0.00)</span>
-                    </label>
-                    <p className="text-[11px] text-[#33222C] mt-0.5 ml-6 font-medium">
-                      Customers get a 1-click "Free Download" button with no payment needed!
+                    <h3 className="font-heading font-bold text-lg text-[#1E1419]">
+                      {allProducts.some(p => p.id === editingProduct.id) ? 'Edit Digital Product' : 'Add New Digital Product'}
+                    </h3>
+                    <p className="text-[11px] text-[#5C4952]">
+                      List wallpapers, digital stationery, icon packs, or bundles using one unified form.
                     </p>
                   </div>
+                  <button onClick={() => setIsProductModalOpen(false)} className="text-[#8B6F7A] font-bold cursor-pointer">✕</button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4 text-xs">
+                  {/* Prominent Product Type Picker */}
                   <div>
-                    <label className="block font-bold text-[#1E1419] mb-1">
-                      Price ($) * {Boolean(editingProduct.isFree || editingProduct.price === 0) && '(Free)'}
-                    </label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      disabled={Boolean(editingProduct.isFree)}
-                      value={editingProduct.price}
-                      onChange={e => setEditingProduct({ ...editingProduct, price: Number(e.target.value) })}
-                      className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl text-[#1E1419] disabled:opacity-50"
-                    />
+                    <label className="block font-bold text-[#1E1419] mb-1.5">Product Type *</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { value: 'wallpaper', label: 'Wallpaper' },
+                        { value: 'stationery', label: 'Digital Stationery' },
+                        { value: 'icon_pack', label: 'Icon Pack' },
+                        { value: 'bundle', label: 'Bundle' },
+                      ].map(opt => {
+                        const active = (editingProduct.productType || 'wallpaper') === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setEditingProduct(prev => (prev ? applyProductTypeSwitch(prev, opt.value) : prev))}
+                            className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                              active
+                                ? 'bg-[#A64B3C] text-[#FFFCF7] border-[#A64B3C] shadow-xs'
+                                : 'bg-white text-[#33222C] border-[#E8C9C1] hover:bg-[#FCF3E2]'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
+
                   <div>
-                    <label className="block font-bold text-[#1E1419] mb-1">Compare-at Price ($)</label>
+                    <label className="block font-bold text-[#1E1419] mb-1">Product Title *</label>
                     <input
-                      type="number"
-                      step="0.5"
-                      value={editingProduct.compareAtPrice || ''}
-                      onChange={e => setEditingProduct({ ...editingProduct, compareAtPrice: Number(e.target.value) || undefined })}
+                      type="text"
+                      required
+                      placeholder={
+                        isStationeryModal
+                          ? 'e.g. Mushroom Field Cornell Notes Set'
+                          : 'e.g. Cozy Mushroom Rainy Window 4K Wallpaper'
+                      }
+                      value={editingProduct.title}
+                      onChange={e => setEditingProduct({ ...editingProduct, title: e.target.value })}
                       className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl text-[#1E1419]"
                     />
                   </div>
-                </div>
 
-                {/* Social Proof Stats: Download Numbers & Live Text */}
-                <div className="grid grid-cols-2 gap-4 bg-[#F4EAE6]/60 p-3.5 rounded-2xl border border-[#D5C2BB]">
-                  <div>
-                    <label className="block font-bold text-[#1E1419] mb-1">
-                      Downloads / Sales Count (Social Proof) *
-                    </label>
-                    <input
-                      type="number"
-                      value={editingProduct.downloadCount ?? 120}
-                      onChange={e => setEditingProduct({ ...editingProduct, downloadCount: Number(e.target.value) })}
-                      className="w-full px-3 py-2 bg-white border border-[#D5C2BB] rounded-xl text-[#1E1419] font-bold"
-                    />
-                    <p className="text-[10px] text-[#45313D] font-medium mt-0.5">
-                      Card will display: "{(editingProduct.downloadCount || 0).toLocaleString()} downloaded"
-                    </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-[#1E1419] mb-1">
+                        {isStationeryModal ? 'Stationery Category *' : 'Product Category *'}
+                      </label>
+                      <select
+                        value={
+                          isStationeryModal
+                            ? (isStationeryCategoryId(editingProduct.category) ? editingProduct.category : DIGITAL_STATIONERY_CATEGORIES[0].id)
+                            : (editingProduct.category || 'desktop')
+                        }
+                        onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                      >
+                        {isStationeryModal ? (
+                          DIGITAL_STATIONERY_CATEGORIES.map(cat => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.label}
+                            </option>
+                          ))
+                        ) : (
+                          <>
+                            <option value="desktop">Desktop Wallpapers</option>
+                            <option value="phone_tablet">Phone &amp; Tablet Wallpapers</option>
+                            <option value="icon_pack">Icon Packs</option>
+                            <option value="bundle">Bundles</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-[#1E1419] mb-1">Storefront Collection</label>
+                      <select
+                        value={editingProduct.collectionId || ''}
+                        onChange={e => {
+                          const col = allCollections.find(c => c.id === e.target.value);
+                          setEditingProduct({
+                            ...editingProduct,
+                            collectionId: e.target.value || undefined,
+                            collection: col ? col.name : editingProduct.collection,
+                            theme:
+                              col && !isStationeryModal
+                                ? col.name
+                                : editingProduct.theme,
+                          });
+                        }}
+                        className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                      >
+                        <option value="">Custom / Manual</option>
+                        {allCollections.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block font-bold text-[#1E1419] mb-1">
-                      Recent Activity Time Text
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 2m ago, or just now"
-                      value={editingProduct.recentDownloadTime || 'just now'}
-                      onChange={e => setEditingProduct({ ...editingProduct, recentDownloadTime: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-[#D5C2BB] rounded-xl text-[#1E1419] font-medium"
-                    />
-                    <p className="text-[10px] text-[#45313D] font-medium mt-0.5">
-                      Pulsing live text: "Live: Downloaded {editingProduct.recentDownloadTime || 'just now'}"
-                    </p>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-bold text-[#1E1419] mb-1">Theme / Aesthetic Tag</label>
+                      <input
+                        type="text"
+                        placeholder={isStationeryModal ? 'e.g. Cozy Study, Botanical' : 'e.g. Mushroom Dreams'}
+                        value={editingProduct.theme}
+                        onChange={e => setEditingProduct({ ...editingProduct, theme: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E1419] mb-1">Collection Display Name</label>
+                      <input
+                        type="text"
+                        placeholder={isStationeryModal ? 'Digital Stationery' : 'Dreamy Night'}
+                        value={editingProduct.collection}
+                        onChange={e => setEditingProduct({ ...editingProduct, collection: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block font-bold text-[#1E1419] mb-1">Description</label>
-                  <textarea
-                    rows={3}
-                    value={editingProduct.description}
-                    onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-[#1E1419] mb-1">Device Compatibility</label>
-                  <div className="flex gap-4">
-                    {['desktop', 'mobile', 'tablet'].map((dev: any) => (
-                      <label key={dev} className="flex items-center gap-1.5 cursor-pointer capitalize">
+                  {/* Free Digital Product Setting */}
+                  <div className="p-3 bg-[#E8C9C1]/30 rounded-2xl border border-[#E8C9C1] flex items-center justify-between">
+                    <div>
+                      <label className="font-bold text-[#1E1419] flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={editingProduct.deviceTypes.includes(dev)}
+                          checked={Boolean(editingProduct.isFree || editingProduct.price === 0)}
                           onChange={e => {
-                            const cur = editingProduct.deviceTypes;
-                            const next = e.target.checked ? [...cur, dev] : cur.filter(d => d !== dev);
-                            setEditingProduct({ ...editingProduct, deviceTypes: next });
+                            const isFreeVal = e.target.checked;
+                            setEditingProduct({
+                              ...editingProduct,
+                              isFree: isFreeVal,
+                              price: isFreeVal ? 0 : (editingProduct.price || 3.5),
+                              collection: isFreeVal
+                                ? (isStationeryModal ? DIGITAL_STATIONERY_COLLECTION_NAME : 'Free Wallpapers')
+                                : editingProduct.collection,
+                            });
                           }}
-                          className="accent-[#8B6F7A]"
+                          className="accent-[#8B6F7A] w-4 h-4 cursor-pointer"
                         />
-                        <span>{dev}</span>
+                        <span>Make this a Free Digital Product (Price = $0.00)</span>
                       </label>
-                    ))}
+                      <p className="text-[11px] text-[#33222C] mt-0.5 ml-6 font-medium">
+                        Customers get a 1-click &quot;Free Download&quot; button with no payment needed!
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Primary Picture Upload & Preview */}
-                <div className="p-4 bg-[#FCF3E2]/55 rounded-2xl border border-[#E8C9C1] space-y-4">
-                  <ImageUploadField
-                    label="Primary Wallpaper / Product Cover Picture *"
-                    value={editingProduct.images[0] || ''}
-                    onChange={url => {
-                      const rest = editingProduct.images.slice(1);
-                      setEditingProduct({
-                        ...editingProduct,
-                        images: [url, ...rest],
-                      });
-                    }}
-                    getToken={getFreshAdminToken}
-                    folder="products"
-                    helperText="Drag & drop a PNG/JPG/WebP mockup, click Upload Picture, or paste an image URL."
-                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-bold text-[#1E1419] mb-1">
+                        Price ($) * {Boolean(editingProduct.isFree || editingProduct.price === 0) && '(Free)'}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        disabled={Boolean(editingProduct.isFree)}
+                        value={editingProduct.price}
+                        onChange={e => setEditingProduct({ ...editingProduct, price: Number(e.target.value) })}
+                        className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl text-[#1E1419] disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E1419] mb-1">Compare-at Price ($)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={editingProduct.compareAtPrice || ''}
+                        onChange={e => setEditingProduct({ ...editingProduct, compareAtPrice: Number(e.target.value) || undefined })}
+                        className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl text-[#1E1419]"
+                      />
+                    </div>
+                  </div>
 
-                  {/* Additional Gallery Pictures */}
-                  <div className="pt-2 border-t border-[#E8C9C1]/60 space-y-2.5">
-                    <div className="flex items-center justify-between gap-2">
+                  {/* Social Proof Stats: Download Numbers & Live Text */}
+                  <div className="grid grid-cols-2 gap-4 bg-[#F4EAE6]/60 p-3.5 rounded-2xl border border-[#D5C2BB]">
+                    <div>
+                      <label className="block font-bold text-[#1E1419] mb-1">
+                        Downloads / Sales Count (Social Proof) *
+                      </label>
+                      <input
+                        type="number"
+                        value={editingProduct.downloadCount ?? 120}
+                        onChange={e => setEditingProduct({ ...editingProduct, downloadCount: Number(e.target.value) })}
+                        className="w-full px-3 py-2 bg-white border border-[#D5C2BB] rounded-xl text-[#1E1419] font-bold"
+                      />
+                      <p className="text-[10px] text-[#45313D] font-medium mt-0.5">
+                        Card will display: &quot;{(editingProduct.downloadCount || 0).toLocaleString()} {isStationeryModal ? 'downloads' : 'downloaded'}&quot;
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E1419] mb-1">
+                        Recent Activity Time Text
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 2m ago, or just now"
+                        value={editingProduct.recentDownloadTime || 'just now'}
+                        onChange={e => setEditingProduct({ ...editingProduct, recentDownloadTime: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-[#D5C2BB] rounded-xl text-[#1E1419] font-medium"
+                      />
+                      <p className="text-[10px] text-[#45313D] font-medium mt-0.5">
+                        Pulsing live text: &quot;Live: Downloaded {editingProduct.recentDownloadTime || 'just now'}&quot;
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[#1E1419] mb-1">Description</label>
+                    <textarea
+                      rows={3}
+                      placeholder={
+                        isStationeryModal
+                          ? 'Describe the layout, tabs, templates, or sticker styles included...'
+                          : 'Describe the mood, artwork details, and device screens this pairs well with...'
+                      }
+                      value={editingProduct.description}
+                      onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                    />
+                  </div>
+
+                  {/* Digital Package Specifications (Works for Wallpapers & Digital Stationery) */}
+                  <div className="p-4 bg-white/80 rounded-2xl border border-[#E8C9C1] space-y-3">
+                    <div>
+                      <p className="font-bold text-[#1E1419] text-xs">
+                        Package Specifications
+                      </p>
+                      <p className="text-[10px] text-[#5C4952]">
+                        Shown on the product page so buyers know formats, sizes, and everything inside.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-[#1E1419] mb-1">Included File Format</label>
+                        <input
+                          type="text"
+                          placeholder={
+                            isStationeryModal
+                              ? 'e.g. Hyperlinked PDF + PNG Sticker Sheet'
+                              : 'e.g. Lossless PNG (300 DPI)'
+                          }
+                          value={editingProduct.fileFormat || ''}
+                          onChange={e => setEditingProduct({ ...editingProduct, fileFormat: e.target.value })}
+                          className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-[#1E1419] mb-1">Package File Size</label>
+                        <input
+                          type="text"
+                          placeholder={isStationeryModal ? 'e.g. 12.0 MB' : 'e.g. 32.0 MB'}
+                          value={editingProduct.fileSize || ''}
+                          onChange={e => setEditingProduct({ ...editingProduct, fileSize: e.target.value })}
+                          className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-[#1E1419] mb-1">
+                          {isStationeryModal ? 'Compatibility / Page Sizes (one per line)' : 'Resolutions / Specs (one per line)'}
+                        </label>
+                        <textarea
+                          rows={3}
+                          placeholder={
+                            isStationeryModal
+                              ? 'GoodNotes / Notability / Tablet PDF\nPrintable A4 & US Letter'
+                              : '4K UHD (3840 x 2160)\n5K Retina\nMobile & Tablet Ready'
+                          }
+                          value={(editingProduct.resolutions || []).join('\n')}
+                          onChange={e =>
+                            setEditingProduct({
+                              ...editingProduct,
+                              resolutions: e.target.value.split('\n'),
+                            })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-[#1E1419] mb-1">
+                          What&apos;s Included (one per line)
+                        </label>
+                        <textarea
+                          rows={3}
+                          placeholder={
+                            isStationeryModal
+                              ? 'Hyperlinked Digital PDF\n4 Cover Variations\nQuick Import Guide'
+                              : 'High-res wallpaper variant\nMatching lock screen\nSetup guide'
+                          }
+                          value={(editingProduct.whatsIncluded || []).join('\n')}
+                          onChange={e =>
+                            setEditingProduct({
+                              ...editingProduct,
+                              whatsIncluded: e.target.value.split('\n'),
+                            })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[#1E1419] mb-1">Device / Platform Compatibility</label>
+                    <div className="flex gap-4">
+                      {['desktop', 'mobile', 'tablet'].map((dev: any) => (
+                        <label key={dev} className="flex items-center gap-1.5 cursor-pointer capitalize">
+                          <input
+                            type="checkbox"
+                            checked={(editingProduct.deviceTypes || []).includes(dev)}
+                            onChange={e => {
+                              const cur = editingProduct.deviceTypes || [];
+                              const next = e.target.checked ? [...cur, dev] : cur.filter(d => d !== dev);
+                              setEditingProduct({ ...editingProduct, deviceTypes: next });
+                            }}
+                            className="accent-[#8B6F7A]"
+                          />
+                          <span>{dev}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Primary Picture Upload & Preview */}
+                  <div className="p-4 bg-[#FCF3E2]/55 rounded-2xl border border-[#E8C9C1] space-y-4">
+                    <ImageUploadField
+                      label="Primary Product Cover / Preview Picture *"
+                      value={editingProduct.images[0] || ''}
+                      onChange={url => {
+                        const rest = editingProduct.images.slice(1);
+                        setEditingProduct({
+                          ...editingProduct,
+                          images: [url, ...rest],
+                        });
+                      }}
+                      getToken={getFreshAdminToken}
+                      folder={isStationeryModal ? 'stationery' : 'products'}
+                      imageFit={isStationeryModal ? 'contain' : 'cover'}
+                      helperText={
+                        isStationeryModal
+                          ? 'Drag & drop a PNG/JPG/WebP stationery cover or spread mockup (shown at its natural aspect ratio).'
+                          : 'Drag & drop a PNG/JPG/WebP mockup, click Upload Picture, or paste an image URL.'
+                      }
+                    />
+
+                    {/* Additional Gallery Pictures */}
+                    <div className="pt-2 border-t border-[#E8C9C1]/60 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="font-bold text-[#1E1419] text-xs">
+                            Additional Gallery Previews ({Math.max(0, editingProduct.images.length - 1)})
+                          </p>
+                          <p className="text-[10px] text-[#5C4952]">
+                            {isStationeryModal
+                              ? 'Optional extra page spreads, template previews, or sticker closeups shown on the product page.'
+                              : 'Optional extra device screenshots or closeup previews shown on the product page.'}
+                          </p>
+                        </div>
+                        <label className="cursor-pointer shrink-0">
+                          <span className="px-3 py-1.5 bg-white hover:bg-[#F4EAE6] text-[#A64B3C] border border-[#E8C9C1] rounded-xl text-[11px] font-bold inline-flex items-center gap-1.5">
+                            {uploadingProductGallery ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <ImagePlus className="w-3.5 h-3.5" />
+                            )}
+                            <span>{uploadingProductGallery ? 'Uploading...' : 'Add Gallery Picture'}</span>
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            disabled={uploadingProductGallery}
+                            onChange={async e => {
+                              const files = Array.from(e.target.files || []);
+                              e.target.value = '';
+                              if (files.length === 0) return;
+
+                              setErrorMessage(null);
+                              setUploadingProductGallery(true);
+                              try {
+                                const token = await getFreshAdminToken();
+                                const newUrls: string[] = [];
+                                for (const file of files) {
+                                  const uploaded = await uploadStoreAsset(file, {
+                                    token,
+                                    folder: isStationeryModal ? 'stationery' : 'products',
+                                    optimizeImage: true,
+                                  });
+                                  newUrls.push(uploaded.url);
+                                }
+                                setEditingProduct(prev =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        images: [...prev.images.filter(Boolean), ...newUrls],
+                                      }
+                                    : prev
+                                );
+                              } catch (err: any) {
+                                setErrorMessage(err?.message || 'Failed to upload gallery image.');
+                              } finally {
+                                setUploadingProductGallery(false);
+                              }
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+
+                      {editingProduct.images.slice(1).length > 0 && (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                          {editingProduct.images.slice(1).map((imgUrl, idx) => (
+                            <div
+                              key={`${idx}-${imgUrl.slice(0, 24)}`}
+                              className="relative group rounded-xl overflow-hidden border border-[#E8C9C1] bg-white aspect-4/3"
+                            >
+                              <img
+                                src={imgUrl}
+                                alt={`Gallery ${idx + 2}`}
+                                className={`w-full h-full ${isStationeryModal ? 'object-contain p-1 bg-[#FFFCF7]' : 'object-cover'}`}
+                              />
+                              <div className="absolute inset-x-1 bottom-1 flex items-center justify-between gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const actualIdx = idx + 1;
+                                    const copy = [...editingProduct.images];
+                                    const [picked] = copy.splice(actualIdx, 1);
+                                    setEditingProduct({
+                                      ...editingProduct,
+                                      images: [picked, ...copy],
+                                    });
+                                  }}
+                                  className="px-1.5 py-0.5 bg-[#1E1419]/85 text-white text-[9px] font-bold rounded-md cursor-pointer"
+                                >
+                                  Make Cover
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const actualIdx = idx + 1;
+                                    setEditingProduct({
+                                      ...editingProduct,
+                                      images: editingProduct.images.filter((_, i) => i !== actualIdx),
+                                    });
+                                  }}
+                                  aria-label="Remove gallery picture"
+                                  className="p-1 bg-red-600 text-white rounded-md cursor-pointer"
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Optional Dedicated Downloadable Product File (PDF / ZIP / High-Res Image) */}
+                  <div className="p-4 bg-[#F4EAE6]/55 rounded-2xl border border-[#D5C2BB] space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="font-bold text-[#1E1419] text-xs">
-                          Additional Gallery Previews ({Math.max(0, editingProduct.images.length - 1)})
+                          Downloadable Product File (Optional)
                         </p>
-                        <p className="text-[10px] text-[#5C4952]">
-                          Optional extra device screenshots or closeup previews shown on the product page.
+                        <p className="text-[10px] text-[#45313D] font-medium">
+                          Upload the exact deliverable file (.pdf, .zip bundle, or full-res .png / .jpg / .webp) customers receive after checkout. Leave blank to deliver the primary preview picture above.
                         </p>
                       </div>
-                      <label className="cursor-pointer shrink-0">
-                        <span className="px-3 py-1.5 bg-white hover:bg-[#F4EAE6] text-[#A64B3C] border border-[#E8C9C1] rounded-xl text-[11px] font-bold inline-flex items-center gap-1.5">
-                          {uploadingProductGallery ? (
+                      {editingProduct.downloadUrl && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditingProduct({ ...editingProduct, downloadUrl: undefined })
+                          }
+                          className="text-[11px] font-bold text-[#8B6F7A] hover:text-red-700 inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Remove Separate File</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className="cursor-pointer block">
+                        <span className="w-full py-2 px-3 bg-white hover:bg-[#FCF3E2] text-[#A64B3C] border border-[#E8C9C1] rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors">
+                          {uploadingProductDownloadFile ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (
-                            <ImagePlus className="w-3.5 h-3.5" />
+                            <Upload className="w-3.5 h-3.5" />
                           )}
-                          <span>{uploadingProductGallery ? 'Uploading...' : 'Add Gallery Picture'}</span>
+                          <span>
+                            {uploadingProductDownloadFile
+                              ? 'Uploading Product File...'
+                              : editingProduct.downloadUrl
+                                ? 'Replace Deliverable File'
+                                : 'Upload Product File (PDF / ZIP / Image)'}
+                          </span>
                         </span>
                         <input
                           type="file"
-                          accept="image/*"
-                          multiple
-                          disabled={uploadingProductGallery}
+                          accept="image/*,.pdf,.zip,application/pdf,application/zip"
+                          disabled={uploadingProductDownloadFile}
                           onChange={async e => {
-                            const files = Array.from(e.target.files || []);
+                            const file = e.target.files?.[0];
                             e.target.value = '';
-                            if (files.length === 0) return;
+                            if (!file) return;
 
                             setErrorMessage(null);
-                            setUploadingProductGallery(true);
+                            setUploadingProductDownloadFile(true);
                             try {
                               const token = await getFreshAdminToken();
-                              const newUrls: string[] = [];
-                              for (const file of files) {
-                                const uploaded = await uploadStoreAsset(file, {
-                                  token,
-                                  folder: 'products',
-                                  optimizeImage: true,
-                                });
-                                newUrls.push(uploaded.url);
-                              }
+                              const uploaded = await uploadStoreAsset(file, {
+                                token,
+                                folder: isStationeryModal ? 'stationery' : 'wallpapers',
+                                optimizeImage: false,
+                              });
+                              const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
                               setEditingProduct(prev =>
                                 prev
                                   ? {
                                       ...prev,
-                                      images: [...prev.images.filter(Boolean), ...newUrls],
+                                      downloadUrl: uploaded.url,
+                                      downloadFileName: file.name || prev.downloadFileName,
+                                      fileSize: Number(sizeMb) > 0.1 ? `${sizeMb} MB` : prev.fileSize,
                                     }
                                   : prev
                               );
+                              triggerSaveNotification(`Product file "${file.name}" attached!`);
                             } catch (err: any) {
-                              setErrorMessage(err?.message || 'Failed to upload gallery image.');
+                              setErrorMessage(err?.message || 'Failed to upload product file.');
                             } finally {
-                              setUploadingProductGallery(false);
+                              setUploadingProductDownloadFile(false);
                             }
                           }}
                           className="hidden"
                         />
                       </label>
-                    </div>
 
-                    {editingProduct.images.slice(1).length > 0 && (
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                        {editingProduct.images.slice(1).map((imgUrl, idx) => (
-                          <div
-                            key={`${idx}-${imgUrl.slice(0, 24)}`}
-                            className="relative group rounded-xl overflow-hidden border border-[#E8C9C1] bg-white aspect-4/3"
-                          >
-                            <img
-                              src={imgUrl}
-                              alt={`Gallery ${idx + 2}`}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-x-1 bottom-1 flex items-center justify-between gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const actualIdx = idx + 1;
-                                  const copy = [...editingProduct.images];
-                                  const [picked] = copy.splice(actualIdx, 1);
-                                  setEditingProduct({
-                                    ...editingProduct,
-                                    images: [picked, ...copy],
-                                  });
-                                }}
-                                className="px-1.5 py-0.5 bg-[#1E1419]/85 text-white text-[9px] font-bold rounded-md cursor-pointer"
-                              >
-                                Make Cover
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const actualIdx = idx + 1;
-                                  setEditingProduct({
-                                    ...editingProduct,
-                                    images: editingProduct.images.filter((_, i) => i !== actualIdx),
-                                  });
-                                }}
-                                aria-label="Remove gallery picture"
-                                className="p-1 bg-red-600 text-white rounded-md cursor-pointer"
-                              >
-                                <X className="w-2.5 h-2.5" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Optional Dedicated High-Res Wallpaper / ZIP Download File */}
-                <div className="p-4 bg-[#F4EAE6]/55 rounded-2xl border border-[#D5C2BB] space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="font-bold text-[#1E1419] text-xs">
-                        Downloadable Wallpaper File (Optional)
-                      </p>
-                      <p className="text-[10px] text-[#45313D] font-medium">
-                        Upload the exact full-res wallpaper (.png / .jpg / .webp) or .zip bundle customers receive. Leave blank to deliver the primary wallpaper picture above.
-                      </p>
-                    </div>
-                    {editingProduct.downloadUrl && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEditingProduct({ ...editingProduct, downloadUrl: undefined })
-                        }
-                        className="text-[11px] font-bold text-[#8B6F7A] hover:text-red-700 inline-flex items-center gap-1 cursor-pointer"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        <span>Remove Separate File</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <label className="cursor-pointer block">
-                      <span className="w-full py-2 px-3 bg-white hover:bg-[#FCF3E2] text-[#A64B3C] border border-[#E8C9C1] rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors">
-                        {uploadingProductDownloadFile ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Upload className="w-3.5 h-3.5" />
-                        )}
-                        <span>
-                          {uploadingProductDownloadFile
-                            ? 'Uploading Wallpaper File...'
-                            : editingProduct.downloadUrl
-                              ? 'Replace Wallpaper / ZIP File'
-                              : 'Upload Wallpaper / ZIP File'}
-                        </span>
-                      </span>
                       <input
-                        type="file"
-                        accept="image/*,.zip"
-                        disabled={uploadingProductDownloadFile}
-                        onChange={async e => {
-                          const file = e.target.files?.[0];
-                          e.target.value = '';
-                          if (!file) return;
-
-                          setErrorMessage(null);
-                          setUploadingProductDownloadFile(true);
-                          try {
-                            const token = await getFreshAdminToken();
-                            const uploaded = await uploadStoreAsset(file, {
-                              token,
-                              folder: 'wallpapers',
-                              optimizeImage: false,
-                            });
-                            const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-                            setEditingProduct(prev =>
-                              prev
-                                ? {
-                                    ...prev,
-                                    downloadUrl: uploaded.url,
-                                    downloadFileName: file.name || prev.downloadFileName,
-                                    fileSize: Number(sizeMb) > 0.1 ? `${sizeMb} MB` : prev.fileSize,
-                                  }
-                                : prev
-                            );
-                            triggerSaveNotification(`Wallpaper file "${file.name}" attached!`);
-                          } catch (err: any) {
-                            setErrorMessage(err?.message || 'Failed to upload wallpaper file.');
-                          } finally {
-                            setUploadingProductDownloadFile(false);
-                          }
-                        }}
-                        className="hidden"
+                        type="text"
+                        value={editingProduct.downloadFileName || ''}
+                        onChange={e =>
+                          setEditingProduct({ ...editingProduct, downloadFileName: e.target.value })
+                        }
+                        placeholder="Download filename (e.g. cozy_planner.pdf or theme.zip)"
+                        className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl font-mono text-[11px]"
                       />
+                    </div>
+
+                    {editingProduct.downloadUrl && (
+                      <p className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-lg truncate">
+                        Attached download source: {editingProduct.downloadUrl}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editingProduct.status === 'published'}
+                        onChange={e => setEditingProduct({ ...editingProduct, status: e.target.checked ? 'published' : 'draft' })}
+                        className="accent-[#8B6F7A]"
+                      />
+                      <span className="font-bold text-[#1E1419]">Publish to Storefront</span>
                     </label>
 
-                    <input
-                      type="text"
-                      value={editingProduct.downloadFileName || ''}
-                      onChange={e =>
-                        setEditingProduct({ ...editingProduct, downloadFileName: e.target.value })
-                      }
-                      placeholder="Download filename (e.g. cozy_theme.png)"
-                      className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl font-mono text-[11px]"
-                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsProductModalOpen(false)}
+                        className="px-4 py-2 bg-white border border-[#E8C9C1] rounded-xl text-xs font-bold text-[#33222C] cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveProductModal}
+                        disabled={uploadingProductGallery || uploadingProductDownloadFile}
+                        className="px-5 py-2 bg-[#A64B3C] text-[#FFFCF7] rounded-xl text-xs font-bold hover:bg-[#8E3E30] disabled:opacity-60 cursor-pointer"
+                      >
+                        Save Product
+                      </button>
+                    </div>
                   </div>
 
-                  {editingProduct.downloadUrl && (
-                    <p className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-lg truncate">
-                      Attached download source: {editingProduct.downloadUrl}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editingProduct.status === 'published'}
-                      onChange={e => setEditingProduct({ ...editingProduct, status: e.target.checked ? 'published' : 'draft' })}
-                      className="accent-[#8B6F7A]"
-                    />
-                    <span className="font-bold text-[#1E1419]">Publish to Storefront</span>
-                  </label>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsProductModalOpen(false)}
-                      className="px-4 py-2 bg-white border border-[#E8C9C1] rounded-xl text-xs font-bold text-[#33222C] cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveProductModal}
-                      disabled={uploadingProductGallery || uploadingProductDownloadFile}
-                      className="px-5 py-2 bg-[#A64B3C] text-[#FFFCF7] rounded-xl text-xs font-bold hover:bg-[#8E3E30] disabled:opacity-60 cursor-pointer"
-                    >
-                      Save Product
-                    </button>
-                  </div>
                 </div>
 
               </div>
-
             </div>
-          </div>
-        )}
+          );
+        })()}
 
       </div>
     </div>
