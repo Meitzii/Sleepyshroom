@@ -40,6 +40,10 @@ import { parseJsonResponse } from '../utils/apiClient.ts';
 import { uploadStoreAsset } from '../utils/uploadHelper.ts';
 import { formatOrderMoney, formatUsd } from '../utils/currency.ts';
 import {
+  decodeQrPayloadFromImageSrc,
+  isValidEmvcoQrPayload,
+} from '../utils/qrph.ts';
+import {
   SOCIAL_PLATFORMS_META,
   isValidSocialHttpUrl,
   normalizeSocialMediaSettings,
@@ -872,21 +876,32 @@ export const AdminDashboard: React.FC = () => {
         if (compressed.length > 400000) {
           compressed = canvas.toDataURL('image/webp', 0.85);
         }
-        setSettings(prev => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            paymentProviders: {
-              ...prev.paymentProviders,
-              ...(provider === 'gcash'
-                ? { gcashQrImage: compressed }
-                : { mayaQrImage: compressed }),
-            },
-          };
-        });
-        triggerSaveNotification(
-          `${provider === 'gcash' ? 'GCash' : 'Maya'} QR image ready! Click Save Changes to publish.`
-        );
+        void (async () => {
+          const decodedPayload = await decodeQrPayloadFromImageSrc(compressed);
+          const validEmvco = decodedPayload && isValidEmvcoQrPayload(decodedPayload)
+            ? decodedPayload
+            : '';
+
+          setSettings(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              paymentProviders: {
+                ...prev.paymentProviders,
+                ...(provider === 'gcash'
+                  ? { gcashQrImage: compressed, gcashQrPayload: validEmvco }
+                  : { mayaQrImage: compressed, mayaQrPayload: validEmvco }),
+              },
+            };
+          });
+
+          const label = provider === 'gcash' ? 'GCash' : 'Maya';
+          triggerSaveNotification(
+            validEmvco
+              ? `${label} QR image & QRPh auto-amount payload ready! Click Save Changes to publish.`
+              : `${label} QR image ready! Click Save Changes to publish.`
+          );
+        })();
       };
       img.onerror = () => {
         setErrorMessage('Could not read image file. Please select a valid PNG, JPG, or WebP QR code.');
@@ -1881,7 +1896,7 @@ export const AdminDashboard: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-xs text-[#33222C] mt-0.5">
-                    Verified PayPal USD, Google Pay, and PH Local GCash/Maya QR orders, reference approvals, refunds, and download unlocks.
+                    PayPal USD, Google Pay, Free Promo, and instant PH Local GCash/Maya QR orders, refunds, and download records.
                   </p>
                 </div>
 
@@ -2689,7 +2704,7 @@ export const AdminDashboard: React.FC = () => {
                 <div className="p-3 bg-white rounded-2xl border border-[#E8C9C1]">
                   <span className="text-[10px] font-bold uppercase text-[#8B6F7A] block">Currencies Supported</span>
                   <span className="font-bold text-[#1E1419] block mt-0.5 tabular-nums">
-                    USD ($) &amp; PHP (₱) · Min $0.50 USD
+                    USD ($) &amp; PHP (₱) · No Minimum Order
                   </span>
                 </div>
               </div>
@@ -2830,7 +2845,7 @@ export const AdminDashboard: React.FC = () => {
                       <span>PH Local QR Code Payments (GCash &amp; Maya · PHP ₱)</span>
                     </h4>
                     <p className="text-[11px] text-[#45313D] mt-0.5">
-                      Upload your official GCash and Maya QR codes so Filipino buyers can scan &amp; submit their reference number. Downloads stay locked until you confirm receipt in Orders.
+                      Upload your official GCash and Maya QR codes. EMVCo / QRPh codes automatically pre-fill the exact PHP checkout amount for customers, and downloads unlock immediately upon payment confirmation.
                     </p>
                   </div>
 
@@ -2977,6 +2992,7 @@ export const AdminDashboard: React.FC = () => {
                                 paymentProviders: {
                                   ...settings.paymentProviders,
                                   gcashQrImage: '',
+                                  gcashQrPayload: '',
                                 },
                               })}
                               className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-[11px] font-bold cursor-pointer"
@@ -3002,6 +3018,36 @@ export const AdminDashboard: React.FC = () => {
                           })}
                           className="w-full px-2.5 py-1.5 text-[11px] bg-[#F9F6F0] border border-[#D5C2BB] rounded-lg text-[#1E1419]"
                         />
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-bold text-[#8B6F7A]">
+                              QRPh Auto-Amount Payload
+                            </span>
+                            {settings.paymentProviders.gcashQrPayload &&
+                            isValidEmvcoQrPayload(settings.paymentProviders.gcashQrPayload) ? (
+                              <span className="text-[10px] font-bold text-emerald-700">
+                                Auto-amount active ✓
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-[#8B6F7A]">
+                                Auto-detected on upload
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Optional: paste EMVCo/QRPh string (000201...)"
+                            value={settings.paymentProviders.gcashQrPayload ?? ''}
+                            onChange={e => setSettings({
+                              ...settings,
+                              paymentProviders: {
+                                ...settings.paymentProviders,
+                                gcashQrPayload: e.target.value,
+                              },
+                            })}
+                            className="w-full px-2.5 py-1.5 text-[10px] font-mono bg-[#F9F6F0] border border-[#D5C2BB] rounded-lg text-[#1E1419]"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -3120,6 +3166,7 @@ export const AdminDashboard: React.FC = () => {
                                 paymentProviders: {
                                   ...settings.paymentProviders,
                                   mayaQrImage: '',
+                                  mayaQrPayload: '',
                                 },
                               })}
                               className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-[11px] font-bold cursor-pointer"
@@ -3145,6 +3192,36 @@ export const AdminDashboard: React.FC = () => {
                           })}
                           className="w-full px-2.5 py-1.5 text-[11px] bg-[#F9F6F0] border border-[#D5C2BB] rounded-lg text-[#1E1419]"
                         />
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-bold text-[#8B6F7A]">
+                              QRPh Auto-Amount Payload
+                            </span>
+                            {settings.paymentProviders.mayaQrPayload &&
+                            isValidEmvcoQrPayload(settings.paymentProviders.mayaQrPayload) ? (
+                              <span className="text-[10px] font-bold text-emerald-700">
+                                Auto-amount active ✓
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-[#8B6F7A]">
+                                Auto-detected on upload
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Optional: paste EMVCo/QRPh string (000201...)"
+                            value={settings.paymentProviders.mayaQrPayload ?? ''}
+                            onChange={e => setSettings({
+                              ...settings,
+                              paymentProviders: {
+                                ...settings.paymentProviders,
+                                mayaQrPayload: e.target.value,
+                              },
+                            })}
+                            className="w-full px-2.5 py-1.5 text-[10px] font-mono bg-[#F9F6F0] border border-[#D5C2BB] rounded-lg text-[#1E1419]"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>

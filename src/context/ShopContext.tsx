@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { 
   Product, 
@@ -117,24 +117,30 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [latestOrder, setLatestOrderState] = useState<Order | null>(null);
 
-  const setLatestOrder = (ord: Order | null) => {
+  const recordLocalRedeemedCode = useCallback((code?: string | null) => {
+    const cleanCode = String(code || '').trim().toUpperCase();
+    if (!cleanCode) return;
+    try {
+      const raw = localStorage.getItem('sleepyshroom_redeemed_codes');
+      const arr = raw ? (JSON.parse(raw) as string[]) : [];
+      const next = Array.isArray(arr)
+        ? Array.from(new Set([...arr.map(c => String(c).trim().toUpperCase()), cleanCode]))
+        : [cleanCode];
+      localStorage.setItem('sleepyshroom_redeemed_codes', JSON.stringify(next));
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
+  const setLatestOrder = useCallback((ord: Order | null) => {
     setLatestOrderState(ord);
     if (ord?.discountCode) {
       const st = String(ord.paymentStatus || '').toLowerCase();
       if (st === 'paid' || st === 'completed') {
-        try {
-          const raw = localStorage.getItem('sleepyshroom_redeemed_codes');
-          const arr = raw ? (JSON.parse(raw) as string[]) : [];
-          const upper = ord.discountCode.trim().toUpperCase();
-          if (Array.isArray(arr) && !arr.includes(upper)) {
-            localStorage.setItem('sleepyshroom_redeemed_codes', JSON.stringify([...arr, upper]));
-          }
-        } catch {
-          // Ignore storage errors
-        }
+        recordLocalRedeemedCode(ord.discountCode);
       }
     }
-  };
+  }, [recordLocalRedeemedCode]);
 
   // User auth state persisted to localStorage
   const [user, setUser] = useState<UserAccount | null>(() => {
@@ -498,7 +504,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const raw = localStorage.getItem('sleepyshroom_redeemed_codes');
         const arr = raw ? (JSON.parse(raw) as string[]) : [];
-        if (Array.isArray(arr) && arr.includes(cleanCode)) {
+        if (Array.isArray(arr) && arr.map(c => String(c).toUpperCase()).includes(cleanCode)) {
           return {
             success: false,
             message: `Promo code "${cleanCode}" is single-use and has already been redeemed.`,
@@ -570,15 +576,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setAppliedDiscount(null);
           setDiscountAmount(0);
         }
-        try {
-          const raw = localStorage.getItem('sleepyshroom_redeemed_codes');
-          const arr = raw ? (JSON.parse(raw) as string[]) : [];
-          if (Array.isArray(arr) && !arr.includes(cleanCode)) {
-            localStorage.setItem('sleepyshroom_redeemed_codes', JSON.stringify([...arr, cleanCode]));
-          }
-        } catch {
-          // Ignore storage errors
-        }
+        recordLocalRedeemedCode(cleanCode);
       }
       return { success: false, message: data?.message || 'Invalid promo code.' };
     } catch {

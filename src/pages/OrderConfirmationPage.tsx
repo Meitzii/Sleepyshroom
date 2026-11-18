@@ -268,6 +268,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
   const isGcashOrder = providerKey === 'gcash';
   const isMayaOrder = providerKey === 'maya';
   const isGooglePayOrder = providerKey === 'google_pay';
+  const isFreePromoOrder = providerKey === 'free_promo';
   const isPhQrOrder = isGcashOrder || isMayaOrder;
   const providerDisplay = isGcashOrder
     ? 'GCash QR'
@@ -275,7 +276,9 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
       ? 'Maya QR'
       : isGooglePayOrder
         ? 'Google Pay via PayPal'
-        : 'PayPal';
+        : isFreePromoOrder
+          ? 'Promo / Free Checkout'
+          : 'PayPal';
 
   // Strict enforcement: NEVER show digital download buttons unless server verified paymentStatus === 'paid' | 'completed'
   if (!isVerifiedPaid) {
@@ -297,13 +300,13 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
 
     const statusDescription = isPending
       ? isPhQrOrder
-        ? `Thank you! We received your ${providerDisplay} Reference Number (${order.paymentReference || order.transactionId}). Our studio will confirm your PHP transfer shortly—your digital wallpaper downloads unlock automatically as soon as verified.`
+        ? `Finishing confirmation for your ${providerDisplay} order (${order.paymentReference || order.transactionId}). Click Check Order Status below if downloads do not appear automatically.`
         : 'We created your order and are waiting for payment capture confirmation. Digital downloads unlock automatically once verification finishes.'
       : isRefunded
       ? order.refundReason ||
         'This order has been refunded via PayPal. Digital wallpaper download access is now locked.'
       : order.failureReason ||
-        'Because payment has not been verified for this order, digital wallpaper downloads remain locked.';
+        'Because payment has not been completed for this order, digital wallpaper downloads remain locked.';
 
     return (
       <div className="py-10 sm:py-16 bg-[#FFFFFF]">
@@ -399,8 +402,8 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
                 {isRefunded
                   ? 'Downloads are disabled on refunded orders.'
                   : isPhQrOrder
-                    ? 'Downloads remain locked while pending verification and unlock automatically once confirmed by sleepyshroom Studio.'
-                    : 'Downloads are strictly locked until payment verification succeeds.'}
+                    ? 'Confirming your order status so your digital files can unlock automatically.'
+                    : 'Downloads remain locked until payment capture completes.'}
               </span>
             </div>
 
@@ -414,11 +417,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ to
                 >
                   <RefreshCw className={`w-4 h-4 ${verifying ? 'animate-spin' : ''}`} />
                   <span>
-                    {verifying
-                      ? 'Checking Status...'
-                      : isPhQrOrder
-                        ? 'Check Verification Status'
-                        : 'Verify Payment Status'}
+                    {verifying ? 'Checking Status...' : 'Check Order Status'}
                   </span>
                 </button>
               )}
