@@ -67,17 +67,30 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         isFree || product.isBundle ? 'border-[#A64B3C]/50 ring-2 ring-[#A64B3C]/15' : 'border-[#EADCC8]'
       }`}
     >
-      <div 
-        className={`relative w-full overflow-hidden bg-[#EADCC8]/30 ${
-          isPortrait ? 'aspect-9/14 sm:aspect-9/14' : 'aspect-16/10'
-        }`}
+      <div
+        className={
+          isStationery
+            ? 'relative w-full overflow-hidden bg-[#FFFCF7] flex items-center justify-center'
+            : `relative w-full overflow-hidden bg-[#EADCC8]/30 ${
+                isPortrait ? 'aspect-9/14 sm:aspect-9/14' : 'aspect-16/10'
+              }`
+        }
       >
         <ProtectedArtworkPreview
           src={product.images[0]}
           alt={product.title}
           watermarkOpacity={0.2}
           showWatermark={true}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-104"
+          containerClassName={
+            isStationery
+              ? 'relative w-full overflow-hidden select-none bg-[#FFFCF7]'
+              : 'relative w-full h-full overflow-hidden select-none'
+          }
+          className={
+            isStationery
+              ? 'block w-full h-auto max-h-[420px] object-contain transition-transform duration-500 group-hover:scale-103'
+              : 'w-full h-full object-cover transition-transform duration-500 group-hover:scale-104'
+          }
         />
 
         {/* Subtle hover gradient */}
@@ -105,14 +118,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </span>
           )}
 
-          {product.deviceTypes.map(d => (
-            <span
-              key={d}
-              className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#FFFCF7]/95 backdrop-blur-xs text-[#292929] border border-[#EADCC8]"
-            >
-              {d}
-            </span>
-          ))}
+          {!isStationery &&
+            product.deviceTypes.map(d => (
+              <span
+                key={d}
+                className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#FFFCF7]/95 backdrop-blur-xs text-[#292929] border border-[#EADCC8]"
+              >
+                {d}
+              </span>
+            ))}
           {product.isNew && !isFree && discountPercent === 0 && (
             <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#A64B3C] text-[#FFFCF7]">
               New

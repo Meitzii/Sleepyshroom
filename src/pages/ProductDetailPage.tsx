@@ -157,136 +157,148 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
         {/* 2-Column Product Detail View */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
           
-          {/* Left Column: Image Previews + Device Frame Switcher */}
+          {/* Left Column: Image Previews (Gallery for Stationery, Interactive Screen Preview for Wallpapers) */}
           <div className="lg:col-span-7 space-y-4">
-            
-            {/* Device Mockup Toggle Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-200">
-              <span className="text-xs font-bold text-[#292929] uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#A64B3C]" />
-                <span>Interactive Screen Preview</span>
-              </span>
-              <div className="flex items-center gap-1 bg-neutral-50 p-1 rounded-xl border border-neutral-200">
-                <button
-                  onClick={() => setDevicePreview('desktop')}
-                  className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                    devicePreview === 'desktop'
-                      ? 'bg-[#A64B3C] text-[#FFFCF7]'
-                      : 'text-[#292929] hover:bg-neutral-200/60'
-                  }`}
-                  title="Desktop Monitor Frame"
-                >
-                  <Monitor className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setDevicePreview('mobile')}
-                  className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                    devicePreview === 'mobile'
-                      ? 'bg-[#A64B3C] text-[#FFFCF7]'
-                      : 'text-[#292929] hover:bg-neutral-200/60'
-                  }`}
-                  title="Phone Lock Screen Frame"
-                >
-                  <Smartphone className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setDevicePreview('tablet')}
-                  className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                    devicePreview === 'tablet'
-                      ? 'bg-[#A64B3C] text-[#FFFCF7]'
-                      : 'text-[#292929] hover:bg-neutral-200/60'
-                  }`}
-                  title="Tablet Screen Frame"
-                >
-                  <Tablet className="w-4 h-4" />
-                </button>
+            {!isStationery && (
+              <>
+                {/* Device Mockup Toggle Header */}
+                <div className="flex items-center justify-between pb-2 border-b border-neutral-200">
+                  <span className="text-xs font-bold text-[#292929] uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#A64B3C]" />
+                    <span>Interactive Screen Preview</span>
+                  </span>
+                  <div className="flex items-center gap-1 bg-neutral-50 p-1 rounded-xl border border-neutral-200">
+                    <button
+                      onClick={() => setDevicePreview('desktop')}
+                      className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                        devicePreview === 'desktop'
+                          ? 'bg-[#A64B3C] text-[#FFFCF7]'
+                          : 'text-[#292929] hover:bg-neutral-200/60'
+                      }`}
+                      title="Desktop Monitor Frame"
+                    >
+                      <Monitor className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setDevicePreview('mobile')}
+                      className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                        devicePreview === 'mobile'
+                          ? 'bg-[#A64B3C] text-[#FFFCF7]'
+                          : 'text-[#292929] hover:bg-neutral-200/60'
+                      }`}
+                      title="Phone Lock Screen Frame"
+                    >
+                      <Smartphone className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setDevicePreview('tablet')}
+                      className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                        devicePreview === 'tablet'
+                          ? 'bg-[#A64B3C] text-[#FFFCF7]'
+                          : 'text-[#292929] hover:bg-neutral-200/60'
+                      }`}
+                      title="Tablet Screen Frame"
+                    >
+                      <Tablet className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Main Interactive Screen Frame (Wallpapers) */}
+                <div className="bg-neutral-50/70 p-4 sm:p-6 rounded-3xl border border-neutral-200 flex items-center justify-center min-h-[380px] sm:min-h-[460px]">
+                  {devicePreview === 'desktop' && (
+                    /* Desktop Monitor Frame */
+                    <div className="w-full max-w-2xl bg-[#292929] rounded-2xl p-2.5 sm:p-3.5 shadow-2xl border-2 border-[#EADCC8]/40 flex flex-col items-center">
+                      <div className="w-full aspect-16/10 rounded-lg overflow-hidden bg-black relative">
+                        <ProtectedArtworkPreview
+                          src={activeImage}
+                          alt={product.title}
+                          watermarkOpacity={0.24}
+                          showWatermark={true}
+                          className="w-full h-full object-cover"
+                        />
+                        {/* Simulated macOS / Desktop Menu Bar */}
+                        <div className="absolute top-0 inset-x-0 h-4 bg-black/40 backdrop-blur-xs flex items-center justify-between px-3 text-[9px] text-white/90 z-20 pointer-events-none">
+                          <span>10:42 AM</span>
+                          <span>100% 🔋</span>
+                        </div>
+                      </div>
+                      {/* Stand */}
+                      <div className="w-16 h-3 bg-[#1e1e1e] mt-1.5 rounded-b" />
+                      <div className="w-28 h-1.5 bg-[#292929] rounded-full" />
+                    </div>
+                  )}
+
+                  {devicePreview === 'mobile' && (
+                    /* Phone Frame */
+                    <div className="w-64 sm:w-72 aspect-9/18 bg-[#292929] rounded-[40px] p-2.5 shadow-2xl border-4 border-[#EADCC8]/50 relative flex flex-col">
+                      {/* Speaker Notch */}
+                      <div className="absolute top-4 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-20 flex items-center justify-end pr-2 pointer-events-none">
+                        <div className="w-2 h-2 rounded-full bg-slate-900 border border-slate-800" />
+                      </div>
+                      {/* Screen Content */}
+                      <div className="w-full h-full rounded-[30px] overflow-hidden relative">
+                        <ProtectedArtworkPreview
+                          src={activeImage}
+                          alt={product.title}
+                          watermarkOpacity={0.24}
+                          showWatermark={true}
+                          className="w-full h-full object-cover"
+                        />
+                        {/* Simulated iOS Clock */}
+                        <div className="absolute top-12 inset-x-0 text-center text-white text-shadow drop-shadow-md z-20 pointer-events-none">
+                          <p className="text-xs font-medium tracking-wide">Friday, November 6</p>
+                          <p className="font-heading font-bold text-4xl mt-0.5 tracking-tight">09:41</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {devicePreview === 'tablet' && (
+                    /* Tablet Frame */
+                    <div className="w-80 sm:w-96 aspect-4/3 bg-[#292929] rounded-3xl p-3 shadow-2xl border-4 border-[#EADCC8]/40 flex flex-col">
+                      <div className="w-full h-full rounded-2xl overflow-hidden relative">
+                        <ProtectedArtworkPreview
+                          src={activeImage}
+                          alt={product.title}
+                          watermarkOpacity={0.24}
+                          showWatermark={true}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute top-2 right-4 text-[10px] text-white/90 font-medium z-20 pointer-events-none">
+                          9:41 AM · 100%
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {isStationery && (
+              /* Natural-proportion Digital Stationery Preview (no wallpaper device frame) */
+              <div className="bg-neutral-50/70 p-3 sm:p-5 rounded-3xl border border-neutral-200 flex items-center justify-center">
+                <ProtectedArtworkPreview
+                  src={activeImage}
+                  alt={product.title}
+                  watermarkOpacity={0.22}
+                  showWatermark={true}
+                  containerClassName="relative inline-block max-w-full overflow-hidden rounded-2xl border border-[#EADCC8]/80 bg-[#FFFCF7] shadow-sm select-none"
+                  className="block max-w-full w-auto h-auto max-h-[680px] object-contain"
+                />
               </div>
-            </div>
-
-            {/* =========================================================================
-             * 🖼️ [PRODUCT DETAIL WALLPAPER PREVIEW]
-             * Renders the wallpaper inside interactive Desktop, Tablet, and Mobile device frames.
-             * Sourced from `product.images` (controlled by `data/store.json` or Admin Dashboard).
-             * ========================================================================= */}
-            {/* Main Interactive Screen Frame */}
-            <div className="bg-neutral-50/70 p-4 sm:p-6 rounded-3xl border border-neutral-200 flex items-center justify-center min-h-[380px] sm:min-h-[460px]">
-              
-              {devicePreview === 'desktop' && (
-                /* Desktop Monitor Frame */
-                <div className="w-full max-w-2xl bg-[#292929] rounded-2xl p-2.5 sm:p-3.5 shadow-2xl border-2 border-[#EADCC8]/40 flex flex-col items-center">
-                  <div className="w-full aspect-16/10 rounded-lg overflow-hidden bg-black relative">
-                    <ProtectedArtworkPreview
-                      src={activeImage}
-                      alt={product.title}
-                      watermarkOpacity={0.24}
-                      showWatermark={true}
-                      className="w-full h-full object-cover"
-                    />
-                    {/* Simulated macOS / Desktop Menu Bar */}
-                    <div className="absolute top-0 inset-x-0 h-4 bg-black/40 backdrop-blur-xs flex items-center justify-between px-3 text-[9px] text-white/90 z-20 pointer-events-none">
-                      <span>10:42 AM</span>
-                      <span>100% 🔋</span>
-                    </div>
-                  </div>
-                  {/* Stand */}
-                  <div className="w-16 h-3 bg-[#1e1e1e] mt-1.5 rounded-b" />
-                  <div className="w-28 h-1.5 bg-[#292929] rounded-full" />
-                </div>
-              )}
-
-              {devicePreview === 'mobile' && (
-                /* Phone Frame */
-                <div className="w-64 sm:w-72 aspect-9/18 bg-[#292929] rounded-[40px] p-2.5 shadow-2xl border-4 border-[#EADCC8]/50 relative flex flex-col">
-                  {/* Speaker Notch */}
-                  <div className="absolute top-4 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-20 flex items-center justify-end pr-2 pointer-events-none">
-                    <div className="w-2 h-2 rounded-full bg-slate-900 border border-slate-800" />
-                  </div>
-                  {/* Screen Content */}
-                  <div className="w-full h-full rounded-[30px] overflow-hidden relative">
-                    <ProtectedArtworkPreview
-                      src={activeImage}
-                      alt={product.title}
-                      watermarkOpacity={0.24}
-                      showWatermark={true}
-                      className="w-full h-full object-cover"
-                    />
-                    {/* Simulated iOS Clock */}
-                    <div className="absolute top-12 inset-x-0 text-center text-white text-shadow drop-shadow-md z-20 pointer-events-none">
-                      <p className="text-xs font-medium tracking-wide">Friday, November 6</p>
-                      <p className="font-heading font-bold text-4xl mt-0.5 tracking-tight">09:41</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {devicePreview === 'tablet' && (
-                /* Tablet Frame */
-                <div className="w-80 sm:w-96 aspect-4/3 bg-[#292929] rounded-3xl p-3 shadow-2xl border-4 border-[#EADCC8]/40 flex flex-col">
-                  <div className="w-full h-full rounded-2xl overflow-hidden relative">
-                    <ProtectedArtworkPreview
-                      src={activeImage}
-                      alt={product.title}
-                      watermarkOpacity={0.24}
-                      showWatermark={true}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-2 right-4 text-[10px] text-white/90 font-medium z-20 pointer-events-none">
-                      9:41 AM · 100%
-                    </div>
-                  </div>
-                </div>
-              )}
-
-            </div>
+            )}
 
             {/* Image Thumbnails Gallery */}
             {product.images.length > 1 && (
-              <div className="flex items-center gap-3 pt-2">
+              <div className="flex flex-wrap items-center gap-3 pt-2">
                 {product.images.map((img, idx) => (
                   <button
                     key={idx}
                     onClick={() => setActiveImageIndex(idx)}
-                    className={`relative w-20 h-14 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                    className={`relative rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                      isStationery ? 'w-20 h-20 bg-[#FFFCF7]' : 'w-20 h-14'
+                    } ${
                       activeImageIndex === idx
                         ? 'border-[#A64B3C] scale-102 shadow-sm'
                         : 'border-[#EADCC8] opacity-70 hover:opacity-100'
@@ -296,7 +308,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                       src={img}
                       alt={`${product.title} view ${idx + 1}`}
                       showWatermark={false}
-                      className="w-full h-full object-cover"
+                      className={isStationery ? 'w-full h-full object-contain' : 'w-full h-full object-cover'}
                     />
                   </button>
                 ))}
@@ -341,7 +353,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               <div className="p-3 bg-neutral-50/80 rounded-2xl border border-neutral-200 flex flex-wrap items-center justify-between gap-2 text-xs">
                 <span className="flex items-center gap-1.5 text-[#292929] font-bold">
                   <Download className="w-4 h-4 text-[#A64B3C]" />
-                  <span>{(product.downloadCount || 0).toLocaleString()} happy screens downloaded</span>
+                  <span>
+                    {(product.downloadCount || 0).toLocaleString()}{' '}
+                    {isStationery ? 'downloads' : 'happy screens downloaded'}
+                  </span>
                 </span>
                 <span className="text-[11px] font-bold text-[#292929] flex items-center gap-1 bg-[#FFFFFF] px-2 py-0.5 rounded-full border border-neutral-200">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -370,7 +385,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                   </span>
                 )}
                 <span className="text-xs font-bold text-[#292929] bg-neutral-50 px-2.5 py-0.5 rounded-full border border-neutral-200">
-                  {Boolean(product.isFree || product.price === 0) ? '100% Free Complimentary Gift' : 'All Resolutions Included'}
+                  {Boolean(product.isFree || product.price === 0)
+                    ? '100% Free Complimentary Gift'
+                    : isStationery
+                      ? 'Instant Digital Download'
+                      : 'All Resolutions Included'}
                 </span>
               </div>
 
@@ -402,7 +421,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                     ) : (
                       <>
                         <Download className="w-5 h-5" />
-                        <span>Download Free Wallpaper (Instant Access)</span>
+                        <span>
+                          {isStationery
+                            ? 'Download Free Stationery (Instant Access)'
+                            : 'Download Free Wallpaper (Instant Access)'}
+                        </span>
                       </>
                     )}
                   </button>
