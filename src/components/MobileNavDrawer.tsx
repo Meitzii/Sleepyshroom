@@ -11,46 +11,15 @@ import {
   User,
   ShieldCheck,
   BookOpen,
-  NotebookPen,
-  BookHeart,
-  Calendar,
-  ListChecks,
-  HeartPulse,
-  Sticker,
-  Wallet,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { ShroomLogoIcon } from './common/Icons.tsx';
-import {
-  DIGITAL_STATIONERY_CATEGORIES,
-  DIGITAL_STATIONERY_COLLECTION_SLUG,
-} from '../data/stationeryCatalog.ts';
+import { DIGITAL_STATIONERY_COLLECTION_SLUG } from '../data/stationeryCatalog.ts';
 
 interface MobileNavDrawerProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const getStationeryNavIcon = (id: string) => {
-  switch (id) {
-    case 'digital-notes':
-      return <NotebookPen className="w-4 h-4 text-[#777777]" />;
-    case 'digital-journals':
-      return <BookHeart className="w-4 h-4 text-[#777777]" />;
-    case 'calendars-schedules':
-      return <Calendar className="w-4 h-4 text-[#777777]" />;
-    case 'to-do-lists':
-      return <ListChecks className="w-4 h-4 text-[#777777]" />;
-    case 'habit-mood-trackers':
-      return <HeartPulse className="w-4 h-4 text-[#777777]" />;
-    case 'digital-stickers':
-      return <Sticker className="w-4 h-4 text-[#777777]" />;
-    case 'budget-planners':
-      return <Wallet className="w-4 h-4 text-[#777777]" />;
-    default:
-      return <BookOpen className="w-4 h-4 text-[#777777]" />;
-  }
-};
 
 export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClose }) => {
   const { navigateTo, user, settings } = useShop();
@@ -112,8 +81,22 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClos
             <span>Home</span>
           </button>
 
-          {/* Primary Collection 1: Wallpaper Collections */}
+          {/* Primary Collection 1: Digital Stationery */}
           <div className="pt-3 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#777777]">
+            Digital Stationery
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleNav('collections', DIGITAL_STATIONERY_COLLECTION_SLUG)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
+          >
+            <BookOpen className="w-4 h-4 text-[#A64B3C]" />
+            <span>All Digital Stationery</span>
+          </button>
+
+          {/* Primary Collection 2: Wallpaper Collections */}
+          <div className="pt-4 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#777777]">
             Wallpaper Collections
           </div>
 
@@ -161,32 +144,6 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClos
             <Sparkles className="w-4 h-4 text-[#A64B3C]" />
             <span>Freebies</span>
           </button>
-
-          {/* Primary Collection 2: Digital Stationery */}
-          <div className="pt-4 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#777777]">
-            Digital Stationery
-          </div>
-
-          <button
-            type="button"
-            onClick={() => handleNav('collections', DIGITAL_STATIONERY_COLLECTION_SLUG)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
-          >
-            <BookOpen className="w-4 h-4 text-[#A64B3C]" />
-            <span>All Digital Stationery</span>
-          </button>
-
-          {DIGITAL_STATIONERY_CATEGORIES.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => handleNav('collections', category.slug)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
-            >
-              {getStationeryNavIcon(category.id)}
-              <span>{category.label}</span>
-            </button>
-          ))}
 
           <div className="pt-4 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[#777777]">
             About &amp; Help

@@ -33,14 +33,11 @@ export const CollectionsPage: React.FC = () => {
 
   // Sync when viewParam changes externally
   useEffect(() => {
-    if (initialParams.device) setSelectedDevice(initialParams.device);
-    if (initialParams.theme) setSelectedTheme(initialParams.theme);
-    if (initialParams.collection) {
-      setSelectedCollection(initialParams.collection);
-      if (initialParams.collection === 'Free Wallpapers') setOnlyFree(true);
-    }
-    if (initialParams.search !== undefined) setSearchFilter(initialParams.search);
-    if (initialParams.free !== undefined) setOnlyFree(initialParams.free === 'true');
+    setSelectedDevice(initialParams.device || 'all');
+    setSelectedTheme(initialParams.theme || 'all');
+    setSelectedCollection(initialParams.collection || 'all');
+    setSearchFilter(initialParams.search || '');
+    setOnlyFree(initialParams.free === 'true' || initialParams.collection === 'Free Wallpapers');
   }, [initialParams]);
 
   // Keep Wallpaper Collections strictly separate from Digital Stationery products (allow cross-search if user searches via header)
@@ -119,6 +116,13 @@ export const CollectionsPage: React.FC = () => {
     setSearchFilter('');
     setMaxPrice(10);
     setSortBy('newest');
+    if (window.location.search) {
+      try {
+        window.history.replaceState(null, '', '/wallpaper-collections');
+      } catch {
+        // Ignore history errors
+      }
+    }
   };
 
   const hasActiveFilters = selectedDevice !== 'all' || selectedTheme !== 'all' || selectedCollection !== 'all' || searchFilter !== '' || maxPrice < 10 || onlyFree;

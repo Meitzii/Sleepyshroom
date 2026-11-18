@@ -80,7 +80,10 @@ export const ThemeCarousel: React.FC = () => {
       if (slide.linkDestination.startsWith('/collections/')) {
         const slug = slide.linkDestination.replace('/collections/', '').split('?')[0];
         navigateTo('collections', slug || null);
-      } else if (slide.linkDestination.startsWith('/collections')) {
+      } else if (
+        slide.linkDestination.startsWith('/collections') ||
+        slide.linkDestination.startsWith('/wallpaper-collections')
+      ) {
         const query = slide.linkDestination.includes('?')
           ? slide.linkDestination.split('?')[1]
           : null;
@@ -104,7 +107,7 @@ export const ThemeCarousel: React.FC = () => {
 
           <div className="mt-3">
             <a
-              href="#collections"
+              href="/wallpaper-collections"
               onClick={(e) => {
                 e.preventDefault();
                 navigateTo('collections');

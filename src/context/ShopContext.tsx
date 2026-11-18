@@ -190,8 +190,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ) {
         return;
       }
-      
-      // If no hash present, inspect path name (e.g. /collections/ghost, /faq, /privacy-policy, /terms-of-service)
+
+      // If no hash present, inspect path name (e.g. /wallpaper-collections, /collections/digital-stationery, /faq)
       if (!hash) {
         const rawPath = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
         if (
@@ -214,7 +214,18 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let view = (parts[0] || 'home').toLowerCase();
       let param = parts[1] ? decodeURIComponent(parts[1]) : null;
 
-      if (view === 'collection') view = 'collections';
+      if (view === 'collection' || view === 'wallpaper-collections') {
+        view = 'collections';
+      }
+      if (view === 'collections' && param?.toLowerCase() === 'wallpaper-collections') {
+        param = null;
+      }
+      if (view === 'collections' && !param && window.location.search) {
+        const qs = new URLSearchParams(window.location.search);
+        if (!qs.has('checkout_status')) {
+          param = window.location.search.slice(1);
+        }
+      }
       if (view === 'privacy') view = 'privacy-policy';
       if (view === 'terms') view = 'terms-of-service';
       if (view === 'faqs') view = 'faq';
@@ -235,22 +246,37 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const navigateTo = (view: string, param: string | null = null) => {
-    setActiveView(view);
-    setViewParam(param);
+    const normalizedParam =
+      view === 'collections' && param?.toLowerCase() === 'wallpaper-collections' ? null : param;
 
-    // Use clean path URLs for dedicated collection/category routes (e.g., /collections/digital-stationery, /collections/digital-notes)
-    if (view === 'collections' && param && !param.includes('=')) {
-      const targetPath = `/collections/${encodeURIComponent(param)}`;
+    setActiveView(view);
+    setViewParam(normalizedParam);
+
+    // Use clean /wallpaper-collections and /collections/:slug URLs consistently
+    if (view === 'collections') {
+      let targetPath = '/wallpaper-collections';
+      if (normalizedParam && !normalizedParam.includes('=')) {
+        targetPath = `/collections/${encodeURIComponent(normalizedParam)}`;
+      } else if (normalizedParam && normalizedParam.includes('=')) {
+        targetPath = `/wallpaper-collections?${normalizedParam}`;
+      }
       try {
         window.history.pushState(null, '', targetPath);
       } catch {
-        window.location.hash = `#collections/${encodeURIComponent(param)}`;
+        window.location.hash = normalizedParam
+          ? `#wallpaper-collections/${encodeURIComponent(normalizedParam)}`
+          : '#wallpaper-collections';
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    const hash = view === 'home' && !param ? '' : param ? `#${view}/${encodeURIComponent(param)}` : `#${view}`;
+    const hash =
+      view === 'home' && !normalizedParam
+        ? ''
+        : normalizedParam
+        ? `#${view}/${encodeURIComponent(normalizedParam)}`
+        : `#${view}`;
     if (window.location.pathname !== '/' && window.location.pathname !== '') {
       try {
         window.history.pushState(null, '', hash ? `/${hash}` : '/');

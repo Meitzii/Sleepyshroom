@@ -30,7 +30,7 @@ export const CollectionHero: React.FC<CollectionHeroProps> = ({ collection, tota
             onClick={() => navigateTo('collections')}
             className="hover:text-[#A64B3C] transition-colors cursor-pointer"
           >
-            Collections
+            Wallpaper Collections
           </button>
           <ChevronRight className="w-3.5 h-3.5 text-neutral-300" />
           <span className="text-[#292929] font-bold truncate max-w-[200px] sm:max-w-none">

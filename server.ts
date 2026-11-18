@@ -1611,7 +1611,8 @@ app.get('/sitemap.xml', (_req: Request, res: Response) => {
 
   const staticPaths = [
     { loc: `${baseUrl}/`, priority: '1.0', changefreq: 'weekly' },
-    { loc: `${baseUrl}/#collections`, priority: '0.9', changefreq: 'weekly' },
+    { loc: `${baseUrl}/wallpaper-collections`, priority: '0.9', changefreq: 'weekly' },
+    { loc: `${baseUrl}/collections/digital-stationery`, priority: '0.9', changefreq: 'weekly' },
     { loc: `${baseUrl}/#faq`, priority: '0.8', changefreq: 'monthly' },
     { loc: `${baseUrl}/#about`, priority: '0.7', changefreq: 'monthly' },
     { loc: `${baseUrl}/#contact`, priority: '0.7', changefreq: 'monthly' },

@@ -66,8 +66,11 @@ export const SeoManager: React.FC = () => {
             {
               '@type': 'ListItem',
               position: 2,
-              name: prod.collection || 'Collections',
-              item: `${baseUrl}/#collections`,
+              name: prod.collection || 'Wallpaper Collections',
+              item:
+                prod.productType === 'stationery'
+                  ? `${baseUrl}/collections/digital-stationery`
+                  : `${baseUrl}/wallpaper-collections`,
             },
             { '@type': 'ListItem', position: 3, name: prod.title, item: canonical },
           ],
@@ -97,16 +100,27 @@ export const SeoManager: React.FC = () => {
           '@type': 'BreadcrumbList',
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Home', item: `${baseUrl}/` },
-            { '@type': 'ListItem', position: 2, name: 'Collections', item: `${baseUrl}/#collections` },
+            {
+              '@type': 'ListItem',
+              position: 2,
+              name:
+                col.collectionType === 'stationery' || col.slug === 'digital-stationery'
+                  ? 'Digital Stationery'
+                  : 'Wallpaper Collections',
+              item:
+                col.collectionType === 'stationery' || col.slug === 'digital-stationery'
+                  ? `${baseUrl}/collections/digital-stationery`
+                  : `${baseUrl}/wallpaper-collections`,
+            },
             { '@type': 'ListItem', position: 3, name: col.name, item: canonical },
           ],
         };
       }
     } else if (activeView === 'collections') {
-      title = 'Digital Wallpaper Collections & Bundles | sleepyshroom';
+      title = 'Wallpaper Collections & Bundles | sleepyshroom';
       description =
         'Browse cozy cottagecore wallpapers, icon packs, and multi-device bundles sorted by theme and screen size.';
-      canonical = `${baseUrl}/#collections`;
+      canonical = `${baseUrl}/wallpaper-collections`;
     } else if (activeView === 'faq') {
       title = 'Frequently Asked Questions | sleepyshroom';
       description =

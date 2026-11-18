@@ -64,7 +64,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           onClick={() => navigateTo('collections')}
           className="px-6 py-3 bg-[#A64B3C] text-[#FFFCF7] rounded-xl text-sm font-bold hover:bg-[#8E3E30] transition-all cursor-pointer"
         >
-          Return to Collections
+          Return to Wallpaper Collections
         </button>
       </div>
     );
