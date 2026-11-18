@@ -11,12 +11,22 @@ export type OrderPaymentStatus =
   | 'expired'
   | 'refunded';
 
+export type StationeryCategorySlug =
+  | 'digital-notes'
+  | 'digital-journals'
+  | 'calendars-schedules'
+  | 'to-do-lists'
+  | 'habit-mood-trackers'
+  | 'digital-stickers'
+  | 'budget-planners';
+
 export type ProductCategory =
   | 'all'
   | 'phone_tablet'
   | 'desktop'
   | 'icon_pack'
-  | 'bundle';
+  | 'bundle'
+  | StationeryCategorySlug;
 
 export type ProductType = 'wallpaper' | 'icon_pack' | 'bundle' | 'stationery';
 
@@ -84,6 +94,7 @@ export interface Collection {
   productCount?: number;
   createdAt?: string;
   theme?: string;
+  collectionType?: 'wallpaper' | 'stationery';
 }
 
 export interface ThemeBundle {

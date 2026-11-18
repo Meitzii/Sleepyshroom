@@ -3,6 +3,7 @@ import { Filter, SlidersHorizontal, Monitor, Smartphone, Tablet, Sparkles, X, Ch
 import { useShop } from '../context/ShopContext.tsx';
 import { ProductCard } from '../components/common/ProductCard.tsx';
 import { SectionHeading } from '../components/common/SectionHeading.tsx';
+import { isStationeryCollection, isStationeryProduct } from '../data/stationeryCatalog.ts';
 
 export const CollectionsPage: React.FC = () => {
   const { products, collections, viewParam, navigateTo } = useShop();
@@ -42,15 +43,25 @@ export const CollectionsPage: React.FC = () => {
     if (initialParams.free !== undefined) setOnlyFree(initialParams.free === 'true');
   }, [initialParams]);
 
+  // Keep Wallpaper Collections strictly separate from Digital Stationery products (allow cross-search if user searches via header)
+  const wallpaperProducts = useMemo(() => {
+    if (searchFilter.trim()) return products;
+    return products.filter(p => !isStationeryProduct(p));
+  }, [products, searchFilter]);
+
+  const wallpaperCollections = useMemo(() => {
+    return collections.filter(c => !isStationeryCollection(c));
+  }, [collections]);
+
   // Unique themes list
   const themes = useMemo(() => {
-    const list = Array.from(new Set(products.map(p => p.theme)));
+    const list = Array.from(new Set(wallpaperProducts.map(p => p.theme)));
     return list;
-  }, [products]);
+  }, [wallpaperProducts]);
 
   // Filtered and sorted products
   const filteredProducts = useMemo(() => {
-    let list = [...products];
+    let list = [...wallpaperProducts];
 
     // Device filter
     if (selectedDevice !== 'all') {
@@ -98,7 +109,7 @@ export const CollectionsPage: React.FC = () => {
     }
 
     return list;
-  }, [products, selectedDevice, selectedTheme, selectedCollection, maxPrice, searchFilter, sortBy, onlyFree]);
+  }, [wallpaperProducts, selectedDevice, selectedTheme, selectedCollection, maxPrice, searchFilter, sortBy, onlyFree]);
 
   const clearFilters = () => {
     setSelectedDevice('all');
@@ -124,16 +135,18 @@ export const CollectionsPage: React.FC = () => {
               : selectedDevice === 'desktop'
               ? 'Desktop Themes'
               : selectedDevice === 'mobile'
-              ? 'Mobile & Tablet Themes'
+              ? 'Mobile Wallpapers'
+              : selectedDevice === 'tablet'
+              ? 'Tablet Wallpapers'
               : 'Wallpaper Collections'}
           </SectionHeading>
         </div>
 
         {/* Dedicated Theme Collection Landing Cards */}
-        {!hasActiveFilters && collections.length > 0 && (
+        {!hasActiveFilters && wallpaperCollections.length > 0 && (
           <div className="mb-12">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {collections.map((c) => (
+              {wallpaperCollections.map((c) => (
                 <button
                   key={c.id}
                   type="button"

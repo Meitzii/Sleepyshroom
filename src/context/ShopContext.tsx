@@ -227,21 +227,44 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       handleHashChange();
     }
     window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handleHashChange);
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('popstate', handleHashChange);
+    };
   }, []);
 
   const navigateTo = (view: string, param: string | null = null) => {
     setActiveView(view);
     setViewParam(param);
-    const hash = param ? `#${view}/${encodeURIComponent(param)}` : `#${view}`;
+
+    // Use clean path URLs for dedicated collection/category routes (e.g., /collections/digital-stationery, /collections/digital-notes)
+    if (view === 'collections' && param && !param.includes('=')) {
+      const targetPath = `/collections/${encodeURIComponent(param)}`;
+      try {
+        window.history.pushState(null, '', targetPath);
+      } catch {
+        window.location.hash = `#collections/${encodeURIComponent(param)}`;
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const hash = view === 'home' && !param ? '' : param ? `#${view}/${encodeURIComponent(param)}` : `#${view}`;
     if (window.location.pathname !== '/' && window.location.pathname !== '') {
       try {
-        window.history.pushState(null, '', `/${hash}`);
+        window.history.pushState(null, '', hash ? `/${hash}` : '/');
       } catch {
         window.location.hash = hash;
       }
-    } else {
+    } else if (hash) {
       window.location.hash = hash;
+    } else {
+      try {
+        window.history.pushState(null, '', '/');
+      } catch {
+        window.location.hash = '';
+      }
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

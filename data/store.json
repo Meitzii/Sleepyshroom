@@ -1221,6 +1221,293 @@
       "category": "phone_tablet",
       "productType": "wallpaper",
       "collectionId": "col-3"
+    },
+    {
+      "id": "prod-stat-notes-1",
+      "title": "Cozy Mushroom Grid & Lined Digital Notes",
+      "slug": "cozy-mushroom-digital-notes",
+      "description": "Warm cream-paper digital notebooks designed for gentle study and creative sketching. Includes dotted, wide-ruled, Cornell, and blank botanical margins with five hyperlinked subject dividers.",
+      "price": 4,
+      "compareAtPrice": 5,
+      "theme": "Mushroom Dreams",
+      "collection": "Digital Stationery",
+      "collectionId": "col-digital-stationery",
+      "category": "digital-notes",
+      "productType": "stationery",
+      "deviceTypes": [
+        "tablet",
+        "desktop"
+      ],
+      "resolutions": [
+        "GoodNotes & Notability Hyperlinked PDF",
+        "A4 & US Letter Printable",
+        "6 Botanical Notebook Covers"
+      ],
+      "fileFormat": "Interactive Hyperlinked PDF + PNG Covers",
+      "fileSize": "18.6 MB",
+      "whatsIncluded": [
+        "4 Paper Templates (Lined, Grid, Dotted, Cornell)",
+        "5 Hyperlinked Terracotta Index Tabs",
+        "6 Hand-drawn Mushroom & Chamomile Covers",
+        "Quick Import Guide for iPad & Android Tablets"
+      ],
+      "images": [
+        "/src/assets/images/stationery_notes_journal_1794967640146.jpg"
+      ],
+      "featured": true,
+      "isNew": true,
+      "popularity": 96,
+      "status": "published",
+      "createdAt": "2026-11-10T09:00:00.000Z",
+      "downloadFileName": "sleepyshroom_cozy_digital_notes.jpg",
+      "downloadCount": 412,
+      "recentDownloadTime": "6m ago"
+    },
+    {
+      "id": "prod-stat-journal-1",
+      "title": "Cottagecore Meadow Undated Digital Journal",
+      "slug": "cottagecore-meadow-digital-journal",
+      "description": "A soothing undated memory and gratitude journal adorned with woodland fungi and chamomile wildflowers. Crafted for morning pages, reading logs, and quiet evening reflections.",
+      "price": 5.5,
+      "compareAtPrice": 7,
+      "theme": "Sleepy Garden",
+      "collection": "Digital Stationery",
+      "collectionId": "col-digital-stationery",
+      "category": "digital-journals",
+      "productType": "stationery",
+      "deviceTypes": [
+        "tablet",
+        "desktop"
+      ],
+      "resolutions": [
+        "12 Hyperlinked Monthly Chapters",
+        "Daily Prompt & Free-Write Pages",
+        "GoodNotes / Noteshelf / Xodo"
+      ],
+      "fileFormat": "Hyperlinked Interactive PDF + Bonus Journaling Stickers",
+      "fileSize": "26.4 MB",
+      "whatsIncluded": [
+        "Undated Year-Round Hyperlinked Journal",
+        "Gratitude, Reading Log & Memory Spreads",
+        "30 Matching Botanical Journal Stamps",
+        "Paper-textured Cream & Oat Page Tones"
+      ],
+      "images": [
+        "/src/assets/images/stationery_notes_journal_1794967640146.jpg"
+      ],
+      "featured": true,
+      "isNew": true,
+      "popularity": 98,
+      "status": "published",
+      "createdAt": "2026-11-11T10:30:00.000Z",
+      "downloadFileName": "sleepyshroom_cottagecore_digital_journal.jpg",
+      "downloadCount": 528,
+      "recentDownloadTime": "3m ago"
+    },
+    {
+      "id": "prod-stat-calendar-1",
+      "title": "Botanical Tea Monthly & Weekly Calendar Kit",
+      "slug": "botanical-tea-calendar-schedule-kit",
+      "description": "Clean monthly overviews, gentle weekly blocks, and hourly study schedules decorated with subtle dried foliage and terracotta accents. Includes both Sunday and Monday week starts.",
+      "price": 4.5,
+      "compareAtPrice": 5.5,
+      "theme": "Cozy Autumn",
+      "collection": "Digital Stationery",
+      "collectionId": "col-digital-stationery",
+      "category": "calendars-schedules",
+      "productType": "stationery",
+      "deviceTypes": [
+        "tablet",
+        "desktop"
+      ],
+      "resolutions": [
+        "Dated 2026 & Undated Editions",
+        "Sunday & Monday Start Options",
+        "Hourly & Block Weekly Layouts"
+      ],
+      "fileFormat": "Hyperlinked PDF (GoodNotes / Kilonotes / Printable)",
+      "fileSize": "21.2 MB",
+      "whatsIncluded": [
+        "12 Monthly Calendar Spreads",
+        "Weekly Overview & Daily Schedule Pages",
+        "Semester & Assignment Overview Sheet",
+        "Interactive Hyperlinked Date Navigation"
+      ],
+      "images": [
+        "/src/assets/images/stationery_planner_calendar_1794967641000.jpg"
+      ],
+      "featured": true,
+      "isNew": true,
+      "popularity": 94,
+      "status": "published",
+      "createdAt": "2026-11-12T11:15:00.000Z",
+      "downloadFileName": "sleepyshroom_botanical_calendar_kit.jpg",
+      "downloadCount": 389,
+      "recentDownloadTime": "11m ago"
+    },
+    {
+      "id": "prod-stat-todo-1",
+      "title": "Gentle Morning Priorities & To-Do List Pad",
+      "slug": "gentle-morning-to-do-list-pad",
+      "description": "Minimalist daily priority lists, cozy brain-dump pads, and errand checklists designed to calm busy days without harsh visual clutter.",
+      "price": 3,
+      "theme": "Pastel Garden",
+      "collection": "Digital Stationery",
+      "collectionId": "col-digital-stationery",
+      "category": "to-do-lists",
+      "productType": "stationery",
+      "deviceTypes": [
+        "tablet",
+        "mobile"
+      ],
+      "resolutions": [
+        "iPad / Tablet Portrait Templates",
+        "Mobile Vertical Checklist Edition",
+        "6 Soft Warm Paper Variants"
+      ],
+      "fileFormat": "Interactive PDF + PNG Templates",
+      "fileSize": "11.4 MB",
+      "whatsIncluded": [
+        "Top-3 Priorities Daily Sheet",
+        "Cozy Weekly Errand & Cleaning Checklist",
+        "Mind-Clear Brain Dump Layout",
+        "Printable US Letter & A5 Exports"
+      ],
+      "images": [
+        "/src/assets/images/stationery_planner_calendar_1794967641000.jpg"
+      ],
+      "featured": false,
+      "isNew": true,
+      "popularity": 91,
+      "status": "published",
+      "createdAt": "2026-11-13T08:45:00.000Z",
+      "downloadFileName": "sleepyshroom_gentle_todo_pad.jpg",
+      "downloadCount": 304,
+      "recentDownloadTime": "19m ago"
+    },
+    {
+      "id": "prod-stat-tracker-1",
+      "title": "Woodland Calm Habit & Mood Tracker Spreads",
+      "slug": "woodland-calm-habit-mood-tracker",
+      "description": "Visualize your gentle routines with pastel mood pixel grids, sleep hours, hydration droplets, and self-care check-ins illustrated with oak leaves and tiny fungi.",
+      "price": 3.5,
+      "compareAtPrice": 4.5,
+      "theme": "Little Forest",
+      "collection": "Digital Stationery",
+      "collectionId": "col-digital-stationery",
+      "category": "habit-mood-trackers",
+      "productType": "stationery",
+      "deviceTypes": [
+        "tablet",
+        "desktop"
+      ],
+      "resolutions": [
+        "12 Monthly Mood Pixel Grids",
+        "Weekly Habit & Routine Circles",
+        "Sleep, Water & Gratitude Check-ins"
+      ],
+      "fileFormat": "Hyperlinked PDF + Printable A4/Letter",
+      "fileSize": "15.8 MB",
+      "whatsIncluded": [
+        "Monthly Mood & Emotion Color Key Spreads",
+        "Habit Streak & Routine Trackers",
+        "End-of-Month Gentle Reflection Page",
+        "Compatible with Apple Pencil & Stylus Apps"
+      ],
+      "images": [
+        "/src/assets/images/stationery_trackers_budget_1794967641815.jpg"
+      ],
+      "featured": true,
+      "isNew": true,
+      "popularity": 93,
+      "status": "published",
+      "createdAt": "2026-11-14T13:20:00.000Z",
+      "downloadFileName": "sleepyshroom_habit_mood_tracker.jpg",
+      "downloadCount": 446,
+      "recentDownloadTime": "8m ago"
+    },
+    {
+      "id": "prod-stat-stickers-1",
+      "title": "Sleepy Shroom & Cottagecore Digital Sticker Book",
+      "slug": "sleepy-shroom-digital-sticker-book",
+      "description": "Over 85 hand-drawn pre-cropped digital stickers featuring sleepy red mushrooms, steaming chamomile teacups, garden snails, vintage lanterns, berries, and satin ribbons.",
+      "price": 4,
+      "compareAtPrice": 5,
+      "theme": "Cottagecore",
+      "collection": "Digital Stationery",
+      "collectionId": "col-digital-stationery",
+      "category": "digital-stickers",
+      "productType": "stationery",
+      "deviceTypes": [
+        "tablet",
+        "mobile",
+        "desktop"
+      ],
+      "resolutions": [
+        "85+ Transparent 300 DPI PNGs",
+        "Ready-to-Use GoodNotes Sticker Book",
+        "Crisp White Die-Cut Borders"
+      ],
+      "fileFormat": "GoodNotes Sticker Book + Individual PNGs",
+      "fileSize": "32.0 MB",
+      "whatsIncluded": [
+        "GoodNotes Pre-Cropped Sticker Book File",
+        "85+ Individual Transparent PNG Stickers",
+        "Hand-drawn Washi Tapes, Bows & Labels",
+        "Personal Planner & Journal License"
+      ],
+      "images": [
+        "/src/assets/images/stationery_digital_stickers_1794967641996.jpg"
+      ],
+      "featured": true,
+      "isNew": true,
+      "popularity": 99,
+      "status": "published",
+      "createdAt": "2026-11-15T15:00:00.000Z",
+      "downloadFileName": "sleepyshroom_cottagecore_digital_stickers.jpg",
+      "downloadCount": 718,
+      "recentDownloadTime": "2m ago"
+    },
+    {
+      "id": "prod-stat-budget-1",
+      "title": "Warm Pantry Monthly Budget & Savings Planner",
+      "slug": "warm-pantry-budget-savings-planner",
+      "description": "Approach finances calmly with pastel income overviews, monthly expense logs, bill payment trackers, and illustrated sinking-fund savings jars.",
+      "price": 4.5,
+      "compareAtPrice": 6,
+      "theme": "Cozy Autumn",
+      "collection": "Digital Stationery",
+      "collectionId": "col-digital-stationery",
+      "category": "budget-planners",
+      "productType": "stationery",
+      "deviceTypes": [
+        "tablet",
+        "desktop"
+      ],
+      "resolutions": [
+        "12 Hyperlinked Monthly Budget Tabs",
+        "Expense & Subscription Trackers",
+        "Savings Jars & No-Spend Challenges"
+      ],
+      "fileFormat": "Hyperlinked PDF + Printable Workbook",
+      "fileSize": "19.5 MB",
+      "whatsIncluded": [
+        "Monthly Cash Flow & Category Budget Sheets",
+        "Recurring Bills & Subscription Tracker",
+        "Illustrated Sinking Fund Savings Jars",
+        "Annual Financial Reflection Dashboard"
+      ],
+      "images": [
+        "/src/assets/images/stationery_trackers_budget_1794967641815.jpg"
+      ],
+      "featured": true,
+      "isNew": true,
+      "popularity": 95,
+      "status": "published",
+      "createdAt": "2026-11-16T09:10:00.000Z",
+      "downloadFileName": "sleepyshroom_warm_pantry_budget_planner.jpg",
+      "downloadCount": 367,
+      "recentDownloadTime": "9m ago"
     }
   ],
   "collections": [
@@ -1349,6 +1636,21 @@
       "order": 9,
       "theme": "Freebies",
       "productCount": 2
+    },
+    {
+      "id": "col-digital-stationery",
+      "name": "Digital Stationery",
+      "slug": "digital-stationery",
+      "description": "Cozy digital notebooks, hyperlinked journals, gentle planners, and hand-drawn stickers crafted to make every study session, plan, and quiet reflection feel warm and intentional.",
+      "coverImage": "/src/assets/images/stationery_notes_journal_1794967640146.jpg",
+      "bannerImage": "/src/assets/images/stationery_notes_journal_1794967640146.jpg",
+      "featured": true,
+      "isNew": true,
+      "status": "published",
+      "order": 10,
+      "theme": "Digital Stationery",
+      "collectionType": "stationery",
+      "productCount": 7
     }
   ],
   "orders": [],

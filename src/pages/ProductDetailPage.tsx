@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   ShoppingBag, 
   Check, 
@@ -21,6 +21,12 @@ import { ProductCard } from '../components/common/ProductCard.tsx';
 import { ProtectedArtworkPreview } from '../components/common/ProtectedArtworkPreview.tsx';
 import { ProductReviewsSection } from '../components/product/ProductReviewsSection.tsx';
 import { SectionHeading } from '../components/common/SectionHeading.tsx';
+import {
+  DIGITAL_STATIONERY_COLLECTION_SLUG,
+  getStationeryCategoryLabel,
+  isStationeryCategoryId,
+  isStationeryProduct,
+} from '../data/stationeryCatalog.ts';
 
 interface ProductDetailPageProps {
   slug: string;
@@ -30,21 +36,29 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
   const { products, addToCart, downloadFreebie, navigateTo } = useShop();
 
   const product = products.find(p => p.slug === slug || p.id === slug);
+  const isStationery = isStationeryProduct(product);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [devicePreview, setDevicePreview] = useState<'desktop' | 'mobile' | 'tablet'>('desktop');
+  const [devicePreview, setDevicePreview] = useState<'desktop' | 'mobile' | 'tablet'>(
+    isStationery ? 'tablet' : 'desktop'
+  );
   const [added, setAdded] = useState(false);
   const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+    setDevicePreview(isStationery ? 'tablet' : 'desktop');
+  }, [slug, isStationery]);
 
   if (!product) {
     return (
       <div className="py-20 text-center max-w-md mx-auto px-4">
         <p className="text-4xl mb-4">🍄</p>
         <h2 className="font-heading font-bold text-2xl text-[#292929] mb-2">
-          Wallpaper Not Found
+          Design Not Found
         </h2>
         <p className="text-sm text-[#777777] font-medium mb-6">
-          The digital wallpaper you are looking for may have been retired or moved.
+          The digital download you are looking for may have been retired or moved.
         </p>
         <button
           onClick={() => navigateTo('collections')}
@@ -56,9 +70,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
     );
   }
 
-  // Related products from same theme or collection
+  // Related products from same category/collection/theme
   const relatedProducts = products
-    .filter(p => p.id !== product.id && (p.theme === product.theme || p.collection === product.collection))
+    .filter(
+      p =>
+        p.id !== product.id &&
+        (isStationery
+          ? isStationeryProduct(p)
+          : !isStationeryProduct(p) && (p.theme === product.theme || p.collection === product.collection))
+    )
     .slice(0, 3);
 
   const handleAddToCart = () => {
@@ -104,14 +124,30 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Breadcrumb Navigation */}
-        <nav className="flex items-center gap-2 text-xs text-[#777777] font-bold mb-6">
+        <nav className="flex items-center gap-2 text-xs text-[#777777] font-bold mb-6 flex-wrap">
           <button onClick={() => navigateTo('home')} className="hover:text-[#A64B3C] cursor-pointer">
             Home
           </button>
           <ChevronRight className="w-3.5 h-3.5" />
-          <button onClick={() => navigateTo('collections')} className="hover:text-[#A64B3C] cursor-pointer">
-            Wallpapers
+          <button
+            onClick={() =>
+              navigateTo('collections', isStationery ? DIGITAL_STATIONERY_COLLECTION_SLUG : null)
+            }
+            className="hover:text-[#A64B3C] cursor-pointer"
+          >
+            {isStationery ? 'Digital Stationery' : 'Wallpapers'}
           </button>
+          {isStationery && isStationeryCategoryId(product.category) && (
+            <>
+              <ChevronRight className="w-3.5 h-3.5" />
+              <button
+                onClick={() => navigateTo('collections', String(product.category))}
+                className="hover:text-[#A64B3C] cursor-pointer"
+              >
+                {getStationeryCategoryLabel(product.category)}
+              </button>
+            </>
+          )}
           <ChevronRight className="w-3.5 h-3.5" />
           <span className="text-[#292929] font-extrabold truncate max-w-xs">
             {product.title}
@@ -275,7 +311,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                   Instant Digital Download
                 </p>
                 <p className="text-[#777777] font-medium leading-relaxed">
-                  This is a digital wallpaper file. No physical goods will be shipped. You will receive immediate download access upon checkout and via your email confirmation receipt.
+                  {isStationery
+                    ? 'This is a digital stationery download. No physical items will be shipped. You will receive instant download access upon checkout and via your email confirmation receipt.'
+                    : 'This is a digital wallpaper file. No physical goods will be shipped. You will receive immediate download access upon checkout and via your email confirmation receipt.'}
                 </p>
               </div>
             </div>
@@ -426,12 +464,16 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 <div className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-200 text-xs space-y-1">
                   <p className="text-[#777777] font-bold">Included File Formats</p>
                   <p className="font-bold text-[#292929] text-xs">
-                    Lossless 300 DPI PNG, High-Resolution JPEG, &amp; Uncompressed ZIP Archives
+                    {isStationery
+                      ? product.fileFormat || 'Interactive PDF & High-Resolution PNG Files'
+                      : 'Lossless 300 DPI PNG, High-Resolution JPEG, & Uncompressed ZIP Archives'}
                   </p>
                 </div>
 
                 <div className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-200 text-xs">
-                  <p className="text-[#777777] font-bold">Calibrated Resolutions</p>
+                  <p className="text-[#777777] font-bold">
+                    {isStationery ? 'Compatibility & Format Specs' : 'Calibrated Resolutions'}
+                  </p>
                   <ul className="mt-1 space-y-0.5">
                     {product.resolutions.map((res, i) => (
                       <li key={i} className="font-bold text-[#292929] flex items-center gap-1.5">
@@ -530,20 +572,28 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
         {/* Customer Reviews (Authenticated Verified Purchasers Only) */}
         <ProductReviewsSection productId={product.id} productTitle={product.title} />
 
-        {/* Related Wallpapers Section */}
+        {/* Related Designs Section */}
         {relatedProducts.length > 0 && (
           <section className="mt-16 sm:mt-20 pt-12 border-t border-neutral-200">
             <div className="text-center mb-10 space-y-3">
               <SectionHeading
                 as="h2"
                 size="md"
-                subtitle="You might also adore these matching cozy wallpapers."
+                subtitle={
+                  isStationery
+                    ? 'You might also enjoy these matching cozy digital stationery pieces.'
+                    : 'You might also adore these matching cozy wallpapers.'
+                }
               >
-                More from {product.theme}
+                {isStationery ? 'More Digital Stationery' : `More from ${product.theme}`}
               </SectionHeading>
               <div>
                 <button
-                  onClick={() => navigateTo('collections', `theme=${encodeURIComponent(product.theme)}`)}
+                  onClick={() =>
+                    isStationery
+                      ? navigateTo('collections', DIGITAL_STATIONERY_COLLECTION_SLUG)
+                      : navigateTo('collections', `theme=${encodeURIComponent(product.theme)}`)
+                  }
                   className="text-xs font-bold text-[#A64B3C] hover:underline cursor-pointer"
                 >
                   View collection

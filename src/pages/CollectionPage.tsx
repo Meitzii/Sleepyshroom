@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CalendarClock, Sparkles } from 'lucide-react';
+import { ArrowLeft, CalendarClock, ChevronRight, Home, Sparkles } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
-import type { Collection, Product, ProductCategory, ThemeBundle } from '../types/index.ts';
+import type { Collection, Product, ThemeBundle } from '../types/index.ts';
 import { parseJsonResponse } from '../utils/apiClient.ts';
 import { CollectionHero } from '../components/collections/CollectionHero.tsx';
 import { CollectionCategoryNav, type CategoryOption } from '../components/collections/CollectionCategoryNav.tsx';
@@ -9,12 +9,22 @@ import { CollectionFilters, type CollectionFilterState } from '../components/col
 import { CollectionProductGrid } from '../components/collections/CollectionProductGrid.tsx';
 import { CollectionBundleSection } from '../components/collections/CollectionBundleSection.tsx';
 import { RelatedCollections } from '../components/collections/RelatedCollections.tsx';
+import {
+  DIGITAL_STATIONERY_CATEGORIES,
+  DIGITAL_STATIONERY_COLLECTION_NAME,
+  DIGITAL_STATIONERY_COLLECTION_SLUG,
+  DIGITAL_STATIONERY_DESCRIPTION,
+  isStationeryCollection,
+  isStationeryProduct,
+  matchesStationeryCategory,
+  resolveStationeryRouteSlug,
+} from '../data/stationeryCatalog.ts';
 
 interface CollectionPageProps {
   slug: string;
 }
 
-function matchesCollectionCategory(product: Product, category: ProductCategory): boolean {
+function matchesCollectionCategory(product: Product, category: string): boolean {
   if (category === 'all') return true;
   if (category === 'bundle') {
     return Boolean(product.isBundle || product.category === 'bundle' || product.productType === 'bundle');
@@ -44,7 +54,10 @@ function matchesCollectionCategory(product: Product, category: ProductCategory):
 export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
   const { collections, products, bundles, navigateTo } = useShop();
 
-  const [loading, setLoading] = useState(true);
+  const stationeryRoute = useMemo(() => resolveStationeryRouteSlug(slug), [slug]);
+  const isStationeryView = Boolean(stationeryRoute);
+
+  const [loading, setLoading] = useState(!stationeryRoute);
   const [expiredInfo, setExpiredInfo] = useState<{ name: string; endDate?: string | null } | null>(null);
   const [collection, setCollection] = useState<Collection | null>(null);
   const [collectionProducts, setCollectionProducts] = useState<Product[]>([]);
@@ -53,7 +66,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   const [filters, setFilters] = useState<CollectionFilterState>({
-    category: 'all',
+    category: stationeryRoute ? stationeryRoute.activeCategory : 'all',
     maxPrice: 25,
     onSaleOnly: false,
     bundlesOnly: false,
@@ -61,7 +74,30 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
     sortBy: 'featured',
   });
 
+  // All published Digital Stationery products (used on /collections/digital-stationery & category pages)
+  const allStationeryProducts = useMemo(() => {
+    return products.filter((p) => p.status === 'published' && isStationeryProduct(p));
+  }, [products]);
+
+  // Sync stationery route changes immediately without reload spinner
   useEffect(() => {
+    if (!stationeryRoute) return;
+    const ceiling = Math.max(10, ...allStationeryProducts.map((p) => Number(p.price || 0)));
+    setLoading(false);
+    setExpiredInfo(null);
+    setFilters((prev) => ({
+      ...prev,
+      category: stationeryRoute.activeCategory,
+      bundlesOnly: false,
+      productType: 'all',
+      maxPrice: Math.max(prev.maxPrice, Math.ceil(ceiling)),
+    }));
+  }, [stationeryRoute, allStationeryProducts]);
+
+  // Load standard Wallpaper Theme Collection
+  useEffect(() => {
+    if (stationeryRoute) return;
+
     let cancelled = false;
     setLoading(true);
     setExpiredInfo(null);
@@ -69,7 +105,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
     const loadCollection = async () => {
       const normalizedSlug = String(slug || '').trim().toLowerCase();
 
-      // Optimistic lookup from ShopContext
       const ctxCol = collections.find(
         (c) =>
           c.slug.toLowerCase() === normalizedSlug ||
@@ -95,10 +130,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
 
         if (parsed.ok && parsed.isJson && parsed.data?.collection) {
           const loadedCol: Collection = parsed.data.collection;
-          const loadedProds: Product[] = Array.isArray(parsed.data.products) ? parsed.data.products : [];
-          const loadedBundles: ThemeBundle[] = Array.isArray(parsed.data.bundles) ? parsed.data.bundles : [];
+          const loadedProds: Product[] = Array.isArray(parsed.data.products)
+            ? parsed.data.products.filter((p: Product) => !isStationeryProduct(p))
+            : [];
+          const loadedBundles: ThemeBundle[] = Array.isArray(parsed.data.bundles)
+            ? parsed.data.bundles
+            : [];
           const loadedRelated: Collection[] = Array.isArray(parsed.data.relatedCollections)
-            ? parsed.data.relatedCollections
+            ? parsed.data.relatedCollections.filter((c: Collection) => !isStationeryCollection(c))
             : [];
 
           const ceiling = Math.max(10, ...loadedProds.map((p) => Number(p.price || 0)));
@@ -137,6 +176,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
         const matchedProds = products.filter(
           (p) =>
             p.status === 'published' &&
+            !isStationeryProduct(p) &&
             (p.collectionId === ctxCol.id ||
               p.collection.toLowerCase() === ctxCol.name.toLowerCase() ||
               p.theme?.toLowerCase() === ctxCol.name.toLowerCase())
@@ -144,7 +184,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
         const matchedBundles = bundles.filter(
           (b) => b.collectionId === ctxCol.id || b.collectionSlug === ctxCol.slug
         );
-        const rel = collections.filter((c) => c.id !== ctxCol.id).slice(0, 4);
+        const rel = collections
+          .filter((c) => c.id !== ctxCol.id && !isStationeryCollection(c))
+          .slice(0, 4);
         const ceiling = Math.max(10, ...matchedProds.map((p) => Number(p.price || 0)));
 
         setCollection(ctxCol);
@@ -169,15 +211,28 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
     return () => {
       cancelled = true;
     };
-  }, [slug, collections, products, bundles]);
+  }, [slug, stationeryRoute, collections, products, bundles]);
+
+  const activeDataset = isStationeryView ? allStationeryProducts : collectionProducts;
 
   const priceCeiling = useMemo(
-    () => Math.max(10, ...collectionProducts.map((p) => Number(p.price || 0))),
-    [collectionProducts]
+    () => Math.max(10, ...activeDataset.map((p) => Number(p.price || 0))),
+    [activeDataset]
   );
 
-  const categories: CategoryOption[] = useMemo(
-    () => [
+  const categories: CategoryOption[] = useMemo(() => {
+    if (isStationeryView) {
+      return [
+        { id: 'all', label: 'All Items', count: allStationeryProducts.length },
+        ...DIGITAL_STATIONERY_CATEGORIES.map((cat) => ({
+          id: cat.id,
+          label: cat.label,
+          count: allStationeryProducts.filter((p) => matchesStationeryCategory(p, cat.id)).length,
+        })),
+      ];
+    }
+
+    return [
       { id: 'all', label: 'All Products', count: collectionProducts.length },
       {
         id: 'phone_tablet',
@@ -199,11 +254,11 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
         label: 'Bundles',
         count: collectionProducts.filter((p) => matchesCollectionCategory(p, 'bundle')).length,
       },
-    ],
-    [collectionProducts]
-  );
+    ];
+  }, [isStationeryView, allStationeryProducts, collectionProducts]);
 
   const availableProductTypes = useMemo(() => {
+    if (isStationeryView) return [];
     const types = Array.from(
       new Set(
         collectionProducts
@@ -212,18 +267,22 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
       )
     );
     return types;
-  }, [collectionProducts]);
+  }, [isStationeryView, collectionProducts]);
 
   const filteredProducts = useMemo(() => {
-    let list = collectionProducts.filter((p) => {
-      if (!matchesCollectionCategory(p, filters.category)) return false;
+    let list = activeDataset.filter((p) => {
+      if (isStationeryView) {
+        if (!matchesStationeryCategory(p, filters.category)) return false;
+      } else {
+        if (!matchesCollectionCategory(p, filters.category)) return false;
+        if (filters.bundlesOnly && !p.isBundle && p.category !== 'bundle') return false;
+        if (filters.productType !== 'all') {
+          const pType = String(p.productType || (p.isBundle ? 'bundle' : 'wallpaper'));
+          if (pType !== filters.productType) return false;
+        }
+      }
       if (Number(p.price) > filters.maxPrice) return false;
       if (filters.onSaleOnly && !(p.compareAtPrice && p.compareAtPrice > p.price)) return false;
-      if (filters.bundlesOnly && !p.isBundle && p.category !== 'bundle') return false;
-      if (filters.productType !== 'all') {
-        const pType = String(p.productType || (p.isBundle ? 'bundle' : 'wallpaper'));
-        if (pType !== filters.productType) return false;
-      }
       return true;
     });
 
@@ -247,14 +306,17 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
     }
 
     return list;
-  }, [collectionProducts, filters]);
+  }, [activeDataset, isStationeryView, filters]);
 
-  const hasActiveFilters =
-    filters.category !== 'all' ||
-    filters.onSaleOnly ||
-    filters.bundlesOnly ||
-    filters.productType !== 'all' ||
-    filters.maxPrice < Math.ceil(priceCeiling);
+  const hasActiveFilters = isStationeryView
+    ? filters.category !== 'all' ||
+      filters.onSaleOnly ||
+      filters.maxPrice < Math.ceil(priceCeiling)
+    : filters.category !== 'all' ||
+      filters.onSaleOnly ||
+      filters.bundlesOnly ||
+      filters.productType !== 'all' ||
+      filters.maxPrice < Math.ceil(priceCeiling);
 
   const resetFilters = () => {
     setFilters({
@@ -265,6 +327,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
       productType: 'all',
       sortBy: 'featured',
     });
+    if (isStationeryView && slug !== DIGITAL_STATIONERY_COLLECTION_SLUG) {
+      navigateTo('collections', DIGITAL_STATIONERY_COLLECTION_SLUG);
+    }
   };
 
   if (loading) {
@@ -272,6 +337,125 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
       <div className="py-24 text-center max-w-md mx-auto px-4 space-y-3">
         <div className="w-10 h-10 rounded-full border-3 border-[#A64B3C]/20 border-t-[#A64B3C] animate-spin mx-auto" />
         <p className="text-sm font-bold text-[#777777]">Gathering cozy designs...</p>
+      </div>
+    );
+  }
+
+  // Dedicated Digital Stationery Collection & Category View
+  if (isStationeryView && stationeryRoute) {
+    const activeCatMeta =
+      filters.category !== 'all'
+        ? DIGITAL_STATIONERY_CATEGORIES.find((c) => c.id === filters.category) || stationeryRoute.categoryDef
+        : null;
+
+    const stationeryCollectionRecord = collections.find((c) => isStationeryCollection(c));
+    const pageTitle = activeCatMeta ? activeCatMeta.label : DIGITAL_STATIONERY_COLLECTION_NAME;
+    const pageDescription = activeCatMeta
+      ? activeCatMeta.description
+      : stationeryCollectionRecord?.description || DIGITAL_STATIONERY_DESCRIPTION;
+
+    return (
+      <div className="bg-[#FFFFFF] min-h-screen">
+        {/* Clean Minimalist Stationery Header */}
+        <header className="bg-[#FFFFFF] border-b border-neutral-200 pt-6 sm:pt-8 pb-8 sm:pb-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav
+              aria-label="Breadcrumb"
+              className="flex items-center gap-1.5 text-xs text-[#777777] font-medium mb-5 flex-wrap"
+            >
+              <button
+                type="button"
+                onClick={() => navigateTo('home')}
+                className="hover:text-[#A64B3C] flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <Home className="w-3.5 h-3.5" />
+                <span>Home</span>
+              </button>
+              <ChevronRight className="w-3.5 h-3.5 text-neutral-300" />
+              {activeCatMeta ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => navigateTo('collections', DIGITAL_STATIONERY_COLLECTION_SLUG)}
+                    className="hover:text-[#A64B3C] transition-colors cursor-pointer"
+                  >
+                    {DIGITAL_STATIONERY_COLLECTION_NAME}
+                  </button>
+                  <ChevronRight className="w-3.5 h-3.5 text-neutral-300" />
+                  <span className="text-[#292929] font-bold">{activeCatMeta.label}</span>
+                </>
+              ) : (
+                <span className="text-[#292929] font-bold">
+                  {DIGITAL_STATIONERY_COLLECTION_NAME}
+                </span>
+              )}
+            </nav>
+
+            <div className="max-w-2xl">
+              <h1 className="font-section-serif font-normal text-3xl sm:text-4xl lg:text-5xl text-[#292929] tracking-tight leading-tight">
+                {pageTitle}
+              </h1>
+              <p className="mt-3 text-sm sm:text-base text-[#777777] leading-relaxed">
+                {pageDescription}
+              </p>
+            </div>
+          </div>
+        </header>
+
+        {/* Stationery Category Filter Bar */}
+        <CollectionCategoryNav
+          categories={categories}
+          selectedCategory={filters.category}
+          onSelectCategory={(category) => {
+            setFilters((prev) => ({
+              ...prev,
+              category,
+            }));
+            const targetSlug =
+              category === 'all' ? DIGITAL_STATIONERY_COLLECTION_SLUG : category;
+            navigateTo('collections', targetSlug);
+          }}
+        />
+
+        {/* Filter Sidebar + Product Grid */}
+        <section className="py-10 sm:py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              <CollectionFilters
+                filters={filters}
+                onChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))}
+                onReset={resetFilters}
+                availableProductTypes={availableProductTypes}
+                priceCeiling={priceCeiling}
+                hasActiveFilters={hasActiveFilters}
+                mobileOpen={mobileFilterOpen}
+                onCloseMobile={() => setMobileFilterOpen(false)}
+                showBundleToggle={false}
+              />
+
+              <CollectionProductGrid
+                products={filteredProducts}
+                sortBy={filters.sortBy}
+                onSortChange={(sortBy) => setFilters((prev) => ({ ...prev, sortBy }))}
+                hasActiveFilters={hasActiveFilters}
+                onClearFilters={resetFilters}
+                onOpenMobileFilters={() => setMobileFilterOpen(true)}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Bottom Cross-Navigation Link */}
+        <div className="pb-12 pt-2 text-center">
+          <button
+            type="button"
+            onClick={() => navigateTo('collections')}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#A64B3C] hover:underline cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Explore Wallpaper Collections</span>
+          </button>
+        </div>
       </div>
     );
   }
@@ -341,7 +525,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug }) => {
           setFilters((prev) => ({
             ...prev,
             category,
-            bundlesOnly: category === 'bundle' ? true : prev.bundlesOnly && category !== 'all' ? false : false,
+            bundlesOnly: category === 'bundle' ? true : false,
           }))
         }
       />

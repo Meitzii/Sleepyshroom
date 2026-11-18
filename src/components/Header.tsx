@@ -30,6 +30,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
             p.title.toLowerCase().includes(query) ||
             p.theme.toLowerCase().includes(query) ||
             p.collection.toLowerCase().includes(query) ||
+            String(p.category || '').toLowerCase().includes(query) ||
+            String(p.productType || '').toLowerCase().includes(query) ||
             p.deviceTypes.some((d) => d.toLowerCase().includes(query))
           );
         })
@@ -149,7 +151,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
               <Search className="w-4 h-4 text-[#777777] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search cozy wallpapers, themes, or devices..."
+                placeholder="Search cozy wallpapers, digital stationery, or themes..."
                 value={searchInput}
                 onChange={(e) => {
                   setSearchInput(e.target.value);
@@ -180,7 +182,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
             {isFocused && searchInput.trim().length > 1 && (
               <div className="mt-2 w-full bg-[#FFFFFF] rounded-2xl shadow-xl border border-neutral-200 p-2 z-50 overflow-hidden">
                 <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#777777] border-b border-neutral-100">
-                  Wallpaper Suggestions
+                  Storefront Suggestions
                 </div>
                 {searchResults.length > 0 ? (
                   <div className="py-1">
@@ -220,9 +222,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMenu }) => {
                   </div>
                 ) : (
                   <div className="py-6 px-4 text-center">
-                    <p className="text-xs font-bold text-[#292929]">No wallpapers found</p>
+                    <p className="text-xs font-bold text-[#292929]">No matching designs found</p>
                     <p className="text-[11px] text-[#777777] mt-1">
-                      Try searching &ldquo;garden&rdquo;, &ldquo;autumn&rdquo;, &ldquo;mushroom&rdquo;, or &ldquo;desktop&rdquo;
+                      Try searching &ldquo;journal&rdquo;, &ldquo;notes&rdquo;, &ldquo;stickers&rdquo;, &ldquo;garden&rdquo;, or &ldquo;desktop&rdquo;
                     </p>
                   </div>
                 )}

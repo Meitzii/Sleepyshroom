@@ -1,20 +1,32 @@
 import React from 'react';
-import { Layers, Smartphone, Monitor, Grid, Package } from 'lucide-react';
-import type { ProductCategory } from '../../types/index.ts';
+import {
+  Layers,
+  Smartphone,
+  Monitor,
+  Grid,
+  Package,
+  NotebookPen,
+  BookHeart,
+  Calendar,
+  ListChecks,
+  HeartPulse,
+  Sticker,
+  Wallet,
+} from 'lucide-react';
 
 export interface CategoryOption {
-  id: ProductCategory;
+  id: string;
   label: string;
   count: number;
 }
 
 interface CollectionCategoryNavProps {
   categories: CategoryOption[];
-  selectedCategory: ProductCategory;
-  onSelectCategory: (category: ProductCategory) => void;
+  selectedCategory: string;
+  onSelectCategory: (category: string) => void;
 }
 
-const iconForCategory = (cat: ProductCategory) => {
+const iconForCategory = (cat: string) => {
   switch (cat) {
     case 'phone_tablet':
       return <Smartphone className="w-4 h-4" />;
@@ -24,6 +36,20 @@ const iconForCategory = (cat: ProductCategory) => {
       return <Grid className="w-4 h-4" />;
     case 'bundle':
       return <Package className="w-4 h-4" />;
+    case 'digital-notes':
+      return <NotebookPen className="w-4 h-4" />;
+    case 'digital-journals':
+      return <BookHeart className="w-4 h-4" />;
+    case 'calendars-schedules':
+      return <Calendar className="w-4 h-4" />;
+    case 'to-do-lists':
+      return <ListChecks className="w-4 h-4" />;
+    case 'habit-mood-trackers':
+      return <HeartPulse className="w-4 h-4" />;
+    case 'digital-stickers':
+      return <Sticker className="w-4 h-4" />;
+    case 'budget-planners':
+      return <Wallet className="w-4 h-4" />;
     default:
       return <Layers className="w-4 h-4" />;
   }
@@ -40,13 +66,14 @@ export const CollectionCategoryNav: React.FC<CollectionCategoryNavProps> = ({
         <div
           role="tablist"
           aria-label="Collection Categories"
-          className="flex items-center gap-2 overflow-x-auto no-scrollbar py-3.5"
+          className="flex items-center gap-2 overflow-x-auto sm:flex-wrap sm:overflow-visible no-scrollbar py-3.5"
         >
           {categories.map((cat) => {
             const active = selectedCategory === cat.id;
             return (
               <button
                 key={cat.id}
+                type="button"
                 role="tab"
                 aria-selected={active}
                 onClick={() => onSelectCategory(cat.id)}

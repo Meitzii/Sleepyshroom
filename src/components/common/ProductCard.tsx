@@ -3,6 +3,7 @@ import { Eye, ShoppingBag, Check, Sparkles, Download, Gift } from 'lucide-react'
 import { useShop } from '../../context/ShopContext.tsx';
 import type { Product } from '../../types/index.ts';
 import { ProtectedArtworkPreview } from './ProtectedArtworkPreview.tsx';
+import { getStationeryCategoryLabel, isStationeryProduct } from '../../data/stationeryCatalog.ts';
 
 interface ProductCardProps {
   product: Product;
@@ -18,12 +19,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [downloading, setDownloading] = useState(false);
 
   const isFree = Boolean(product.isFree || product.price === 0);
+  const isStationery = isStationeryProduct(product);
   const discountPercent =
     !isFree && product.compareAtPrice && product.compareAtPrice > product.price
       ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
       : 0;
-  const categoryLabel =
-    product.isBundle || product.category === 'bundle'
+  const categoryLabel = isStationery
+    ? getStationeryCategoryLabel(product.category)
+    : product.isBundle || product.category === 'bundle'
       ? 'Theme Bundle'
       : product.category === 'icon_pack' || product.productType === 'icon_pack'
         ? 'Icon Pack'
@@ -32,7 +35,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           : 'Phone & Tablet';
 
   // Determine aspect ratio based on orientation
-  const isPortrait = orientation === 'portrait' || (orientation === 'auto' && product.deviceTypes.includes('mobile') && !product.deviceTypes.includes('desktop'));
+  const isPortrait =
+    !isStationery &&
+    (orientation === 'portrait' ||
+      (orientation === 'auto' &&
+        product.deviceTypes.includes('mobile') &&
+        !product.deviceTypes.includes('desktop')));
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();

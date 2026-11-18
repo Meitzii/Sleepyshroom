@@ -4,12 +4,17 @@ import { useShop } from '../../context/ShopContext.tsx';
 import { ProductCard } from '../common/ProductCard.tsx';
 import { ScrollReveal } from '../common/ScrollReveal.tsx';
 import { SectionHeading } from '../common/SectionHeading.tsx';
+import { isStationeryProduct } from '../../data/stationeryCatalog.ts';
 
 export const MobileTabletThemesSection: React.FC = () => {
   const { products, navigateTo } = useShop();
 
   const mobileProducts = products
-    .filter((p) => p.deviceTypes.includes('mobile') || p.deviceTypes.includes('tablet'))
+    .filter(
+      (p) =>
+        !isStationeryProduct(p) &&
+        (p.deviceTypes.includes('mobile') || p.deviceTypes.includes('tablet'))
+    )
     .slice(0, 4);
 
   return (

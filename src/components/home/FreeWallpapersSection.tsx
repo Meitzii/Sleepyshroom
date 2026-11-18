@@ -4,11 +4,14 @@ import { useShop } from '../../context/ShopContext.tsx';
 import { ProductCard } from '../common/ProductCard.tsx';
 import { ScrollReveal } from '../common/ScrollReveal.tsx';
 import { SectionHeading } from '../common/SectionHeading.tsx';
+import { isStationeryProduct } from '../../data/stationeryCatalog.ts';
 
 export const FreeWallpapersSection: React.FC = () => {
   const { products, navigateTo } = useShop();
 
-  const freeProducts = products.filter((p) => p.isFree || p.price === 0);
+  const freeProducts = products.filter(
+    (p) => !isStationeryProduct(p) && (p.isFree || p.price === 0)
+  );
 
   if (freeProducts.length === 0) return null;
 

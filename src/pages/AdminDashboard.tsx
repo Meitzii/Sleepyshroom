@@ -57,6 +57,14 @@ import {
   SocialPlatformIcon,
 } from '../components/common/Icons.tsx';
 import { initialSettings } from '../data/initialData.ts';
+import {
+  DIGITAL_STATIONERY_CATEGORIES,
+  DIGITAL_STATIONERY_COLLECTION_ID,
+  DIGITAL_STATIONERY_COLLECTION_NAME,
+  getStationeryCategoryLabel,
+  isStationeryCategoryId,
+  isStationeryProduct,
+} from '../data/stationeryCatalog.ts';
 import type { 
   Product, 
   CarouselSlide, 
@@ -1537,7 +1545,7 @@ export const AdminDashboard: React.FC = () => {
                 className="px-5 py-2.5 bg-[#8B6F7A] text-[#F7F3E9] rounded-xl text-xs font-bold hover:bg-[#785E69] flex items-center gap-1.5 transition-all shadow-xs"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add New Wallpaper</span>
+                <span>Add New Product</span>
               </button>
             </div>
 
@@ -1553,10 +1561,15 @@ export const AdminDashboard: React.FC = () => {
                         className="w-16 h-12 object-cover rounded-xl shrink-0 border border-[#D5C2BB]"
                       />
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-heading font-bold text-sm text-[#1E1419]">
                             {prod.title}
                           </h4>
+                          {isStationeryProduct(prod) && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FCF3E2] text-[#A64B3C] border border-[#EADCC8]">
+                              {getStationeryCategoryLabel(prod.category)}
+                            </span>
+                          )}
                           {Boolean(prod.isFree || prod.price === 0) && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFD58A] text-[#1E1419] border border-[#E6A020]/40">
                               Freebie Gift 🎁
@@ -1568,8 +1581,8 @@ export const AdminDashboard: React.FC = () => {
                             {prod.status}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-[#33222C] font-medium mt-0.5">
-                          <span>{prod.theme}</span>
+                        <div className="flex items-center gap-2 text-xs text-[#33222C] font-medium mt-0.5 flex-wrap">
+                          <span>{isStationeryProduct(prod) ? prod.collection || 'Digital Stationery' : prod.theme}</span>
                           <span>·</span>
                           <span className="capitalize">{prod.deviceTypes.join(', ')}</span>
                           <span>·</span>
@@ -3528,27 +3541,62 @@ export const AdminDashboard: React.FC = () => {
                   <div>
                     <label className="block font-bold text-[#1E1419] mb-1">Category Filter</label>
                     <select
-                      value={editingProduct.category || 'desktop'}
+                      value={
+                        editingProduct.productType === 'stationery'
+                          ? (isStationeryCategoryId(editingProduct.category) ? editingProduct.category : 'digital-notes')
+                          : (editingProduct.category || 'desktop')
+                      }
                       onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })}
                       className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
                     >
-                      <option value="desktop">Desktop Wallpapers</option>
-                      <option value="phone_tablet">Phone &amp; Tablet Wallpapers</option>
-                      <option value="icon_pack">Icon Packs</option>
-                      <option value="bundle">Bundles</option>
+                      {editingProduct.productType === 'stationery' ? (
+                        DIGITAL_STATIONERY_CATEGORIES.map(cat => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.label}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="desktop">Desktop Wallpapers</option>
+                          <option value="phone_tablet">Phone &amp; Tablet Wallpapers</option>
+                          <option value="icon_pack">Icon Packs</option>
+                          <option value="bundle">Bundles</option>
+                        </>
+                      )}
                     </select>
                   </div>
                   <div>
                     <label className="block font-bold text-[#1E1419] mb-1">Product Type</label>
                     <select
                       value={editingProduct.productType || 'wallpaper'}
-                      onChange={e => setEditingProduct({ ...editingProduct, productType: e.target.value })}
+                      onChange={e => {
+                        const nextType = e.target.value;
+                        if (nextType === 'stationery') {
+                          setEditingProduct({
+                            ...editingProduct,
+                            productType: 'stationery',
+                            category: isStationeryCategoryId(editingProduct.category)
+                              ? editingProduct.category
+                              : DIGITAL_STATIONERY_CATEGORIES[0].id,
+                            collectionId: DIGITAL_STATIONERY_COLLECTION_ID,
+                            collection: DIGITAL_STATIONERY_COLLECTION_NAME,
+                          });
+                        } else {
+                          setEditingProduct({
+                            ...editingProduct,
+                            productType: nextType,
+                            category: isStationeryCategoryId(editingProduct.category)
+                              ? (nextType === 'bundle' ? 'bundle' : nextType === 'icon_pack' ? 'icon_pack' : 'desktop')
+                              : editingProduct.category,
+                          });
+                        }
+                      }}
                       className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
                     >
                       <option value="wallpaper">Wallpaper</option>
                       <option value="icon_pack">Icon Pack</option>
                       <option value="bundle">Bundle</option>
-                      <option value="stationery">Stationery</option>
+                      <option value="stationery">Digital Stationery</option>
                     </select>
                   </div>
                 </div>

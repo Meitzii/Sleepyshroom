@@ -4,19 +4,53 @@ import {
   Sparkles,
   Monitor,
   Smartphone,
+  Tablet,
   MessageCircle,
   Heart,
   FileText,
   User,
   ShieldCheck,
+  BookOpen,
+  NotebookPen,
+  BookHeart,
+  Calendar,
+  ListChecks,
+  HeartPulse,
+  Sticker,
+  Wallet,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext.tsx';
 import { ShroomLogoIcon } from './common/Icons.tsx';
+import {
+  DIGITAL_STATIONERY_CATEGORIES,
+  DIGITAL_STATIONERY_COLLECTION_SLUG,
+} from '../data/stationeryCatalog.ts';
 
 interface MobileNavDrawerProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+const getStationeryNavIcon = (id: string) => {
+  switch (id) {
+    case 'digital-notes':
+      return <NotebookPen className="w-4 h-4 text-[#777777]" />;
+    case 'digital-journals':
+      return <BookHeart className="w-4 h-4 text-[#777777]" />;
+    case 'calendars-schedules':
+      return <Calendar className="w-4 h-4 text-[#777777]" />;
+    case 'to-do-lists':
+      return <ListChecks className="w-4 h-4 text-[#777777]" />;
+    case 'habit-mood-trackers':
+      return <HeartPulse className="w-4 h-4 text-[#777777]" />;
+    case 'digital-stickers':
+      return <Sticker className="w-4 h-4 text-[#777777]" />;
+    case 'budget-planners':
+      return <Wallet className="w-4 h-4 text-[#777777]" />;
+    default:
+      return <BookOpen className="w-4 h-4 text-[#777777]" />;
+  }
+};
 
 export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClose }) => {
   const { navigateTo, user, settings } = useShop();
@@ -69,10 +103,6 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClos
 
         {/* Navigation Links */}
         <div className="flex-1 overflow-y-auto p-4 space-y-1">
-          <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[#777777]">
-            Storefront
-          </div>
-
           <button
             type="button"
             onClick={() => handleNav('home')}
@@ -82,13 +112,45 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClos
             <span>Home</span>
           </button>
 
+          {/* Primary Collection 1: Wallpaper Collections */}
+          <div className="pt-3 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#777777]">
+            Wallpaper Collections
+          </div>
+
           <button
             type="button"
             onClick={() => handleNav('collections')}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
           >
             <Sparkles className="w-4 h-4 text-[#777777]" />
-            <span>Wallpaper Collections</span>
+            <span>All Wallpaper Collections</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleNav('collections', 'device=desktop')}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
+          >
+            <Monitor className="w-4 h-4 text-[#777777]" />
+            <span>Desktop Wallpapers</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleNav('collections', 'device=mobile')}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
+          >
+            <Smartphone className="w-4 h-4 text-[#777777]" />
+            <span>Mobile Wallpapers</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleNav('collections', 'device=tablet')}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
+          >
+            <Tablet className="w-4 h-4 text-[#777777]" />
+            <span>Tablet Wallpapers</span>
           </button>
 
           <button
@@ -100,23 +162,31 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ isOpen, onClos
             <span>Freebies</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => handleNav('collections', 'device=desktop')}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
-          >
-            <Monitor className="w-4 h-4 text-[#777777]" />
-            <span>Desktop Themes</span>
-          </button>
+          {/* Primary Collection 2: Digital Stationery */}
+          <div className="pt-4 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#777777]">
+            Digital Stationery
+          </div>
 
           <button
             type="button"
-            onClick={() => handleNav('collections', 'device=mobile')}
+            onClick={() => handleNav('collections', DIGITAL_STATIONERY_COLLECTION_SLUG)}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
           >
-            <Smartphone className="w-4 h-4 text-[#777777]" />
-            <span>Mobile &amp; Tablet Themes</span>
+            <BookOpen className="w-4 h-4 text-[#A64B3C]" />
+            <span>All Digital Stationery</span>
           </button>
+
+          {DIGITAL_STATIONERY_CATEGORIES.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => handleNav('collections', category.slug)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-[#292929] hover:bg-neutral-100 transition-colors text-left cursor-pointer"
+            >
+              {getStationeryNavIcon(category.id)}
+              <span>{category.label}</span>
+            </button>
+          ))}
 
           <div className="pt-4 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[#777777]">
             About &amp; Help

@@ -4,12 +4,13 @@ import { useShop } from '../../context/ShopContext.tsx';
 import { ProductCard } from '../common/ProductCard.tsx';
 import { ScrollReveal } from '../common/ScrollReveal.tsx';
 import { SectionHeading } from '../common/SectionHeading.tsx';
+import { isStationeryProduct } from '../../data/stationeryCatalog.ts';
 
 export const DesktopThemesSection: React.FC = () => {
   const { products, navigateTo } = useShop();
 
   const desktopProducts = products
-    .filter((p) => p.deviceTypes.includes('desktop'))
+    .filter((p) => !isStationeryProduct(p) && p.deviceTypes.includes('desktop'))
     .slice(0, 4);
 
   return (

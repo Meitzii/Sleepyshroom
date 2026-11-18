@@ -5,6 +5,7 @@ import { MobileNavDrawer } from './components/MobileNavDrawer.tsx';
 import { CartDrawer } from './components/cart/CartDrawer.tsx';
 import { HeroSection } from './components/home/HeroSection.tsx';
 import { ThemeCarousel } from './components/home/ThemeCarousel.tsx';
+import { DigitalStationeryFeatureSection } from './components/home/DigitalStationeryFeatureSection.tsx';
 import { DesktopThemesSection } from './components/home/DesktopThemesSection.tsx';
 import { FreeWallpapersSection } from './components/home/FreeWallpapersSection.tsx';
 import { MobileTabletThemesSection } from './components/home/MobileTabletThemesSection.tsx';
@@ -75,6 +76,9 @@ const MainLayout: React.FC = () => {
                 <ThemeCarousel />
               </ScrollReveal>
             )}
+            <ScrollReveal direction="up" distance={24} durationMs={700} threshold={0.08}>
+              <DigitalStationeryFeatureSection />
+            </ScrollReveal>
             {settings?.showDesktopSection !== false && (
               <ScrollReveal direction="up" distance={24} durationMs={700} threshold={0.08}>
                 <DesktopThemesSection />

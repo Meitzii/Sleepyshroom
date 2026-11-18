@@ -1,9 +1,8 @@
 import React from 'react';
 import { SlidersHorizontal, X, Check, RotateCcw, Sparkles, Tag } from 'lucide-react';
-import type { ProductCategory } from '../../types/index.ts';
 
 export interface CollectionFilterState {
-  category: ProductCategory;
+  category: string;
   maxPrice: number;
   onSaleOnly: boolean;
   bundlesOnly: boolean;
@@ -20,6 +19,7 @@ interface CollectionFiltersProps {
   hasActiveFilters: boolean;
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  showBundleToggle?: boolean;
 }
 
 export const CollectionFilters: React.FC<CollectionFiltersProps> = ({
@@ -31,6 +31,7 @@ export const CollectionFilters: React.FC<CollectionFiltersProps> = ({
   hasActiveFilters,
   mobileOpen,
   onCloseMobile,
+  showBundleToggle = true,
 }) => {
   const maxSlider = Math.max(10, Math.ceil(priceCeiling));
 
@@ -97,30 +98,32 @@ export const CollectionFilters: React.FC<CollectionFiltersProps> = ({
             {filters.onSaleOnly && <Check className="w-3.5 h-3.5" />}
           </button>
 
-          <button
-            type="button"
-            onClick={() =>
-              onChange({
-                bundlesOnly: !filters.bundlesOnly,
-                category: !filters.bundlesOnly ? 'bundle' : 'all',
-              })
-            }
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-              filters.bundlesOnly
-                ? 'bg-[#A64B3C] text-[#FFFCF7] border-[#8E3E30] shadow-xs'
-                : 'bg-[#FFFFFF] text-[#292929] border-neutral-200 hover:border-[#A64B3C]/40 hover:bg-neutral-50'
-            }`}
-          >
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Theme Bundles Only</span>
-            </span>
-            {filters.bundlesOnly && <Check className="w-3.5 h-3.5" />}
-          </button>
+          {showBundleToggle && (
+            <button
+              type="button"
+              onClick={() =>
+                onChange({
+                  bundlesOnly: !filters.bundlesOnly,
+                  category: !filters.bundlesOnly ? 'bundle' : 'all',
+                })
+              }
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                filters.bundlesOnly
+                  ? 'bg-[#A64B3C] text-[#FFFCF7] border-[#8E3E30] shadow-xs'
+                  : 'bg-[#FFFFFF] text-[#292929] border-neutral-200 hover:border-[#A64B3C]/40 hover:bg-neutral-50'
+              }`}
+            >
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Theme Bundles Only</span>
+              </span>
+              {filters.bundlesOnly && <Check className="w-3.5 h-3.5" />}
+            </button>
+          )}
         </div>
 
         {/* Product Type */}
-        {availableProductTypes.length > 0 && (
+        {availableProductTypes.length > 1 && (
           <div className="border-t border-neutral-200 pt-4 space-y-2">
             <h3 className="text-xs font-bold text-[#292929]">Product Type</h3>
             <div className="space-y-1.5">
