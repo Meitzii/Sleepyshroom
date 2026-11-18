@@ -18,6 +18,42 @@
       "destination": "/api/checkout?route=discounts-validate"
     },
     {
+      "source": "/api/slides",
+      "destination": "/api/content?route=slides"
+    },
+    {
+      "source": "/api/products/:idOrSlug",
+      "destination": "/api/content?route=products&idOrSlug=:idOrSlug"
+    },
+    {
+      "source": "/api/products",
+      "destination": "/api/content?route=products"
+    },
+    {
+      "source": "/api/collections/:slugOrId",
+      "destination": "/api/content?route=collections&slugOrId=:slugOrId"
+    },
+    {
+      "source": "/api/collections",
+      "destination": "/api/content?route=collections"
+    },
+    {
+      "source": "/api/bundles/:slugOrId",
+      "destination": "/api/content?route=bundles&slugOrId=:slugOrId"
+    },
+    {
+      "source": "/api/bundles",
+      "destination": "/api/content?route=bundles"
+    },
+    {
+      "source": "/api/free-download/:productId",
+      "destination": "/api/content?route=free-download&productId=:productId"
+    },
+    {
+      "source": "/api/upload",
+      "destination": "/api/admin/store?route=upload"
+    },
+    {
       "source": "/api/contact",
       "destination": "/api/community?route=contact"
     },
@@ -67,7 +103,43 @@
     },
     {
       "source": "/api/admin/content",
-      "destination": "/api/content"
+      "destination": "/api/content?route=admin-content"
+    },
+    {
+      "source": "/api/admin/stats",
+      "destination": "/api/admin/store?route=stats"
+    },
+    {
+      "source": "/api/admin/slides/:id",
+      "destination": "/api/admin/store?route=slides&id=:id"
+    },
+    {
+      "source": "/api/admin/slides",
+      "destination": "/api/admin/store?route=slides"
+    },
+    {
+      "source": "/api/admin/products/:id",
+      "destination": "/api/admin/store?route=products&id=:id"
+    },
+    {
+      "source": "/api/admin/products",
+      "destination": "/api/admin/store?route=products"
+    },
+    {
+      "source": "/api/admin/collections/:id",
+      "destination": "/api/admin/store?route=collections&id=:id"
+    },
+    {
+      "source": "/api/admin/collections",
+      "destination": "/api/admin/store?route=collections"
+    },
+    {
+      "source": "/api/admin/bundles/:id",
+      "destination": "/api/admin/store?route=bundles&id=:id"
+    },
+    {
+      "source": "/api/admin/bundles",
+      "destination": "/api/admin/store?route=bundles"
     },
     {
       "source": "/api/admin/settings",

@@ -1335,8 +1335,11 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     try {
-      // 1. Download real image file directly for genuinely complimentary freebies
-      const imageSrc = product.images[0] || `/wallpapers/${product.downloadFileName.replace(/\.zip$/i, '.jpg')}`;
+      // 1. Download real wallpaper / archive file directly for genuinely free items
+      const imageSrc =
+        product.downloadUrl ||
+        product.images[0] ||
+        `/wallpapers/${product.downloadFileName.replace(/\.zip$/i, '.jpg')}`;
       await downloadWallpaperFile(imageSrc, product.downloadFileName);
 
       // 2. Notify backend if available (non-blocking)

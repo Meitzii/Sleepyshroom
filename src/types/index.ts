@@ -44,6 +44,7 @@ export interface Product {
   status: 'published' | 'draft';
   createdAt: string;
   downloadFileName: string;
+  downloadUrl?: string;
   isFree?: boolean;
   downloadCount?: number;
   recentDownloadTime?: string;

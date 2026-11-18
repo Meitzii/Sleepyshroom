@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { Collection, Product, ThemeBundle } from '../../types/index.ts';
 import { parseJsonResponse } from '../../utils/apiClient.ts';
+import { ImageUploadField } from './ImageUploadField.tsx';
 
 interface CollectionsBundlesAdminPanelProps {
   collections: Collection[];
@@ -637,25 +638,23 @@ export const CollectionsBundlesAdminPanel: React.FC<CollectionsBundlesAdminPanel
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block font-bold text-[#1E1419] mb-1">Cover Image URL / Path</label>
-                <input
-                  type="text"
-                  value={colForm.coverImage}
-                  onChange={e => setColForm({ ...colForm, coverImage: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
-                />
-              </div>
-              <div>
-                <label className="block font-bold text-[#1E1419] mb-1">Hero Banner Image URL / Path</label>
-                <input
-                  type="text"
-                  value={colForm.bannerImage}
-                  onChange={e => setColForm({ ...colForm, bannerImage: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
-                />
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <ImageUploadField
+                label="Collection Cover Picture"
+                value={colForm.coverImage}
+                onChange={url => setColForm({ ...colForm, coverImage: url })}
+                getToken={getToken}
+                folder="collections"
+                helperText="Shown on collection cards and navigation thumbnails."
+              />
+              <ImageUploadField
+                label="Hero Banner Picture"
+                value={colForm.bannerImage}
+                onChange={url => setColForm({ ...colForm, bannerImage: url })}
+                getToken={getToken}
+                folder="collections"
+                helperText="Wide banner displayed at the top of the collection page."
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -828,15 +827,14 @@ export const CollectionsBundlesAdminPanel: React.FC<CollectionsBundlesAdminPanel
               </div>
             </div>
 
-            <div>
-              <label className="block font-bold text-[#1E1419] mb-1">Preview Image URL / Path</label>
-              <input
-                type="text"
-                value={bundleForm.previewImage}
-                onChange={e => setBundleForm({ ...bundleForm, previewImage: e.target.value })}
-                className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
-              />
-            </div>
+            <ImageUploadField
+              label="Bundle Preview Picture"
+              value={bundleForm.previewImage}
+              onChange={url => setBundleForm({ ...bundleForm, previewImage: url })}
+              getToken={getToken}
+              folder="bundles"
+              helperText="Upload a preview collage or cover art for this complete bundle set."
+            />
 
             <div>
               <label className="block font-bold text-[#1E1419] mb-1">

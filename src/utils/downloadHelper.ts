@@ -4,12 +4,23 @@ import { getOptionalSupabaseAuthHeader, parseJsonResponse } from './apiClient.ts
  * Direct binary download helper reserved exclusively for complimentary freebie wallpapers.
  * Paid digital wallpapers MUST go through `downloadAuthorizedOrderFile`.
  */
-export async function downloadWallpaperFile(imageUrl: string, filename: string): Promise<boolean> {
-  const cleanFilename =
-    filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.png')
-      ? filename
-      : `${filename.replace(/\.zip$/i, '')}.jpg`;
+function inferExtensionFromUrlOrMime(url: string, mime = ''): string {
+  const mimeLower = mime.toLowerCase();
+  if (mimeLower.includes('zip')) return '.zip';
+  if (mimeLower.includes('png')) return '.png';
+  if (mimeLower.includes('webp')) return '.webp';
+  if (mimeLower.includes('gif')) return '.gif';
+  if (mimeLower.includes('jpeg') || mimeLower.includes('jpg')) return '.jpg';
 
+  const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+  if (cleanUrl.endsWith('.zip')) return '.zip';
+  if (cleanUrl.endsWith('.png')) return '.png';
+  if (cleanUrl.endsWith('.webp')) return '.webp';
+  if (cleanUrl.endsWith('.gif')) return '.gif';
+  return '.jpg';
+}
+
+export async function downloadWallpaperFile(imageUrl: string, filename: string): Promise<boolean> {
   try {
     const response = await fetch(imageUrl);
     if (!response.ok) {
@@ -17,11 +28,27 @@ export async function downloadWallpaperFile(imageUrl: string, filename: string):
     }
 
     const blob = await response.blob();
-    const imageBlob = blob.type.startsWith('image/')
-      ? blob
-      : new Blob([blob], { type: 'image/jpeg' });
+    const detectedExt = inferExtensionFromUrlOrMime(imageUrl, blob.type);
+    const lowerName = (filename || 'sleepyshroom_wallpaper').toLowerCase();
+    const hasKnownExt =
+      lowerName.endsWith('.jpg') ||
+      lowerName.endsWith('.jpeg') ||
+      lowerName.endsWith('.png') ||
+      lowerName.endsWith('.webp') ||
+      lowerName.endsWith('.gif') ||
+      lowerName.endsWith('.zip');
+    const cleanFilename = hasKnownExt
+      ? (lowerName.endsWith('.zip') && detectedExt !== '.zip'
+          ? filename.replace(/\.zip$/i, detectedExt)
+          : filename)
+      : `${filename}${detectedExt}`;
 
-    const blobUrl = URL.createObjectURL(imageBlob);
+    const finalBlob =
+      blob.type && blob.type !== 'application/octet-stream'
+        ? blob
+        : new Blob([blob], { type: detectedExt === '.zip' ? 'application/zip' : 'image/png' });
+
+    const blobUrl = URL.createObjectURL(finalBlob);
     const link = document.createElement('a');
     link.href = blobUrl;
     link.download = cleanFilename;
@@ -51,10 +78,16 @@ function parseFilenameFromContentDisposition(header: string | null, fallback: st
     }
   }
   const lower = fallback.toLowerCase();
-  if (lower.endsWith('.jpg') || lower.endsWith('.png')) {
+  if (
+    lower.endsWith('.jpg') ||
+    lower.endsWith('.jpeg') ||
+    lower.endsWith('.png') ||
+    lower.endsWith('.webp') ||
+    lower.endsWith('.zip')
+  ) {
     return fallback;
   }
-  return `${fallback.replace(/\.zip$/i, '')}.jpg`;
+  return `${fallback}.jpg`;
 }
 
 /**

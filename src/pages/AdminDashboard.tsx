@@ -37,6 +37,7 @@ import {
 import { useShop } from '../context/ShopContext.tsx';
 import { supabase } from '../lib/supabase.ts';
 import { parseJsonResponse } from '../utils/apiClient.ts';
+import { uploadStoreAsset } from '../utils/uploadHelper.ts';
 import { formatOrderMoney, formatUsd } from '../utils/currency.ts';
 import {
   SOCIAL_PLATFORMS_META,
@@ -47,6 +48,7 @@ import { ContactMessagesPanel } from '../components/admin/ContactMessagesPanel.t
 import { CollectionsBundlesAdminPanel } from '../components/admin/CollectionsBundlesAdminPanel.tsx';
 import { NewsletterEmailsAdminPanel } from '../components/admin/NewsletterEmailsAdminPanel.tsx';
 import { ReviewsFaqsAdminPanel } from '../components/admin/ReviewsFaqsAdminPanel.tsx';
+import { ImageUploadField } from '../components/admin/ImageUploadField.tsx';
 import {
   PaypalIcon,
   GooglePayIcon,
@@ -163,9 +165,13 @@ export const AdminDashboard: React.FC = () => {
     webhookConfigured: boolean;
   } | null>(null);
 
-  // Product modal state
+  // Product modal & image upload state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [uploadingSlideId, setUploadingSlideId] = useState<string | null>(null);
+  const [brokenSlideIds, setBrokenSlideIds] = useState<Record<string, boolean>>({});
+  const [uploadingProductGallery, setUploadingProductGallery] = useState(false);
+  const [uploadingProductDownloadFile, setUploadingProductDownloadFile] = useState(false);
 
   const isAuthorizedAdminUser = Boolean(
     user &&
@@ -449,38 +455,50 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Image upload helper for any card / slide
-  const handleUploadImageForSlide = (slideId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  // Image upload helper for carousel slides (uploads & immediately persists slide array)
+  const handleUploadImageForSlide = async (slideId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const token = await getFreshAdminToken();
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (token) headers.Authorization = `Bearer ${token}`;
+    setErrorMessage(null);
+    setUploadingSlideId(slideId);
+    try {
+      const token = await getFreshAdminToken();
+      const uploaded = await uploadStoreAsset(file, {
+        token,
+        folder: 'carousel',
+        optimizeImage: true,
+      });
 
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            dataUrl: reader.result,
-            filename: file.name,
-          }),
-        });
-        const parsed = await parseJsonResponse<{ url?: string; error?: string }>(res);
-        if (parsed.ok && parsed.isJson && parsed.data?.url) {
-          handleSlideChange(slideId, 'imageUrl', parsed.data.url);
-          triggerSaveNotification('Image uploaded! Click "Publish Changes" to make it live.');
-        } else {
-          setErrorMessage(parsed.data?.error || 'Failed to upload image.');
-        }
-      } catch (err) {
-        setErrorMessage('Failed to upload image.');
+      const updatedSlides = slides.map(s =>
+        s.id === slideId ? { ...s, imageUrl: uploaded.url } : s
+      );
+      setSlides(updatedSlides);
+      setBrokenSlideIds(prev => {
+        const next = { ...prev };
+        delete next[slideId];
+        return next;
+      });
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const saveRes = await fetch('/api/admin/slides', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(updatedSlides),
+      });
+      if (saveRes.ok) {
+        triggerSaveNotification('Carousel slide picture uploaded & saved!');
+        refreshData();
+      } else {
+        triggerSaveNotification('Picture uploaded! Click "Publish Changes" to save.');
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Failed to upload slide image.');
+    } finally {
+      setUploadingSlideId(null);
+    }
   };
 
   // 2. PRODUCT ACTIONS
@@ -870,35 +888,25 @@ export const AdminDashboard: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  // Image upload helper for hero or settings
-  const handleUploadImageForHero = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Image upload helper for hero banner (retained for compatibility)
+  const handleUploadImageForHero = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file || !settings) return;
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const token = await getFreshAdminToken();
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (token) headers.Authorization = `Bearer ${token}`;
-
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ dataUrl: reader.result, filename: file.name }),
-        });
-        const parsed = await parseJsonResponse<{ url?: string; error?: string }>(res);
-        if (parsed.ok && parsed.isJson && parsed.data?.url) {
-          setSettings({ ...settings, heroImage: parsed.data.url });
-          triggerSaveNotification('Hero image uploaded! Click Save to apply.');
-        } else {
-          setErrorMessage(parsed.data?.error || 'Failed to upload image.');
-        }
-      } catch {
-        setErrorMessage('Failed to upload image.');
-      }
-    };
-    reader.readAsDataURL(file);
+    setErrorMessage(null);
+    try {
+      const token = await getFreshAdminToken();
+      const uploaded = await uploadStoreAsset(file, {
+        token,
+        folder: 'hero',
+        optimizeImage: true,
+      });
+      setSettings({ ...settings, heroImage: uploaded.url });
+      triggerSaveNotification('Hero image uploaded! Click Save Homepage Changes to apply.');
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Failed to upload hero image.');
+    }
   };
 
   if (verifyingAdmin) {
@@ -1353,12 +1361,22 @@ export const AdminDashboard: React.FC = () => {
                     {/* Image Preview & Upload / Replace Button */}
                     <div className="md:col-span-3 space-y-2">
                       <div className="relative aspect-16/10 rounded-2xl overflow-hidden bg-[#E8C9C1]/30 border border-[#E8C9C1] flex items-center justify-center">
-                        {slide.imageUrl ? (
+                        {slide.imageUrl && !brokenSlideIds[slide.id] ? (
                           <img
                             src={slide.imageUrl}
                             alt={slide.themeTitle}
+                            onError={() =>
+                              setBrokenSlideIds(prev => ({ ...prev, [slide.id]: true }))
+                            }
                             className="w-full h-full object-cover"
                           />
+                        ) : brokenSlideIds[slide.id] ? (
+                          <div className="text-center p-3 space-y-1">
+                            <AlertCircle className="w-5 h-5 text-amber-700 mx-auto" />
+                            <p className="text-[10px] font-bold text-amber-900">
+                              Image failed to load — upload a file below
+                            </p>
+                          </div>
                         ) : (
                           /* Image Placeholder if empty */
                           <div className="text-center p-3">
@@ -1368,21 +1386,54 @@ export const AdminDashboard: React.FC = () => {
                             </p>
                           </div>
                         )}
+
+                        {uploadingSlideId === slide.id && (
+                          <div className="absolute inset-0 bg-[#FFFCF7]/85 backdrop-blur-xs flex flex-col items-center justify-center gap-1 text-[#A64B3C]">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span className="text-[10px] font-bold">Uploading...</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* File upload trigger */}
                       <label className="cursor-pointer block">
-                        <span className="w-full py-1.5 px-3 bg-white hover:bg-[#F4EAE6] text-[#8B6F7A] border border-[#E8C9C1] rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors">
-                          <Upload className="w-3.5 h-3.5" />
-                          <span>{slide.imageUrl ? 'Replace Image' : 'Upload Image'}</span>
+                        <span className="w-full py-1.5 px-3 bg-white hover:bg-[#F4EAE6] text-[#A64B3C] border border-[#E8C9C1] rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors">
+                          {uploadingSlideId === slide.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Upload className="w-3.5 h-3.5" />
+                          )}
+                          <span>
+                            {uploadingSlideId === slide.id
+                              ? 'Uploading...'
+                              : slide.imageUrl
+                                ? 'Replace Picture'
+                                : 'Upload Picture'}
+                          </span>
                         </span>
                         <input
                           type="file"
                           accept="image/*"
-                          onChange={e => handleUploadImageForSlide(slide.id, e)}
+                          disabled={uploadingSlideId === slide.id}
+                          onChange={e => void handleUploadImageForSlide(slide.id, e)}
                           className="hidden"
                         />
                       </label>
+
+                      <input
+                        type="text"
+                        value={slide.imageUrl}
+                        onChange={e => {
+                          setBrokenSlideIds(prev => {
+                            const next = { ...prev };
+                            delete next[slide.id];
+                            return next;
+                          });
+                          handleSlideChange(slide.id, 'imageUrl', e.target.value);
+                        }}
+                        placeholder="/uploads/... or URL"
+                        className="w-full px-2.5 py-1 text-[10px] bg-white border border-[#E8C9C1] rounded-lg text-[#45313D] font-mono"
+                      />
                     </div>
 
                     {/* Text Inputs */}
@@ -1587,24 +1638,21 @@ export const AdminDashboard: React.FC = () => {
                 Hero Section
               </h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                <div className="md:col-span-4">
-                  <div className="aspect-16/10 rounded-2xl overflow-hidden bg-white border border-[#E8C9C1]">
-                    <img src={settings.heroImage} alt="Hero banner" className="w-full h-full object-cover" />
-                  </div>
-                  <label className="cursor-pointer block mt-2">
-                    <span className="w-full py-2 bg-white hover:bg-[#F4EAE6] text-[#8B6F7A] border border-[#E8C9C1] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5">
-                      <Upload className="w-4 h-4" />
-                      <span>Upload New Hero Image</span>
-                    </span>
-                    <input type="file" accept="image/*" onChange={handleUploadImageForHero} className="hidden" />
-                  </label>
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                <div className="md:col-span-5">
+                  <ImageUploadField
+                    label="Hero Banner Picture"
+                    value={settings.heroImage}
+                    onChange={url => setSettings({ ...settings, heroImage: url })}
+                    getToken={getFreshAdminToken}
+                    folder="hero"
+                  />
                 </div>
 
-                <div className="md:col-span-8 space-y-3">
+                <div className="md:col-span-7 space-y-3">
                   <div>
                     <label className="block text-xs font-bold text-[#1E1419] mb-1">
-                      Hero Headline
+                      Hero Tagline / Headline
                     </label>
                     <input
                       type="text"
@@ -1680,6 +1728,74 @@ export const AdminDashboard: React.FC = () => {
                   onChange={e => setSettings({ ...settings, brandIntroText: e.target.value })}
                   className="w-full px-3.5 py-2 text-xs bg-white border border-[#E8C9C1] rounded-xl text-[#1E1419]"
                 />
+              </div>
+            </div>
+
+            {/* About Me Page Editor */}
+            <div className="border-t border-[#E8C9C1]/50 pt-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#A64B3C]">
+                    About Me Page (Artist Picture &amp; Intro)
+                  </h3>
+                  <p className="text-[11px] text-[#5C4952] font-medium mt-0.5">
+                    Update your portrait photo and introduction displayed on the About Me page.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSaveSettings}
+                  disabled={savingSettings}
+                  className="px-4 py-2 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] text-xs font-bold rounded-xl inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                >
+                  {savingSettings ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  <span>Save About &amp; Homepage</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                <div className="md:col-span-5">
+                  <ImageUploadField
+                    label="About Me Portrait Picture"
+                    value={settings.aboutMe?.profileImage || ''}
+                    onChange={url =>
+                      setSettings({
+                        ...settings,
+                        aboutMe: {
+                          ...settings.aboutMe,
+                          profileImage: url,
+                        },
+                      })
+                    }
+                    getToken={getFreshAdminToken}
+                    folder="about"
+                    aspectClass="aspect-square max-w-[240px]"
+                  />
+                </div>
+                <div className="md:col-span-7 space-y-2">
+                  <label className="block text-xs font-bold text-[#1E1419]">
+                    About Me Introduction Text
+                  </label>
+                  <textarea
+                    rows={8}
+                    value={settings.aboutMe?.introduction || ''}
+                    onChange={e =>
+                      setSettings({
+                        ...settings,
+                        aboutMe: {
+                          ...settings.aboutMe,
+                          introduction: e.target.value,
+                        },
+                      })
+                    }
+                    placeholder="Hi, I'm Mei or Cheumeitzii the artist behind Sleepy Shroom!..."
+                    className="w-full px-3.5 py-2.5 text-xs bg-white border border-[#E8C9C1] rounded-xl text-[#1E1419] leading-relaxed"
+                  />
+                </div>
               </div>
             </div>
 
@@ -3574,14 +3690,232 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-[#1E1419] mb-1">Preview Image Path / URL</label>
-                  <input
-                    type="text"
+                {/* Primary Picture Upload & Preview */}
+                <div className="p-4 bg-[#FCF3E2]/55 rounded-2xl border border-[#E8C9C1] space-y-4">
+                  <ImageUploadField
+                    label="Primary Wallpaper / Product Cover Picture *"
                     value={editingProduct.images[0] || ''}
-                    onChange={e => setEditingProduct({ ...editingProduct, images: [e.target.value] })}
-                    className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl"
+                    onChange={url => {
+                      const rest = editingProduct.images.slice(1);
+                      setEditingProduct({
+                        ...editingProduct,
+                        images: [url, ...rest],
+                      });
+                    }}
+                    getToken={getFreshAdminToken}
+                    folder="products"
+                    helperText="Drag & drop a PNG/JPG/WebP mockup, click Upload Picture, or paste an image URL."
                   />
+
+                  {/* Additional Gallery Pictures */}
+                  <div className="pt-2 border-t border-[#E8C9C1]/60 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-[#1E1419] text-xs">
+                          Additional Gallery Previews ({Math.max(0, editingProduct.images.length - 1)})
+                        </p>
+                        <p className="text-[10px] text-[#5C4952]">
+                          Optional extra device screenshots or closeup previews shown on the product page.
+                        </p>
+                      </div>
+                      <label className="cursor-pointer shrink-0">
+                        <span className="px-3 py-1.5 bg-white hover:bg-[#F4EAE6] text-[#A64B3C] border border-[#E8C9C1] rounded-xl text-[11px] font-bold inline-flex items-center gap-1.5">
+                          {uploadingProductGallery ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <ImagePlus className="w-3.5 h-3.5" />
+                          )}
+                          <span>{uploadingProductGallery ? 'Uploading...' : 'Add Gallery Picture'}</span>
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          disabled={uploadingProductGallery}
+                          onChange={async e => {
+                            const files = Array.from(e.target.files || []);
+                            e.target.value = '';
+                            if (files.length === 0) return;
+
+                            setErrorMessage(null);
+                            setUploadingProductGallery(true);
+                            try {
+                              const token = await getFreshAdminToken();
+                              const newUrls: string[] = [];
+                              for (const file of files) {
+                                const uploaded = await uploadStoreAsset(file, {
+                                  token,
+                                  folder: 'products',
+                                  optimizeImage: true,
+                                });
+                                newUrls.push(uploaded.url);
+                              }
+                              setEditingProduct(prev =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      images: [...prev.images.filter(Boolean), ...newUrls],
+                                    }
+                                  : prev
+                              );
+                            } catch (err: any) {
+                              setErrorMessage(err?.message || 'Failed to upload gallery image.');
+                            } finally {
+                              setUploadingProductGallery(false);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {editingProduct.images.slice(1).length > 0 && (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        {editingProduct.images.slice(1).map((imgUrl, idx) => (
+                          <div
+                            key={`${idx}-${imgUrl.slice(0, 24)}`}
+                            className="relative group rounded-xl overflow-hidden border border-[#E8C9C1] bg-white aspect-4/3"
+                          >
+                            <img
+                              src={imgUrl}
+                              alt={`Gallery ${idx + 2}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-x-1 bottom-1 flex items-center justify-between gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const actualIdx = idx + 1;
+                                  const copy = [...editingProduct.images];
+                                  const [picked] = copy.splice(actualIdx, 1);
+                                  setEditingProduct({
+                                    ...editingProduct,
+                                    images: [picked, ...copy],
+                                  });
+                                }}
+                                className="px-1.5 py-0.5 bg-[#1E1419]/85 text-white text-[9px] font-bold rounded-md cursor-pointer"
+                              >
+                                Make Cover
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const actualIdx = idx + 1;
+                                  setEditingProduct({
+                                    ...editingProduct,
+                                    images: editingProduct.images.filter((_, i) => i !== actualIdx),
+                                  });
+                                }}
+                                aria-label="Remove gallery picture"
+                                className="p-1 bg-red-600 text-white rounded-md cursor-pointer"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Optional Dedicated High-Res Wallpaper / ZIP Download File */}
+                <div className="p-4 bg-[#F4EAE6]/55 rounded-2xl border border-[#D5C2BB] space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-bold text-[#1E1419] text-xs">
+                        Downloadable Wallpaper File (Optional)
+                      </p>
+                      <p className="text-[10px] text-[#45313D] font-medium">
+                        Upload the exact full-res wallpaper (.png / .jpg / .webp) or .zip bundle customers receive. Leave blank to deliver the primary wallpaper picture above.
+                      </p>
+                    </div>
+                    {editingProduct.downloadUrl && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditingProduct({ ...editingProduct, downloadUrl: undefined })
+                        }
+                        className="text-[11px] font-bold text-[#8B6F7A] hover:text-red-700 inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Remove Separate File</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="cursor-pointer block">
+                      <span className="w-full py-2 px-3 bg-white hover:bg-[#FCF3E2] text-[#A64B3C] border border-[#E8C9C1] rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors">
+                        {uploadingProductDownloadFile ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Upload className="w-3.5 h-3.5" />
+                        )}
+                        <span>
+                          {uploadingProductDownloadFile
+                            ? 'Uploading Wallpaper File...'
+                            : editingProduct.downloadUrl
+                              ? 'Replace Wallpaper / ZIP File'
+                              : 'Upload Wallpaper / ZIP File'}
+                        </span>
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*,.zip"
+                        disabled={uploadingProductDownloadFile}
+                        onChange={async e => {
+                          const file = e.target.files?.[0];
+                          e.target.value = '';
+                          if (!file) return;
+
+                          setErrorMessage(null);
+                          setUploadingProductDownloadFile(true);
+                          try {
+                            const token = await getFreshAdminToken();
+                            const uploaded = await uploadStoreAsset(file, {
+                              token,
+                              folder: 'wallpapers',
+                              optimizeImage: false,
+                            });
+                            const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+                            setEditingProduct(prev =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    downloadUrl: uploaded.url,
+                                    downloadFileName: file.name || prev.downloadFileName,
+                                    fileSize: Number(sizeMb) > 0.1 ? `${sizeMb} MB` : prev.fileSize,
+                                  }
+                                : prev
+                            );
+                            triggerSaveNotification(`Wallpaper file "${file.name}" attached!`);
+                          } catch (err: any) {
+                            setErrorMessage(err?.message || 'Failed to upload wallpaper file.');
+                          } finally {
+                            setUploadingProductDownloadFile(false);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <input
+                      type="text"
+                      value={editingProduct.downloadFileName || ''}
+                      onChange={e =>
+                        setEditingProduct({ ...editingProduct, downloadFileName: e.target.value })
+                      }
+                      placeholder="Download filename (e.g. cozy_theme.png)"
+                      className="w-full px-3 py-2 bg-white border border-[#E8C9C1] rounded-xl font-mono text-[11px]"
+                    />
+                  </div>
+
+                  {editingProduct.downloadUrl && (
+                    <p className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-lg truncate">
+                      Attached download source: {editingProduct.downloadUrl}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between pt-2">
@@ -3597,14 +3931,17 @@ export const AdminDashboard: React.FC = () => {
 
                   <div className="flex gap-2">
                     <button
+                      type="button"
                       onClick={() => setIsProductModalOpen(false)}
-                      className="px-4 py-2 bg-white border border-[#E8C9C1] rounded-xl text-xs font-bold text-[#33222C]"
+                      className="px-4 py-2 bg-white border border-[#E8C9C1] rounded-xl text-xs font-bold text-[#33222C] cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
+                      type="button"
                       onClick={handleSaveProductModal}
-                      className="px-5 py-2 bg-[#8B6F7A] text-[#F7F3E9] rounded-xl text-xs font-bold hover:bg-[#785E69]"
+                      disabled={uploadingProductGallery || uploadingProductDownloadFile}
+                      className="px-5 py-2 bg-[#A64B3C] text-[#FFFCF7] rounded-xl text-xs font-bold hover:bg-[#8E3E30] disabled:opacity-60 cursor-pointer"
                     >
                       Save Product
                     </button>

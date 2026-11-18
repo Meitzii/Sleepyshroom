@@ -65,6 +65,32 @@ import {
   handleAdminDeleteFaq,
 } from './lib/faqs-service.js';
 import {
+  handleUploadAsset,
+  handleGetPublicContentAndCatalog,
+  handleGetAdminContentAndCatalog,
+  handleGetSlides,
+  handleAdminSaveSlides,
+  handleAdminCreateSlide,
+  handleAdminDeleteSlide,
+  handleGetProducts,
+  handleGetProductByIdOrSlug,
+  handleAdminCreateProduct,
+  handleAdminUpdateProduct,
+  handleAdminDeleteProduct,
+  handleGetCollections,
+  handleGetCollectionBySlugOrId,
+  handleAdminCreateCollection,
+  handleAdminUpdateCollection,
+  handleAdminDeleteCollection,
+  handleGetBundles,
+  handleGetBundleByIdOrSlug,
+  handleAdminCreateBundle,
+  handleAdminUpdateBundle,
+  handleAdminDeleteBundle,
+  handleFreeDownload,
+  handleAdminGetStats,
+} from './lib/catalog-service.js';
+import {
   DEFAULT_PRIVACY_POLICY,
   DEFAULT_TERMS_OF_SERVICE,
   isCollectionCurrentlyActive,
@@ -759,34 +785,21 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 app.use('/wallpapers', express.static(path.join(__dirname, 'public', 'wallpapers')));
 app.use('/images', express.static(path.join(__dirname, 'public', 'images')));
 app.use('/src/assets/images', express.static(path.join(__dirname, 'public', 'src', 'assets', 'images')));
+app.use('/src/assets/images', express.static(path.join(__dirname, 'src', 'assets', 'images')));
 
 // API ROUTES
 
 // 1. Settings & Content
 app.get('/api/content', async (_req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  const store = readStore();
-  const supaSettings = await fetchSupabaseSettings();
-  const effectiveSettings = supaSettings
-    ? (mergeWithDefaultSettings(supaSettings, store.settings) as WebsiteSettings)
-    : store.settings;
-  res.json({
-    settings: effectiveSettings,
-    carouselSlides: store.carouselSlides.filter(s => s.status === 'published' && s.visible).sort((a, b) => a.order - b.order),
-  });
+  const result = await handleGetPublicContentAndCatalog();
+  res.status(result.status).json(result.body);
 });
 
-app.get('/api/admin/content', async (_req: Request, res: Response) => {
+app.get('/api/admin/content', async (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  const store = readStore();
-  const supaSettings = await fetchSupabaseSettings();
-  const effectiveSettings = supaSettings
-    ? (mergeWithDefaultSettings(supaSettings, store.settings) as WebsiteSettings)
-    : store.settings;
-  res.json({
-    settings: effectiveSettings,
-    carouselSlides: store.carouselSlides.sort((a, b) => a.order - b.order),
-  });
+  const result = await handleGetAdminContentAndCatalog(req);
+  res.status(result.status).json(result.body);
 });
 
 app.put('/api/admin/settings', async (req: Request, res: Response) => {
@@ -856,177 +869,50 @@ app.put('/api/admin/settings', async (req: Request, res: Response) => {
 });
 
 // 2. Carousel Management
-app.get('/api/slides', (_req: Request, res: Response) => {
-  const store = readStore();
-  res.json(store.carouselSlides);
+app.get('/api/slides', async (_req: Request, res: Response) => {
+  const result = await handleGetSlides();
+  res.status(result.status).json(result.body);
 });
 
 app.put('/api/admin/slides', async (req: Request, res: Response) => {
-  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
-  const store = readStore();
-  const slides = req.body as CarouselSlide[];
-  if (Array.isArray(slides)) {
-    store.carouselSlides = slides;
-    saveStore(store);
-    res.json({ success: true, slides: store.carouselSlides });
-  } else {
-    res.status(400).json({ error: 'Expected array of slides' });
-  }
+  const result = await handleAdminSaveSlides(req);
+  res.status(result.status).json(result.body);
 });
 
 app.post('/api/admin/slides', async (req: Request, res: Response) => {
-  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
-  const store = readStore();
-  const newSlide: CarouselSlide = {
-    id: `slide-${Date.now()}`,
-    themeTitle: req.body.themeTitle || 'New Theme',
-    description: req.body.description || 'Description of this cozy wallpaper collection.',
-    imageUrl: req.body.imageUrl || '',
-    linkDestination: req.body.linkDestination || '/collections',
-    exploreButtonText: req.body.exploreButtonText || 'Explore Theme',
-    order: store.carouselSlides.length + 1,
-    visible: req.body.visible ?? true,
-    status: req.body.status || 'published',
-  };
-  store.carouselSlides.push(newSlide);
-  saveStore(store);
-  res.json({ success: true, slide: newSlide });
+  const result = await handleAdminCreateSlide(req);
+  res.status(result.status).json(result.body);
 });
 
 app.delete('/api/admin/slides/:id', async (req: Request, res: Response) => {
-  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
-  const store = readStore();
-  store.carouselSlides = store.carouselSlides.filter(s => s.id !== req.params.id);
-  // Re-number orders
-  store.carouselSlides.forEach((s, i) => {
-    s.order = i + 1;
-  });
-  saveStore(store);
-  res.json({ success: true });
+  const result = await handleAdminDeleteSlide(req, String(req.params.id || ''));
+  res.status(result.status).json(result.body);
 });
 
 // 3. Products
-app.get('/api/products', (req: Request, res: Response) => {
-  const store = readStore();
-  const { device, theme, collection, search, sort, includeDrafts } = req.query;
-
-  let list = store.products;
-  if (includeDrafts !== 'true') {
-    list = list.filter(p => p.status === 'published');
-  }
-
-  if (device && typeof device === 'string' && device !== 'all') {
-    list = list.filter(p => p.deviceTypes.includes(device as any));
-  }
-
-  if (theme && typeof theme === 'string' && theme !== 'all') {
-    list = list.filter(p => p.theme.toLowerCase() === theme.toLowerCase());
-  }
-
-  if (collection && typeof collection === 'string' && collection !== 'all') {
-    list = list.filter(p => p.collection.toLowerCase() === collection.toLowerCase());
-  }
-
-  if (search && typeof search === 'string') {
-    const q = search.toLowerCase().trim();
-    list = list.filter(p => 
-      p.title.toLowerCase().includes(q) ||
-      p.description.toLowerCase().includes(q) ||
-      p.theme.toLowerCase().includes(q) ||
-      p.collection.toLowerCase().includes(q)
-    );
-  }
-
-  // Sorting
-  if (sort === 'price-low') {
-    list = [...list].sort((a, b) => a.price - b.price);
-  } else if (sort === 'price-high') {
-    list = [...list].sort((a, b) => b.price - a.price);
-  } else if (sort === 'popular') {
-    list = [...list].sort((a, b) => b.popularity - a.popularity);
-  } else {
-    // Default newest
-    list = [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }
-
-  res.json(list);
+app.get('/api/products', async (req: Request, res: Response) => {
+  const result = await handleGetProducts(req);
+  res.status(result.status).json(result.body);
 });
 
-app.get('/api/products/:idOrSlug', (req: Request, res: Response) => {
-  const store = readStore();
-  const param = req.params.idOrSlug;
-  const product = store.products.find(p => p.id === param || p.slug === param);
-  if (!product) {
-    res.status(404).json({ error: 'Product not found' });
-    return;
-  }
-  res.json(product);
+app.get('/api/products/:idOrSlug', async (req: Request, res: Response) => {
+  const result = await handleGetProductByIdOrSlug(String(req.params.idOrSlug || ''));
+  res.status(result.status).json(result.body);
 });
 
 app.post('/api/admin/products', async (req: Request, res: Response) => {
-  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
-  const store = readStore();
-  const body = req.body;
-  const newProduct: Product = {
-    id: `prod-${Date.now()}`,
-    title: body.title || 'Untitled Wallpaper',
-    slug: (body.title || 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-    description: body.description || '',
-    price: Number(body.price) || 3.50,
-    compareAtPrice: body.compareAtPrice ? Number(body.compareAtPrice) : undefined,
-    theme: body.theme || 'Mushroom Dreams',
-    collection: body.collection || 'Dreamy Night',
-    collectionId: body.collectionId || undefined,
-    category: body.category || undefined,
-    productType: body.productType || 'wallpaper',
-    deviceTypes: body.deviceTypes && body.deviceTypes.length > 0 ? body.deviceTypes : ['desktop'],
-    resolutions: body.resolutions || ['4K UHD (3840 x 2160)'],
-    fileFormat: body.fileFormat || 'High-res lossless PNG (300 DPI)',
-    fileSize: body.fileSize || '25.0 MB',
-    whatsIncluded: body.whatsIncluded || ['High-resolution digital wallpaper', 'Setup guide'],
-    images: body.images && body.images.length > 0 ? body.images : ['/src/assets/images/hero_mushroom_cottage_1794020164209.jpg'],
-    featured: Boolean(body.featured),
-    isNew: true,
-    popularity: 90,
-    status: body.status || 'published',
-    createdAt: new Date().toISOString(),
-    downloadFileName: body.downloadFileName || `${(body.title || 'wallpaper').toLowerCase().replace(/\s+/g, '_')}.zip`,
-    isFree: Boolean(body.isFree || Number(body.price) === 0),
-    downloadCount: Number(body.downloadCount) || 120,
-    recentDownloadTime: body.recentDownloadTime || 'just now',
-  };
-
-  store.products.unshift(newProduct);
-  saveStore(store);
-  res.json({ success: true, product: newProduct });
+  const result = await handleAdminCreateProduct(req);
+  res.status(result.status).json(result.body);
 });
 
 app.put('/api/admin/products/:id', async (req: Request, res: Response) => {
-  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
-  const store = readStore();
-  const idx = store.products.findIndex(p => p.id === req.params.id);
-  if (idx === -1) {
-    res.status(404).json({ error: 'Product not found' });
-    return;
-  }
-  const updated = { ...store.products[idx], ...req.body };
-  if (updated.isFree) {
-    updated.price = 0;
-  }
-  if (req.body.downloadCount !== undefined) {
-    updated.downloadCount = Number(req.body.downloadCount);
-  }
-  store.products[idx] = updated;
-  saveStore(store);
-  res.json({ success: true, product: store.products[idx] });
+  const result = await handleAdminUpdateProduct(req, String(req.params.id || ''));
+  res.status(result.status).json(result.body);
 });
 
 app.delete('/api/admin/products/:id', async (req: Request, res: Response) => {
-  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
-  const store = readStore();
-  store.products = store.products.filter(p => p.id !== req.params.id);
-  saveStore(store);
-  res.json({ success: true });
+  const result = await handleAdminDeleteProduct(req, String(req.params.id || ''));
+  res.status(result.status).json(result.body);
 });
 
 async function requireAdminIfSupabaseConfigured(req: Request, res: Response): Promise<boolean> {
@@ -1043,313 +929,55 @@ async function requireAdminIfSupabaseConfigured(req: Request, res: Response): Pr
 }
 
 // 4. Collections & Theme Bundles
-app.get('/api/collections', (req: Request, res: Response) => {
-  const store = readStore();
-  const includeAll = String(req.query.includeAll || '').toLowerCase() === 'true';
-  const baseList = includeAll
-    ? store.collections
-    : store.collections.filter((c) => isCollectionCurrentlyActive(c));
-
-  const list = baseList.map((c) => {
-    const count = store.products.filter(
-      (p) =>
-        (p.collectionId === c.id ||
-          p.collection.toLowerCase() === c.name.toLowerCase() ||
-          p.theme?.toLowerCase() === c.name.toLowerCase()) &&
-        p.status === 'published'
-    ).length;
-    return { ...c, productCount: count };
-  });
-  res.json(list);
+app.get('/api/collections', async (req: Request, res: Response) => {
+  const result = await handleGetCollections(req);
+  res.status(result.status).json(result.body);
 });
 
-app.get('/api/collections/:slugOrId', (req: Request, res: Response) => {
-  const store = readStore();
-  const rawParam = String(req.params.slugOrId || '').trim();
-  const lowerParam = rawParam.toLowerCase();
-  const includeInactive = String(req.query.includeInactive || '').toLowerCase() === 'true';
-
-  const collection = store.collections.find(
-    (c) => c.slug.toLowerCase() === lowerParam || c.id.toLowerCase() === lowerParam || c.name.toLowerCase() === lowerParam
-  );
-
-  if (!collection) {
-    res.status(404).json({ error: 'Collection not found' });
-    return;
-  }
-
-  const currentlyActive = isCollectionCurrentlyActive(collection);
-  if (!includeInactive && !currentlyActive) {
-    res.status(410).json({
-      error: 'This limited theme collection is no longer active.',
-      expired: true,
-      collection: {
-        id: collection.id,
-        name: collection.name,
-        slug: collection.slug,
-        isLimitedEdition: collection.isLimitedEdition,
-        startDate: collection.startDate || null,
-        endDate: collection.endDate || null,
-      },
-    });
-    return;
-  }
-
-  const matchingProducts = store.products.filter(
-    (p) =>
-      (p.collectionId === collection.id ||
-        p.collection.toLowerCase() === collection.name.toLowerCase() ||
-        p.theme?.toLowerCase() === collection.name.toLowerCase()) &&
-      p.status === 'published'
-  );
-
-  const matchingBundles = (store.bundles || []).filter(
-    (b) =>
-      (b.collectionId === collection.id || b.collectionSlug === collection.slug) &&
-      (b.status === undefined || b.status === 'published')
-  );
-
-  const relatedCollections = store.collections
-    .filter((c) => c.id !== collection.id && isCollectionCurrentlyActive(c))
-    .slice(0, 4)
-    .map((c) => {
-      const count = store.products.filter(
-        (p) =>
-          (p.collectionId === c.id ||
-            p.collection.toLowerCase() === c.name.toLowerCase() ||
-            p.theme?.toLowerCase() === c.name.toLowerCase()) &&
-          p.status === 'published'
-      ).length;
-      return { ...c, productCount: count };
-    });
-
-  res.json({
-    collection: {
-      ...collection,
-      productCount: matchingProducts.length,
-    },
-    products: matchingProducts,
-    bundles: matchingBundles,
-    relatedCollections,
-  });
+app.get('/api/collections/:slugOrId', async (req: Request, res: Response) => {
+  const result = await handleGetCollectionBySlugOrId(req, String(req.params.slugOrId || ''));
+  res.status(result.status).json(result.body);
 });
 
 app.post('/api/admin/collections', async (req: Request, res: Response) => {
-  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
-  const store = readStore();
-  const body = req.body;
-  const newCol: Collection = {
-    id: `col-${Date.now()}`,
-    name: body.name || 'New Collection',
-    slug: (body.slug || body.name || 'new').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-    description: body.description || '',
-    coverImage: body.coverImage || '/src/assets/images/hero_mushroom_cottage_1794020164209.jpg',
-    bannerImage: body.bannerImage || body.coverImage || '/src/assets/images/hero_mushroom_cottage_1794020164209.jpg',
-    featured: Boolean(body.featured),
-    isNew: Boolean(body.isNew),
-    isLimitedEdition: Boolean(body.isLimitedEdition),
-    startDate: body.startDate || null,
-    endDate: body.endDate || null,
-    status: body.status || 'published',
-    order: store.collections.length + 1,
-    productCount: 0,
-    theme: body.theme || body.name,
-    createdAt: new Date().toISOString(),
-  };
-  store.collections.push(newCol);
-  saveStore(store);
-  res.json({ success: true, collection: newCol });
+  const result = await handleAdminCreateCollection(req);
+  res.status(result.status).json(result.body);
 });
 
 app.put('/api/admin/collections/:id', async (req: Request, res: Response) => {
-  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
-  const store = readStore();
-  const idx = store.collections.findIndex(c => c.id === req.params.id);
-  if (idx === -1) {
-    res.status(404).json({ error: 'Collection not found' });
-    return;
-  }
-  store.collections[idx] = { ...store.collections[idx], ...req.body };
-  saveStore(store);
-  res.json({ success: true, collection: store.collections[idx] });
+  const result = await handleAdminUpdateCollection(req, String(req.params.id || ''));
+  res.status(result.status).json(result.body);
 });
 
 app.delete('/api/admin/collections/:id', async (req: Request, res: Response) => {
-  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
-  const store = readStore();
-  store.collections = store.collections.filter(c => c.id !== req.params.id);
-  saveStore(store);
-  res.json({ success: true });
+  const result = await handleAdminDeleteCollection(req, String(req.params.id || ''));
+  res.status(result.status).json(result.body);
 });
 
 // Bundles API
-app.get('/api/bundles', (_req: Request, res: Response) => {
-  const store = readStore();
-  const list = (store.bundles || []).filter(b => b.status === undefined || b.status === 'published');
-  res.json(list);
+app.get('/api/bundles', async (_req: Request, res: Response) => {
+  const result = await handleGetBundles();
+  res.status(result.status).json(result.body);
 });
 
-app.get('/api/bundles/:slugOrId', (req: Request, res: Response) => {
-  const store = readStore();
-  const param = String(req.params.slugOrId || '').toLowerCase().trim();
-  const bundle = (store.bundles || []).find(
-    b => b.slug.toLowerCase() === param || b.id.toLowerCase() === param
-  );
-  if (!bundle) {
-    res.status(404).json({ error: 'Bundle not found' });
-    return;
-  }
-  res.json(bundle);
+app.get('/api/bundles/:slugOrId', async (req: Request, res: Response) => {
+  const result = await handleGetBundleByIdOrSlug(String(req.params.slugOrId || ''));
+  res.status(result.status).json(result.body);
 });
 
 app.post('/api/admin/bundles', async (req: Request, res: Response) => {
-  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
-  const store = readStore();
-  if (!Array.isArray(store.bundles)) store.bundles = [];
-  const body = req.body || {};
-  const productIds = Array.isArray(body.productIds)
-    ? body.productIds
-    : Array.isArray(body.includedProductIds)
-      ? body.includedProductIds
-      : [];
-  const includedItems = Array.isArray(body.includedItems)
-    ? body.includedItems
-    : Array.isArray(body.includedItemsSummary)
-      ? body.includedItemsSummary
-      : [];
-  const previewImage =
-    body.previewImage || body.coverImage || '/src/assets/images/hero_mushroom_cottage_1794020164209.jpg';
-  const originalPrice = Number(body.originalPrice) || 0;
-  const bundlePrice = Number(body.bundlePrice) || 0;
-  const savingsAmount = originalPrice > bundlePrice ? Number((originalPrice - bundlePrice).toFixed(2)) : 0;
-  const savingsPercent = originalPrice > 0 ? Math.round((savingsAmount / originalPrice) * 100) : 0;
-  const linkedCollection = store.collections.find(
-    (c) => c.id === body.collectionId || c.slug === body.collectionSlug
-  );
-
-  const newBundle: ThemeBundle = {
-    id: `bundle-${Date.now()}`,
-    title: body.title || 'New Theme Bundle',
-    slug: (body.slug || body.title || 'new-bundle').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-    collectionId: body.collectionId || linkedCollection?.id || '',
-    collectionSlug: body.collectionSlug || linkedCollection?.slug || '',
-    collectionName: body.collectionName || linkedCollection?.name || 'Theme Bundles',
-    description: body.description || '',
-    previewImage,
-    originalPrice,
-    bundlePrice,
-    savingsAmount,
-    savingsPercent,
-    productIds,
-    includedItems,
-    status: body.status || 'published',
-    featured: body.featured !== false,
-    createdAt: new Date().toISOString(),
-  };
-
-  // Sync corresponding product so bundle can be purchased cleanly through standard cart & checkout
-  const bundleProduct: Product = {
-    id: `prod-bundle-${newBundle.id}`,
-    title: newBundle.title,
-    slug: newBundle.slug,
-    description: newBundle.description,
-    price: newBundle.bundlePrice,
-    compareAtPrice: newBundle.originalPrice || undefined,
-    theme: linkedCollection?.name || newBundle.collectionName,
-    collection: newBundle.collectionName,
-    collectionId: newBundle.collectionId,
-    category: 'bundle',
-    productType: 'bundle',
-    isBundle: true,
-    bundleItemCount: newBundle.productIds.length,
-    bundleProductIds: newBundle.productIds,
-    bundleSavingsPercent: newBundle.savingsPercent,
-    deviceTypes: ['desktop', 'mobile', 'tablet'],
-    resolutions: ['4K Desktop', 'Retina Mobile', 'High-Res Tablet', 'ZIP Archive'],
-    fileFormat: 'All formats included (ZIP containing PNG & HEIC)',
-    fileSize: '45.0 MB',
-    whatsIncluded:
-      newBundle.includedItems.length > 0
-        ? newBundle.includedItems
-        : ['Complete Theme Set', 'All Resolutions', 'Personal Use License'],
-    images: [newBundle.previewImage],
-    featured: Boolean(newBundle.featured),
-    isNew: true,
-    status: newBundle.status,
-    downloadFileName: `${newBundle.slug}_complete_bundle.zip`,
-    popularity: 95,
-    createdAt: new Date().toISOString(),
-  };
-  store.products.push(bundleProduct);
-
-  store.bundles.push(newBundle);
-  saveStore(store);
-  res.json({ success: true, bundle: newBundle, product: bundleProduct });
+  const result = await handleAdminCreateBundle(req);
+  res.status(result.status).json(result.body);
 });
 
 app.put('/api/admin/bundles/:id', async (req: Request, res: Response) => {
-  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
-  const store = readStore();
-  if (!Array.isArray(store.bundles)) store.bundles = [];
-  const idx = store.bundles.findIndex(b => b.id === req.params.id);
-  if (idx === -1) {
-    res.status(404).json({ error: 'Bundle not found' });
-    return;
-  }
-  const existing = store.bundles[idx];
-  const body = req.body || {};
-  const updated: ThemeBundle = {
-    ...existing,
-    ...body,
-    previewImage: body.previewImage || body.coverImage || existing.previewImage,
-    productIds: Array.isArray(body.productIds)
-      ? body.productIds
-      : Array.isArray(body.includedProductIds)
-        ? body.includedProductIds
-        : existing.productIds,
-    includedItems: Array.isArray(body.includedItems)
-      ? body.includedItems
-      : Array.isArray(body.includedItemsSummary)
-        ? body.includedItemsSummary
-        : existing.includedItems,
-  };
-  if (updated.originalPrice && updated.bundlePrice) {
-    const orig = Number(updated.originalPrice);
-    const bun = Number(updated.bundlePrice);
-    updated.savingsAmount = orig > bun ? Number((orig - bun).toFixed(2)) : 0;
-    updated.savingsPercent = orig > 0 ? Math.round((updated.savingsAmount / orig) * 100) : 0;
-  }
-  store.bundles[idx] = updated;
-
-  const prodIdx = store.products.findIndex(p => p.id === `prod-bundle-${updated.id}` || p.slug === updated.slug);
-  if (prodIdx >= 0) {
-    store.products[prodIdx].title = updated.title;
-    store.products[prodIdx].price = updated.bundlePrice;
-    store.products[prodIdx].compareAtPrice = updated.originalPrice || undefined;
-    store.products[prodIdx].description = updated.description;
-    store.products[prodIdx].bundleSavingsPercent = updated.savingsPercent;
-    store.products[prodIdx].bundleItemCount = updated.productIds?.length || 0;
-    store.products[prodIdx].bundleProductIds = updated.productIds || [];
-    store.products[prodIdx].whatsIncluded = updated.includedItems || store.products[prodIdx].whatsIncluded;
-    store.products[prodIdx].status = updated.status;
-    if (updated.previewImage) store.products[prodIdx].images = [updated.previewImage];
-  }
-
-  saveStore(store);
-  res.json({ success: true, bundle: store.bundles[idx] });
+  const result = await handleAdminUpdateBundle(req, String(req.params.id || ''));
+  res.status(result.status).json(result.body);
 });
 
 app.delete('/api/admin/bundles/:id', async (req: Request, res: Response) => {
-  if (!(await requireAdminIfSupabaseConfigured(req, res))) return;
-  const store = readStore();
-  if (!Array.isArray(store.bundles)) store.bundles = [];
-  const target = store.bundles.find(b => b.id === req.params.id);
-  store.bundles = store.bundles.filter(b => b.id !== req.params.id);
-  if (target) {
-    store.products = store.products.filter(p => p.id !== `prod-bundle-${target.id}` && p.slug !== target.slug);
-  }
-  saveStore(store);
-  res.json({ success: true });
+  const result = await handleAdminDeleteBundle(req, String(req.params.id || ''));
+  res.status(result.status).json(result.body);
 });
 
 // 5. Discount Codes
@@ -1444,40 +1072,20 @@ app.get('/api/downloads/:token', async (req: Request, res: Response) => {
 });
 
 // Direct Freebie Wallpaper Download (strictly enforced to genuinely free wallpapers)
-app.get('/api/free-download/:productId', (req: Request, res: Response) => {
-  const store = readStore();
-  const { productId } = req.params;
-  const prod = store.products.find(p => p.id === productId || p.slug === productId);
-
-  if (!prod) {
-    res.status(404).send('Free wallpaper not found');
-    return;
-  }
-
-  if (!prod.isFree && Number(prod.price) > 0) {
-    res.status(403).json({ error: 'Paid wallpapers require verified payment before downloading.' });
-    return;
-  }
-
-  // Increment download count and set live download text
-  prod.downloadCount = (prod.downloadCount || 0) + 1;
-  prod.recentDownloadTime = 'just now';
-  saveStore(store);
-
-  const imagePath = prod.images[0];
-  if (imagePath && imagePath.startsWith('/')) {
-    const fullPath = path.join(__dirname, 'public', imagePath.replace(/^\/+/, ''));
-    if (fs.existsSync(fullPath)) {
-      res.setHeader('Content-Disposition', `attachment; filename="${prod.downloadFileName.replace('.zip', '.jpg')}"`);
-      res.setHeader('Content-Type', 'image/jpeg');
-      fs.createReadStream(fullPath).pipe(res);
+app.get('/api/free-download/:productId', async (req: Request, res: Response) => {
+  try {
+    const result = await handleFreeDownload(req, String(req.params.productId || ''));
+    if (result.kind === 'binary') {
+      res.setHeader('Content-Disposition', `attachment; filename="${String(result.filename || 'wallpaper.jpg').replace(/"/g, '')}"`);
+      res.setHeader('Content-Type', result.contentType || 'application/octet-stream');
+      res.status(result.status).send(result.buffer);
       return;
     }
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('Free download error:', err);
+    res.status(500).json({ error: 'Unable to download free wallpaper.' });
   }
-
-  res.setHeader('Content-Disposition', `attachment; filename="${prod.downloadFileName.replace('.zip', '.jpg')}"`);
-  res.setHeader('Content-Type', 'text/plain');
-  res.send(`=== SLEEPYSHROOM FREE DIGITAL WALLPAPER ===\n\nTitle: ${prod.title}\nThank you for downloading from sleepyshroom!\n"Little screens, sweeter dreams."`);
 });
 
 // Live Event trigger to increment product download count
@@ -1579,35 +1187,13 @@ app.post('/api/admin/messages/:id/reply', async (req: Request, res: Response) =>
 });
 
 // 9. Admin Image Upload / Asset handler
-app.post('/api/upload', (req: Request, res: Response) => {
+app.post('/api/upload', async (req: Request, res: Response) => {
   try {
-    const { dataUrl, filename } = req.body;
-    if (!dataUrl) {
-      res.status(400).json({ error: 'No image data provided' });
-      return;
-    }
-
-    // Parse base64
-    const matches = dataUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-    if (!matches || matches.length !== 3) {
-      // If it's already a regular URL or path, just echo back
-      res.json({ url: dataUrl });
-      return;
-    }
-
-    const ext = matches[1].split('/')[1] || 'jpg';
-    const cleanExt = ext === 'jpeg' ? 'jpg' : ext;
-    const safeName = (filename ? filename.replace(/[^a-zA-Z0-9_-]/g, '_') : 'upload') + `_${Date.now()}.${cleanExt}`;
-    const filePath = path.join(UPLOADS_DIR, safeName);
-    const buffer = Buffer.from(matches[2], 'base64');
-
-    fs.writeFileSync(filePath, buffer);
-    const publicUrl = `/uploads/${safeName}`;
-
-    res.json({ success: true, url: publicUrl });
+    const result = await handleUploadAsset(req);
+    res.status(result.status).json(result.body);
   } catch (err: any) {
     console.error('Upload error:', err);
-    res.status(500).json({ error: err.message || 'Upload failed' });
+    res.status(500).json({ error: err?.message || 'Upload failed' });
   }
 });
 
@@ -1666,60 +1252,13 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
 
 // 11. Admin Statistics Overview
 app.get('/api/admin/stats', async (req: Request, res: Response) => {
-  const store = readStore();
-  let ordersSource = store.orders;
-
   try {
-    const ordersRes = await handleListOrders(req);
-    if (ordersRes.status === 200 && Array.isArray(ordersRes.body)) {
-      ordersSource = ordersRes.body;
-    }
-  } catch {
-    // Fallback to local store orders cleanly
+    const result = await handleAdminGetStats(req);
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('Admin stats error:', err);
+    res.status(500).json({ error: 'Unable to load admin stats' });
   }
-
-  const totalRevenue = ordersSource.reduce((sum, o: any) => {
-    const st = String(o.paymentStatus || '').toLowerCase();
-    if (st !== 'paid' && st !== 'completed') return sum;
-    const isPhp = String(o.currency || 'USD').toUpperCase() === 'PHP';
-    const amtUsd = isPhp ? Number(o.total || 0) / 58 : Number(o.total || 0);
-    return sum + amtUsd;
-  }, 0);
-
-  const paidOrdersCount = ordersSource.filter((o: any) => {
-    const st = String(o.paymentStatus || '').toLowerCase();
-    return st === 'paid' || st === 'completed';
-  }).length;
-
-  const publishedProducts = store.products.filter(p => p.status === 'published').length;
-  const draftProducts = store.products.filter(p => p.status === 'draft').length;
-  const totalCustomers = store.users.length;
-  const recentOrders = ordersSource.slice(0, 5);
-
-  let unreadMessages = 0;
-  try {
-    const msgRes = await handleAdminListMessages(req);
-    if (msgRes.status === 200 && Array.isArray(msgRes.body?.messages)) {
-      unreadMessages = msgRes.body.messages.filter(
-        (m: any) => m.status === 'new' || m.status === 'unread'
-      ).length;
-    }
-  } catch {
-    unreadMessages = 0;
-  }
-
-  res.json({
-    totalRevenue: Number(totalRevenue.toFixed(2)),
-    revenueCurrency: 'USD',
-    totalOrders: ordersSource.length,
-    paidOrdersCount,
-    totalProducts: store.products.length,
-    publishedProducts,
-    draftProducts,
-    totalCustomers,
-    unreadMessages,
-    recentOrders,
-  });
 });
 
 // 12. OAuth Callback Relay (lightweight HTML response for popup OAuth flows inside iframe previews)
