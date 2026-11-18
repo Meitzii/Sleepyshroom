@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   loadScript,
-  loadCustomScript,
   type PayPalButtonsComponent,
 } from '@paypal/paypal-js';
 import {
@@ -50,7 +49,6 @@ import {
   VisaIcon,
   MastercardIcon,
   AmexIcon,
-  GooglePayIcon,
   GcashIcon,
   MayaIcon,
   ShieldLockIcon,
@@ -148,10 +146,6 @@ export const CheckoutPage: React.FC = () => {
   const [sdkReady, setSdkReady] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
 
-  // Google Pay SDK state
-  const [gpayLoading, setGpayLoading] = useState(false);
-  const [gpayError, setGpayError] = useState<string | null>(null);
-
   // PH Local QR (GCash / Maya) & Dynamic QRPh state
   const [manualReference, setManualReference] = useState('');
   const [manualSenderName, setManualSenderName] = useState('');
@@ -178,7 +172,6 @@ export const CheckoutPage: React.FC = () => {
   const [showPolicyAccordion, setShowPolicyAccordion] = useState(false);
 
   const paypalContainerRef = useRef<HTMLDivElement | null>(null);
-  const googlePayContainerRef = useRef<HTMLDivElement | null>(null);
   const processedCancelTokenRef = useRef<string | null>(null);
   const activeOrderRef = useRef<{
     downloadToken: string;
@@ -186,6 +179,19 @@ export const CheckoutPage: React.FC = () => {
     approveUrl?: string;
     signature: string;
   } | null>(null);
+
+  const shopActionsRef = useRef({
+    clearCancelledCheckoutNotice,
+    clearCart,
+    navigateTo,
+    setLatestOrder,
+  });
+  shopActionsRef.current = {
+    clearCancelledCheckoutNotice,
+    clearCart,
+    navigateTo,
+    setLatestOrder,
+  };
 
   const breakdown = useMemo(
     () => calculateCheckoutBreakdown(cart, appliedDiscount),
@@ -203,9 +209,6 @@ export const CheckoutPage: React.FC = () => {
   const sdkEnvironment: 'sandbox' | 'production' =
     paymentConfig?.environment === 'live' ? 'production' : 'sandbox';
 
-  const isGooglePayEnabled =
-    paymentConfig?.googlePay?.enabled ??
-    (settings?.paymentProviders?.googlePayEnabled !== false && isPaypalEnabled);
   const isGcashEnabled =
     paymentConfig?.phLocal?.gcashEnabled ??
     (settings?.paymentProviders?.gcashEnabled !== false);
@@ -379,9 +382,7 @@ export const CheckoutPage: React.FC = () => {
     cart,
   ]);
 
-  const createServerPaypalOrder = async (
-    provider: 'paypal' | 'google_pay' = 'paypal'
-  ): Promise<{
+  const createServerPaypalOrder = async (): Promise<{
     paypalOrderId: string;
     downloadToken: string;
     approveUrl: string;
@@ -403,7 +404,7 @@ export const CheckoutPage: React.FC = () => {
         ...authHeaders,
       },
       body: JSON.stringify({
-        paymentProvider: provider,
+        paymentProvider: 'paypal',
         customerEmail: latest.customerEmail.trim(),
         customerName: latest.customerName.trim(),
         billingDetails: {
@@ -594,7 +595,7 @@ export const CheckoutPage: React.FC = () => {
           intent: 'capture',
           components: 'buttons',
           environment: sdkEnvironment,
-          disableFunding: allowCards ? undefined : ['card'],
+          disableFunding: allowCards ? undefined : 'card',
         });
 
         if (cancelled) return;
@@ -680,13 +681,13 @@ export const CheckoutPage: React.FC = () => {
                 return;
               }
 
-              clearCancelledCheckoutNotice();
+              shopActionsRef.current.clearCancelledCheckoutNotice();
               const verifiedOrder = capturedParsed.data.order;
               if (verifiedOrder) {
-                setLatestOrder(verifiedOrder);
+                shopActionsRef.current.setLatestOrder(verifiedOrder);
               }
-              clearCart();
-              navigateTo(
+              shopActionsRef.current.clearCart();
+              shopActionsRef.current.navigateTo(
                 'confirmation',
                 verifiedOrder?.downloadToken || downloadToken
               );
@@ -704,6 +705,8 @@ export const CheckoutPage: React.FC = () => {
               'PayPal checkout was closed before payment completed. Your bag items remain saved.'
             );
             const dlToken = activeOrderRef.current?.downloadToken;
+            activeOrderRef.current = null;
+            setFallbackApproveUrl(null);
             if (dlToken) {
               void (async () => {
                 try {
@@ -779,240 +782,6 @@ export const CheckoutPage: React.FC = () => {
     paymentConfig?.clientId,
     sdkEnvironment,
     allowCards,
-    clearCancelledCheckoutNotice,
-    clearCart,
-    navigateTo,
-    setLatestOrder,
-  ]);
-
-  // Load and render Google Pay button via Google Pay Web API + PayPal Orders v2 when active in Step 3
-  useEffect(() => {
-    const container = googlePayContainerRef.current;
-    if (!container) return;
-
-    if (
-      checkoutStep !== 'payment' ||
-      isZeroTotal ||
-      selectedMethod !== 'google_pay' ||
-      configLoading ||
-      !isPaypalEnabled ||
-      !isGooglePayEnabled ||
-      !paymentConfig?.configured ||
-      !paymentConfig?.clientId
-    ) {
-      setGpayLoading(false);
-      setGpayError(null);
-      container.innerHTML = '';
-      return;
-    }
-
-    let cancelled = false;
-    setGpayLoading(true);
-    setGpayError(null);
-    container.innerHTML = '';
-
-    (async () => {
-      try {
-        await loadCustomScript({ url: 'https://pay.google.com/gp/p/js/pay.js' });
-        const paypalGp = await loadScript({
-          clientId: paymentConfig.clientId,
-          currency: 'USD',
-          intent: 'capture',
-          components: 'googlepay',
-          dataNamespace: 'paypalGooglePay',
-          environment: sdkEnvironment,
-        });
-
-        if (cancelled) return;
-
-        const googleApi = (window as any)?.google?.payments?.api;
-        const gpComponent = (paypalGp as any)?.Googlepay?.();
-        if (!googleApi || !gpComponent) {
-          setGpayError(
-            'Google Pay is unavailable in this browser or not yet activated on the connected merchant app. You can pay via Card or PayPal.'
-          );
-          setGpayLoading(false);
-          return;
-        }
-
-        const gpConfig = await gpComponent.config();
-        if (cancelled) return;
-
-        if (!gpConfig?.isEligible) {
-          setGpayError(
-            'Google Pay is not eligible for your PayPal merchant account or current device/browser. Please use PayPal, Debit/Credit Card, or PH Local QR.'
-          );
-          setGpayLoading(false);
-          return;
-        }
-
-        const paymentsClient = new googleApi.PaymentsClient({
-          environment: sdkEnvironment === 'production' ? 'PRODUCTION' : 'TEST',
-        });
-
-        const readiness = await paymentsClient.isReadyToPay({
-          apiVersion: 2,
-          apiVersionMinor: 0,
-          allowedPaymentMethods: gpConfig.allowedPaymentMethods,
-        });
-
-        if (cancelled) return;
-
-        if (!readiness?.result) {
-          setGpayError(
-            'Google Pay is not ready on this browser or device. Try Chrome with a Google account or pay via Card, PayPal, or PH Local QR.'
-          );
-          setGpayLoading(false);
-          return;
-        }
-
-        const gpButton = paymentsClient.createButton({
-          buttonColor: 'black',
-          buttonType: 'pay',
-          buttonRadius: 14,
-          buttonSizeMode: 'fill',
-          onClick: async () => {
-            const latest = checkoutStateRef.current;
-            const validationErr = validateBillingState(latest);
-            if (validationErr) {
-              setErrorMessage(validationErr);
-              return;
-            }
-            setErrorMessage(null);
-
-            try {
-              const paymentDataRequest = {
-                apiVersion: 2,
-                apiVersionMinor: 0,
-                allowedPaymentMethods: gpConfig.allowedPaymentMethods,
-                transactionInfo: {
-                  totalPriceStatus: 'FINAL',
-                  totalPrice: latest.breakdown.totalUsd.toFixed(2),
-                  currencyCode: 'USD',
-                  countryCode: gpConfig.countryCode || 'US',
-                },
-                merchantInfo: {
-                  ...(gpConfig.merchantInfo || {}),
-                  ...(paymentConfig.googlePay?.merchantId
-                    ? { merchantId: paymentConfig.googlePay.merchantId }
-                    : {}),
-                  merchantName:
-                    paymentConfig.googlePay?.merchantName ||
-                    settings?.storeName ||
-                    'sleepyshroom',
-                },
-              };
-
-              const paymentData = await paymentsClient.loadPaymentData(paymentDataRequest);
-              setCapturing(true);
-
-              const created = await createServerPaypalOrder('google_pay');
-              const confirmRes = await gpComponent.confirmOrder({
-                orderId: created.paypalOrderId,
-                paymentMethodData: paymentData.paymentMethodData,
-              });
-
-              if (
-                confirmRes?.status === 'PAYER_ACTION_REQUIRED' &&
-                typeof gpComponent.initiatePayerAction === 'function'
-              ) {
-                await gpComponent.initiatePayerAction({ orderId: created.paypalOrderId });
-              }
-
-              const authHeaders = await getOptionalSupabaseAuthHeader();
-              const captureRes = await fetch(
-                `/api/orders/${encodeURIComponent(created.downloadToken || created.paypalOrderId)}`,
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    ...authHeaders,
-                  },
-                  body: JSON.stringify({
-                    action: 'capture',
-                    paypalOrderId: created.paypalOrderId,
-                  }),
-                }
-              );
-
-              const capturedParsed = await parseJsonResponse<{
-                success?: boolean;
-                verifiedPaid?: boolean;
-                order?: Order;
-                error?: string;
-              }>(captureRes);
-
-              if (!capturedParsed.isJson || !capturedParsed.ok || !capturedParsed.data?.verifiedPaid) {
-                const msg = extractApiErrorMessage(
-                  capturedParsed,
-                  'Google Pay approved the payment, but capture verification failed.'
-                );
-                setErrorMessage(msg);
-                return;
-              }
-
-              clearCancelledCheckoutNotice();
-              if (capturedParsed.data.order) {
-                setLatestOrder(capturedParsed.data.order);
-              }
-              clearCart();
-              navigateTo(
-                'confirmation',
-                capturedParsed.data.order?.downloadToken || created.downloadToken
-              );
-            } catch (err: any) {
-              if (err?.statusCode === 'CANCELED') {
-                setErrorMessage('Google Pay sheet was closed before completing payment.');
-              } else {
-                setErrorMessage(
-                  err?.message || 'Unable to process Google Pay payment right now. Please try again.'
-                );
-              }
-            } finally {
-              setCapturing(false);
-            }
-          },
-        });
-
-        container.innerHTML = '';
-        container.appendChild(gpButton);
-        if (!cancelled) {
-          setGpayLoading(false);
-        }
-      } catch (err: any) {
-        if (!cancelled) {
-          setGpayError(
-            err?.message ||
-              'Google Pay could not be loaded here. You can pay via PayPal, Card, or PH Local QR instead.'
-          );
-          setGpayLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      if (container) {
-        container.innerHTML = '';
-      }
-    };
-  }, [
-    checkoutStep,
-    isZeroTotal,
-    selectedMethod,
-    configLoading,
-    isPaypalEnabled,
-    isGooglePayEnabled,
-    paymentConfig?.configured,
-    paymentConfig?.clientId,
-    paymentConfig?.googlePay?.merchantId,
-    paymentConfig?.googlePay?.merchantName,
-    sdkEnvironment,
-    settings?.storeName,
-    clearCancelledCheckoutNotice,
-    clearCart,
-    navigateTo,
-    setLatestOrder,
   ]);
 
   if (cart.length === 0) {
@@ -1066,7 +835,7 @@ export const CheckoutPage: React.FC = () => {
 
     setHostedLoading(true);
     try {
-      const created = await createServerPaypalOrder('paypal');
+      const created = await createServerPaypalOrder();
       if (!created.approveUrl) {
         throw new Error('PayPal did not return a hosted approval URL.');
       }
@@ -1258,9 +1027,7 @@ export const CheckoutPage: React.FC = () => {
       ? 'GCash QR (PHP ₱)'
       : selectedMethod === 'maya'
         ? 'Maya QR (PHP ₱)'
-        : selectedMethod === 'google_pay'
-          ? 'Google Pay (USD $)'
-          : 'PayPal & Debit/Credit Card (USD $)';
+        : 'PayPal & Debit/Credit Card (USD $)';
 
   const reviewTotalDisplay = isZeroTotal
     ? formatUsd(0)
@@ -1598,7 +1365,7 @@ export const CheckoutPage: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       {isPaypalEnabled && (
                         <button
                           type="button"
@@ -1622,34 +1389,6 @@ export const CheckoutPage: React.FC = () => {
                             </span>
                             <span className="text-[10px] text-[#777777] font-medium block">
                               Instant Unlock
-                            </span>
-                          </div>
-                        </button>
-                      )}
-
-                      {isPaypalEnabled && isGooglePayEnabled && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setErrorMessage(null);
-                            setSelectedMethod('google_pay');
-                          }}
-                          className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
-                            selectedMethod === 'google_pay'
-                              ? 'bg-[#FFFCF7] border-[#A64B3C] ring-2 ring-[#A64B3C]/20 shadow-xs'
-                              : 'bg-[#FFFCF7]/70 border-[#EADCC8] hover:border-[#A64B3C]/50'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-1">
-                            <GooglePayIcon width={34} height={17} />
-                            <span className="text-[10px] font-bold uppercase text-[#777777]">USD</span>
-                          </div>
-                          <div>
-                            <span className="font-heading font-bold text-xs text-[#292929] block">
-                              Google Pay
-                            </span>
-                            <span className="text-[10px] text-[#777777] font-medium block">
-                              1-Tap Instant
                             </span>
                           </div>
                         </button>
@@ -1767,7 +1506,6 @@ export const CheckoutPage: React.FC = () => {
                     <div className="flex items-center gap-2 font-bold text-[#292929] text-sm">
                       {!isZeroTotal && selectedMethod === 'gcash' && <GcashIcon size={18} />}
                       {!isZeroTotal && selectedMethod === 'maya' && <MayaIcon size={18} />}
-                      {!isZeroTotal && selectedMethod === 'google_pay' && <GooglePayIcon width={28} height={14} />}
                       {!isZeroTotal && selectedMethod === 'paypal' && <PaypalIcon size={18} />}
                       {isZeroTotal && <Sparkles className="w-4 h-4 text-emerald-700" />}
                       <span>{selectedMethodLabel}</span>
@@ -2091,75 +1829,7 @@ export const CheckoutPage: React.FC = () => {
                       </div>
                     )}
 
-                    {/* METHOD 2: Google Pay (USD via PayPal) */}
-                    {selectedMethod === 'google_pay' && (
-                      <div className="space-y-4">
-                        <div className="p-4 rounded-2xl border border-[#EADCC8] bg-[#FFFCF7] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-[#FCF3E2] border border-[#EADCC8] flex items-center justify-center shrink-0">
-                              <GooglePayIcon width={36} height={18} />
-                            </div>
-                            <div>
-                              <h3 className="font-heading font-bold text-sm text-[#292929]">
-                                Express Google Pay Checkout
-                              </h3>
-                              <p className="text-[11px] text-[#777777] font-medium">
-                                Pay seamlessly in USD ({formatUsd(breakdown.totalUsd)}) using cards saved to your Google Account.
-                              </p>
-                            </div>
-                          </div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 self-start sm:self-center">
-                            Instant Download
-                          </span>
-                        </div>
-
-                        {!configLoading && paymentConfig && !paymentConfig.configured && (
-                          <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950 font-medium">
-                            <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                            <p>
-                              Server PayPal API credentials (<code className="font-mono font-bold">PAYPAL_CLIENT_ID</code>) are required for Google Pay processing.
-                            </p>
-                          </div>
-                        )}
-
-                        {paymentConfig?.configured && (
-                          <div className="space-y-3">
-                            {gpayLoading && (
-                              <div className="p-5 bg-white border border-[#EADCC8] rounded-2xl flex items-center justify-center gap-2.5 text-xs font-semibold text-[#777777]">
-                                <Loader2 className="w-4 h-4 animate-spin text-[#A64B3C]" />
-                                <span>Checking Google Pay availability...</span>
-                              </div>
-                            )}
-
-                            <div
-                              ref={googlePayContainerRef}
-                              className={capturing ? 'pointer-events-none opacity-40' : 'min-h-[48px]'}
-                            />
-
-                            {gpayError && (
-                              <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-950 font-medium space-y-2.5">
-                                <div className="flex items-start gap-2">
-                                  <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                                  <p>{gpayError}</p>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setErrorMessage(null);
-                                    setSelectedMethod('paypal');
-                                  }}
-                                  className="px-4 py-2 bg-[#A64B3C] hover:bg-[#8E3E30] text-[#FFFCF7] rounded-xl text-xs font-bold cursor-pointer"
-                                >
-                                  Switch to PayPal / Debit &amp; Credit Card
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* METHOD 3 & 4: PH Local QR Payments (GCash QR / Maya QR — Auto-Populated Amount + Instant Unlock) */}
+                    {/* METHOD 2 & 3: PH Local QR Payments (GCash QR / Maya QR — Auto-Populated Amount + Instant Unlock) */}
                     {(selectedMethod === 'gcash' || selectedMethod === 'maya') && (() => {
                       const isGcash = selectedMethod === 'gcash';
                       const brandLabel = isGcash ? 'GCash' : 'Maya';
@@ -2432,7 +2102,7 @@ export const CheckoutPage: React.FC = () => {
                   <div className="p-2.5 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-center">
                     <CreditCard className="w-3.5 h-3.5 text-[#A64B3C] mx-auto mb-1" />
                     <span className="block text-[10px] font-bold text-[#292929]">Flexible Options</span>
-                    <span className="text-[9px] text-[#777777]">Cards, GPay &amp; PH QR</span>
+                    <span className="text-[9px] text-[#777777]">Cards &amp; PH QR</span>
                   </div>
                   <div className="p-2.5 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-center">
                     <Sparkles className="w-3.5 h-3.5 text-[#A64B3C] mx-auto mb-1" />
@@ -2604,7 +2274,7 @@ export const CheckoutPage: React.FC = () => {
                 {showPolicyAccordion && (
                   <div className="mt-2.5 p-3.5 bg-[#FFFCF7] rounded-xl border border-[#EADCC8] text-[11px] text-[#777777] leading-relaxed space-y-1.5 font-medium">
                     <p>
-                      <strong>Digital Access:</strong> PayPal, Google Pay, GCash QR, Maya QR, and 100% promo orders unlock downloads immediately upon checkout completion.
+                      <strong>Digital Access:</strong> PayPal, Debit/Credit Card, GCash QR, Maya QR, and 100% promo orders unlock downloads immediately upon checkout completion.
                     </p>
                     <p>
                       <strong>Duplicate Protection:</strong> Accidentally purchased the same wallpaper twice? Email us within 14 days and we refund the duplicate transaction.

@@ -645,7 +645,7 @@ export const CustomerAccountPage: React.FC = () => {
                     No verified paid downloads yet
                   </h3>
                   <p className="text-xs text-[#777777] font-medium max-w-sm mx-auto">
-                    Wallpapers you purchase with this email unlock here automatically once payment is verified (PayPal, Google Pay, or confirmed GCash/Maya QR).
+                    Wallpapers you purchase with this email unlock here automatically once payment is verified (PayPal, Cards, or GCash/Maya QR).
                   </p>
                   <button
                     onClick={() => navigateTo('collections')}

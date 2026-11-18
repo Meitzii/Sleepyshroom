@@ -249,7 +249,7 @@ export const CartDrawer: React.FC = () => {
 
             <div className="flex items-center justify-center gap-2 text-[11px] text-[#777777] font-medium text-center">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Instant digital download · PayPal, Google Pay &amp; PH QR</span>
+              <span>Instant digital download · PayPal, Cards &amp; PH QR</span>
             </div>
 
           </div>

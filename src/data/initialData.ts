@@ -22,7 +22,7 @@ export const initialSettings: WebsiteSettings = {
     "paypalEnabled": true,
     "paypalAllowCards": true,
     "testMode": false,
-    "googlePayEnabled": true,
+    "googlePayEnabled": false,
     "googlePayMerchantId": "",
     "googlePayMerchantName": "sleepyshroom",
     "gcashEnabled": true,

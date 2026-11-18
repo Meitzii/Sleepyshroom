@@ -62,7 +62,7 @@ export const Footer: React.FC = () => {
     paypalEnabled: true,
     paypalAllowCards: true,
     testMode: true,
-    googlePayEnabled: true,
+    googlePayEnabled: false,
     gcashEnabled: true,
     mayaEnabled: true,
   };

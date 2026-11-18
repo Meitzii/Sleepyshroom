@@ -330,7 +330,8 @@ export const PaymentBadges: React.FC<{
 }> = ({ className = '', showAllCards = true, providers }) => {
   const paypalEnabled = providers ? providers.paypalEnabled !== false : true;
   const allowCards = providers ? providers.paypalAllowCards !== false && showAllCards : showAllCards;
-  const googlePayEnabled = providers ? providers.googlePayEnabled !== false : true;
+  // Google Pay via PayPal is unsupported for Philippines merchant accounts
+  const googlePayEnabled = false;
   const gcashEnabled = providers ? providers.gcashEnabled !== false : true;
   const mayaEnabled = providers ? providers.mayaEnabled !== false : true;
 

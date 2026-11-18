@@ -14,6 +14,10 @@
       "destination": "/api/checkout?route=orders"
     },
     {
+      "source": "/api/downloads/:token/file/:productId",
+      "destination": "/api/downloads/:token?productId=:productId"
+    },
+    {
       "source": "/api/discounts/validate",
       "destination": "/api/checkout?route=discounts-validate"
     },

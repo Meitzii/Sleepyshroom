@@ -31,6 +31,7 @@ import {
   fetchSupabaseSettings,
   upsertSupabaseSettings,
   mergeWithDefaultSettings,
+  sanitizePaymentProviders,
 } from './lib/settings-service.js';
 import {
   handleGetPaymentConfig,
@@ -204,7 +205,7 @@ const defaultStore: AppStore = {
       paypalEnabled: true,
       paypalAllowCards: true,
       testMode: true,
-      googlePayEnabled: true,
+      googlePayEnabled: false,
       googlePayMerchantId: '',
       googlePayMerchantName: 'sleepyshroom',
       gcashEnabled: true,
@@ -670,15 +671,6 @@ For any questions or assistance with your order, email us at shop.sleepyshroom@g
   ],
   bundles: [],
 };
-
-function sanitizePaymentProviders(raw: any) {
-  const src = raw && typeof raw === 'object' ? raw : {};
-  return {
-    paypalEnabled: src.paypalEnabled !== false,
-    paypalAllowCards: src.paypalAllowCards !== false,
-    testMode: src.testMode !== false,
-  };
-}
 
 function isValidSocialHttpUrl(rawUrl: string): boolean {
   const trimmed = String(rawUrl || '').trim();

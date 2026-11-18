@@ -2653,12 +2653,12 @@ export const AdminDashboard: React.FC = () => {
               );
             })()}
 
-            {/* PayPal, Google Pay & PH Local QR Gateway Configuration */}
+            {/* PayPal & PH Local QR Gateway Configuration */}
             <div className="border-t border-[#E8C9C1]/50 pt-6 space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B6F7A]">
-                    PayPal &amp; Google Pay Checkout (USD)
+                    PayPal Checkout (USD)
                   </h3>
                   <p className="text-[11px] text-[#45313D] mt-0.5">
                     Keep PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, and PAYPAL_WEBHOOK_ID in server environment variables.
@@ -2709,7 +2709,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* PayPal & Google Pay Controls */}
+              {/* PayPal Controls */}
               <div className="p-4 bg-white rounded-2xl border border-[#E8C9C1] space-y-4 text-xs">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <label className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F9F6F0] border border-[#E8C9C1] cursor-pointer">
@@ -2754,72 +2754,18 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                   </label>
 
-                  <label className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F9F6F0] border border-[#E8C9C1] cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.paymentProviders.googlePayEnabled !== false}
-                      onChange={e => setSettings({
-                        ...settings,
-                        paymentProviders: {
-                          ...settings.paymentProviders,
-                          googlePayEnabled: e.target.checked,
-                        },
-                      })}
-                      className="accent-[#8B6F7A] mt-0.5"
-                    />
+                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F9F6F0]/70 border border-[#E8C9C1]/70 opacity-85">
                     <div>
                       <span className="font-bold text-[#1E1419] inline-flex items-center gap-1.5">
                         <GooglePayIcon width={28} height={14} />
-                        <span>Enable Google Pay</span>
+                        <span>Google Pay Disabled (PH)</span>
                       </span>
-                      <span className="text-[11px] text-[#45313D] block">
-                        1-Tap Google Pay (processed in USD via PayPal).
+                      <span className="text-[11px] text-[#45313D] block mt-0.5">
+                        PayPal Google Pay processing is unsupported for Philippines merchant accounts.
                       </span>
-                    </div>
-                  </label>
-                </div>
-
-                {/* Optional Google Pay Merchant Overrides */}
-                {settings.paymentProviders.googlePayEnabled !== false && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="text-[11px] font-bold text-[#33222C] block mb-1">
-                        Google Pay Merchant Name
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="sleepyshroom"
-                        value={settings.paymentProviders.googlePayMerchantName ?? 'sleepyshroom'}
-                        onChange={e => setSettings({
-                          ...settings,
-                          paymentProviders: {
-                            ...settings.paymentProviders,
-                            googlePayMerchantName: e.target.value,
-                          },
-                        })}
-                        className="w-full px-3 py-2 text-xs bg-[#F9F6F0] border border-[#D5C2BB] rounded-xl text-[#1E1419]"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-[#33222C] block mb-1">
-                        Google Pay Merchant ID <span className="font-normal text-[#8B6F7A]">(optional in Sandbox)</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="BCR2DN..."
-                        value={settings.paymentProviders.googlePayMerchantId ?? ''}
-                        onChange={e => setSettings({
-                          ...settings,
-                          paymentProviders: {
-                            ...settings.paymentProviders,
-                            googlePayMerchantId: e.target.value,
-                          },
-                        })}
-                        className="w-full px-3 py-2 text-xs font-mono bg-[#F9F6F0] border border-[#D5C2BB] rounded-xl text-[#1E1419]"
-                      />
                     </div>
                   </div>
-                )}
+                </div>
 
                 <div className="p-3 rounded-xl bg-[#F9F6F0] border border-[#E8C9C1] space-y-1 text-[11px] text-[#45313D]">
                   <p className="font-bold text-[#1E1419]">PayPal Webhook Endpoint</p>
