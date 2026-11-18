@@ -166,11 +166,13 @@ export interface WebsiteSettings {
     googlePayMerchantName?: string;
     gcashEnabled?: boolean;
     gcashQrImage?: string;
+    gcashQrPayload?: string;
     gcashAccountName?: string;
     gcashAccountNumber?: string;
     gcashInstructions?: string;
     mayaEnabled?: boolean;
     mayaQrImage?: string;
+    mayaQrPayload?: string;
     mayaAccountName?: string;
     mayaAccountNumber?: string;
     mayaInstructions?: string;
@@ -295,6 +297,10 @@ export interface DiscountCode {
   value: number;
   minSpend: number;
   active: boolean;
+  singleUse?: boolean;
+  usedCount?: number;
+  redeemedAt?: string;
+  redeemedOrderId?: string;
 }
 
 export interface UserAccount {

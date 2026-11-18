@@ -1844,20 +1844,23 @@ export const initialDiscountCodes: DiscountCode[] = [
     "type": "percentage",
     "value": 10,
     "minSpend": 0,
-    "active": true
+    "active": true,
+    "singleUse": true
   },
   {
     "code": "SHROOMFAM",
     "type": "percentage",
     "value": 20,
     "minSpend": 10,
-    "active": true
+    "active": true,
+    "singleUse": true
   },
   {
     "code": "SWEETDREAMS",
     "type": "fixed",
     "value": 2,
     "minSpend": 8,
-    "active": true
+    "active": true,
+    "singleUse": true
   }
 ];

@@ -115,7 +115,26 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [appliedDiscount, setAppliedDiscount] = useState<DiscountCode | null>(null);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [latestOrder, setLatestOrder] = useState<Order | null>(null);
+  const [latestOrder, setLatestOrderState] = useState<Order | null>(null);
+
+  const setLatestOrder = (ord: Order | null) => {
+    setLatestOrderState(ord);
+    if (ord?.discountCode) {
+      const st = String(ord.paymentStatus || '').toLowerCase();
+      if (st === 'paid' || st === 'completed') {
+        try {
+          const raw = localStorage.getItem('sleepyshroom_redeemed_codes');
+          const arr = raw ? (JSON.parse(raw) as string[]) : [];
+          const upper = ord.discountCode.trim().toUpperCase();
+          if (Array.isArray(arr) && !arr.includes(upper)) {
+            localStorage.setItem('sleepyshroom_redeemed_codes', JSON.stringify([...arr, upper]));
+          }
+        } catch {
+          // Ignore storage errors
+        }
+      }
+    }
+  };
 
   // User auth state persisted to localStorage
   const [user, setUser] = useState<UserAccount | null>(() => {
@@ -476,6 +495,18 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const validateLocally = () => {
+      try {
+        const raw = localStorage.getItem('sleepyshroom_redeemed_codes');
+        const arr = raw ? (JSON.parse(raw) as string[]) : [];
+        if (Array.isArray(arr) && arr.includes(cleanCode)) {
+          return {
+            success: false,
+            message: `Promo code "${cleanCode}" is single-use and has already been redeemed.`,
+          };
+        }
+      } catch {
+        // Ignore storage errors
+      }
       const match = initialDiscountCodes.find(
         d => d.code.toUpperCase() === cleanCode && d.active
       );
@@ -529,9 +560,25 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
           value: data.value,
           minSpend: Number(data.minSpend ?? 0),
           active: true,
+          singleUse: data.singleUse !== false,
         });
         setDiscountAmount(Number(data.discountAmount ?? 0));
         return { success: true, message: data.message || 'Promo code applied!' };
+      }
+      if (data?.alreadyUsed) {
+        if (appliedDiscount?.code?.toUpperCase() === cleanCode) {
+          setAppliedDiscount(null);
+          setDiscountAmount(0);
+        }
+        try {
+          const raw = localStorage.getItem('sleepyshroom_redeemed_codes');
+          const arr = raw ? (JSON.parse(raw) as string[]) : [];
+          if (Array.isArray(arr) && !arr.includes(cleanCode)) {
+            localStorage.setItem('sleepyshroom_redeemed_codes', JSON.stringify([...arr, cleanCode]));
+          }
+        } catch {
+          // Ignore storage errors
+        }
       }
       return { success: false, message: data?.message || 'Invalid promo code.' };
     } catch {

@@ -633,6 +633,7 @@ For any questions or assistance with your order, email us at shop.sleepyshroom@g
       value: 10,
       minSpend: 0,
       active: true,
+      singleUse: true,
     },
     {
       code: 'SHROOMFAM',
@@ -640,6 +641,7 @@ For any questions or assistance with your order, email us at shop.sleepyshroom@g
       value: 20,
       minSpend: 10,
       active: true,
+      singleUse: true,
     },
     {
       code: 'SWEETDREAMS',
@@ -647,6 +649,7 @@ For any questions or assistance with your order, email us at shop.sleepyshroom@g
       value: 2.00,
       minSpend: 8.00,
       active: true,
+      singleUse: true,
     }
   ],
   users: [
